@@ -1,4 +1,5 @@
 """All API endpoints."""
+import math
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -32,7 +33,8 @@ def get_status(session: Session = Depends(get_session)):
         if price is not None and ath:
             drop_pct = round((ath - price) / ath * 100, 2)
             last = tracker.last_alerted_level if tracker else 0
-            next_level = (last + 1) * item.threshold_pct
+            crossed = math.floor(drop_pct / item.threshold_pct) if drop_pct > 0 else 0
+            next_level = (max(last, crossed) + 1) * item.threshold_pct
         result.append(
             {
                 "id": item.id,

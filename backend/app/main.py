@@ -21,7 +21,7 @@ DEFAULT_ASSETS = [
         display_name="Nifty 50 Index",
         threshold_pct=1.0,
         invest_amount=100000,
-        broker_url="https://groww.in/etfs/sbi-nifty-50-etf",
+        broker_url="https://groww.in/etfs/sbietf-nifty",
     ),
 ]
 

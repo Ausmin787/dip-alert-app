@@ -115,7 +115,7 @@ function AssetModal({ initial, onClose, onSave }) {
             <input
               className="field"
               type="url"
-              placeholder="https://groww.in/etfs/sbi-nifty-50-etf"
+              placeholder="https://groww.in/etfs/sbietf-nifty"
               value={form.broker_url}
               onChange={set('broker_url')}
             />
