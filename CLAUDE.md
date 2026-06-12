@@ -60,7 +60,9 @@ State rules that must not be broken (all in `backend/app/ath_logic.py`, verified
 
 - `models.py` — SQLModel tables: `watchlist`, `ath_tracker`, `alert_log`, `settings` (single row)
 - `routes.py` — all endpoints under `/api` (status, history, watchlist CRUD, alerts, settings, test-alert)
+  - `next_alert_level` in `/api/status` is `(max(last_alerted_level, current_crossed_level) + 1) × threshold_pct` — must account for current price position, not just `last_alerted_level + 1`, or it shows the wrong level when no alerts have fired yet
 - `main.py` — lifespan: create tables → seed default `^NSEI` row → refresh ATHs in a background thread → start scheduler
+  - Default seed broker URL for SBI Nifty 50 ETF: `https://groww.in/etfs/sbietf-nifty` (Groww's actual slug — not `sbi-nifty-50-etf`, that 404s)
 - WhatsApp credentials live in the `settings` DB row (entered via the UI), **never** in env vars or code
 - Changing `check_interval_min` via PUT /api/settings reschedules the running APScheduler job
 - Tickers are Yahoo Finance format: `^NSEI`, `SETFNIF50.NS` (NSE), `.BO` (BSE)
@@ -86,6 +88,7 @@ The look is dark glassmorphism over an animated "aurora" backdrop, defined entir
 - yfinance is unauthenticated and rate-limited; don't poll faster than every few minutes
 - SQLite on Railway needs a volume: `DATABASE_URL=sqlite:////data/dip_alert.db`, else data resets every deploy
 - `git add -A` traps: `.playwright-mcp/`, `*.db` are gitignored — keep it that way
+- Groww ETF URLs use their internal slug, not the fund name — verify at groww.in before hardcoding any broker URL
 
 ## Ownership Model
 
