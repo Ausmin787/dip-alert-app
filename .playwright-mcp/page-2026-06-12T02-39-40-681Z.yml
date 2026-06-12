@@ -1,0 +1,28 @@
+- generic [ref=e3]:
+  - banner [ref=e5]:
+    - generic [ref=e7]: Dip Alert
+  - main [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - paragraph [ref=e11]: Connecting…
+        - heading "Good Morning" [level=1] [ref=e13]
+        - paragraph [ref=e14]: watching the dips for you
+      - generic [ref=e15]:
+        - heading "Recent alerts" [level=3] [ref=e16]:
+          - img [ref=e17]
+          - text: Recent alerts
+        - paragraph [ref=e20]: No alerts yet — they'll appear here when Nifty crosses a new dip level.
+  - navigation [ref=e21]:
+    - generic [ref=e22]:
+      - link [ref=e23] [cursor=pointer]:
+        - /url: /
+        - img [ref=e24]
+      - link [ref=e28] [cursor=pointer]:
+        - /url: /watchlist
+        - img [ref=e29]
+      - link [ref=e34] [cursor=pointer]:
+        - /url: /alerts
+        - img [ref=e35]
+      - link [ref=e38] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e39]

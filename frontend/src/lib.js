@@ -20,26 +20,27 @@ export const fmtDateTime = (iso) =>
 
 // Severity by % below ATH: green within 1%, amber 1-3%, red 3%+
 export const severity = (dropPct) => {
-  if (dropPct == null) return { label: 'no data', text: 'text-fog-dim', chip: 'bg-white/8 text-fog-dim', glow: '' }
+  if (dropPct == null)
+    return { label: 'no data', text: 'text-fog-dim', chip: 'bg-white/10 text-fog-dim', glow: '' }
   if (dropPct < 1)
     return {
       label: 'near high',
       text: 'text-moss',
-      chip: 'bg-moss/15 text-moss',
-      glow: 'shadow-[0_0_50px_-10px_rgba(159,232,112,0.25)]',
+      chip: 'bg-moss/20 text-moss ring-1 ring-moss/30',
+      glow: 'shadow-[0_0_70px_-12px_rgba(163,233,116,0.35)]',
     }
   if (dropPct < 3)
     return {
       label: 'dipping',
       text: 'text-amber-soft',
-      chip: 'bg-amber-soft/15 text-amber-soft',
-      glow: 'shadow-[0_0_50px_-10px_rgba(245,196,81,0.22)]',
+      chip: 'bg-amber-soft/20 text-amber-soft ring-1 ring-amber-soft/30',
+      glow: 'shadow-[0_0_70px_-12px_rgba(245,196,81,0.3)]',
     }
   return {
     label: 'deep dip',
     text: 'text-ember',
-    chip: 'bg-ember/15 text-ember',
-    glow: 'shadow-[0_0_50px_-10px_rgba(240,120,87,0.28)]',
+    chip: 'bg-ember/20 text-ember ring-1 ring-ember/30',
+    glow: 'shadow-[0_0_70px_-12px_rgba(255,138,101,0.35)]',
   }
 }
 
@@ -49,3 +50,6 @@ export const greeting = () => {
   if (h < 17) return 'Good Afternoon'
   return 'Good Evening'
 }
+
+export const todayLine = () =>
+  new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })

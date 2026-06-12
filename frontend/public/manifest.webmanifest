@@ -1,0 +1,17 @@
+{
+  "name": "Dip Alert — Nifty ATH Tracker",
+  "short_name": "Dip Alert",
+  "description": "WhatsApp alerts for every -1% Nifty dip from its all-time high",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070a08",
+  "theme_color": "#070a08",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

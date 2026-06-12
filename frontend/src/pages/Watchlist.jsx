@@ -12,6 +12,7 @@ const emptyForm = {
   active: true,
 }
 
+// Bottom sheet on mobile, centered dialog on larger screens
 function AssetModal({ initial, onClose, onSave }) {
   const [form, setForm] = useState(initial ?? emptyForm)
   const [saving, setSaving] = useState(false)
@@ -37,28 +38,27 @@ function AssetModal({ initial, onClose, onSave }) {
     }
   }
 
-  const field =
-    'w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-fog placeholder:text-fog-dim/60 focus:border-moss/50 focus:outline-none'
-
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-5 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/55 backdrop-blur-sm sm:items-center sm:p-6"
       onClick={onClose}
     >
       <div
-        className="glass-deep rise w-full max-w-md rounded-3xl p-6"
+        className="glass-strong sheet-up w-full rounded-t-[2rem] p-6 sm:max-w-md sm:rounded-[2rem]"
+        style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/25 sm:hidden" />
         <h2 className="font-display mb-5 text-2xl font-light text-fog">
           {isEdit ? 'Edit asset' : 'Track a new asset'}
         </h2>
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-xs tracking-wide text-fog-dim uppercase">
+            <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
               Ticker (Yahoo Finance)
             </label>
             <input
-              className={field}
+              className="field"
               placeholder="^NSEI, SETFNIF50.NS, RELIANCE.NS…"
               value={form.ticker}
               onChange={set('ticker')}
@@ -67,24 +67,24 @@ function AssetModal({ initial, onClose, onSave }) {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs tracking-wide text-fog-dim uppercase">
+            <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
               Display name
             </label>
             <input
-              className={field}
+              className="field"
               placeholder="SBI Nifty 50 ETF"
               value={form.display_name}
               onChange={set('display_name')}
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-xs tracking-wide text-fog-dim uppercase">
+              <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
                 Alert every (%)
               </label>
               <input
-                className={field}
+                className="field"
                 type="number"
                 step="0.1"
                 min="0.1"
@@ -94,11 +94,11 @@ function AssetModal({ initial, onClose, onSave }) {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs tracking-wide text-fog-dim uppercase">
-                Invest amount (₹)
+              <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
+                Amount (₹)
               </label>
               <input
-                className={field}
+                className="field"
                 type="number"
                 step="1000"
                 min="0"
@@ -109,11 +109,11 @@ function AssetModal({ initial, onClose, onSave }) {
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs tracking-wide text-fog-dim uppercase">
+            <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
               Broker URL (Buy button)
             </label>
             <input
-              className={field}
+              className="field"
               type="url"
               placeholder="https://groww.in/etfs/sbi-nifty-50-etf"
               value={form.broker_url}
@@ -125,14 +125,14 @@ function AssetModal({ initial, onClose, onSave }) {
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full px-5 py-2.5 text-sm text-fog-dim hover:text-fog"
+              className="pressable rounded-full px-5 py-3 text-sm text-fog-dim hover:text-fog"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-full bg-moss px-6 py-2.5 text-sm font-semibold text-ink transition-transform hover:scale-105 disabled:opacity-50"
+              className="pressable rounded-full bg-moss px-6 py-3 text-sm font-semibold text-ink shadow-[0_8px_24px_-8px_rgba(163,233,116,0.6)] disabled:opacity-50"
             >
               {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Start tracking'}
             </button>
@@ -140,6 +140,70 @@ function AssetModal({ initial, onClose, onSave }) {
         </form>
       </div>
     </div>
+  )
+}
+
+function AssetCard({ item, delay, onEdit, onToggle, onDelete }) {
+  return (
+    <article
+      className="glass rise rounded-[1.5rem] p-5"
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-medium text-fog">{item.display_name}</h3>
+          <p className="text-xs tracking-wide text-fog-dim">{item.ticker}</p>
+        </div>
+        <span
+          className={`rounded-full px-3 py-1 text-[0.7rem] font-semibold tracking-wide uppercase ${
+            item.active
+              ? 'bg-moss/20 text-moss ring-1 ring-moss/30'
+              : 'bg-white/10 text-fog-dim ring-1 ring-white/10'
+          }`}
+        >
+          {item.active ? 'tracking' : 'paused'}
+        </span>
+      </div>
+
+      <div className="num mt-4 flex gap-5 text-sm text-fog">
+        <span>
+          every <span className="font-semibold">−{item.threshold_pct}%</span>
+        </span>
+        <span>
+          reminds <span className="font-semibold">{fmtAmount(item.invest_amount)}</span>
+        </span>
+      </div>
+
+      <div className="mt-4 flex gap-2 border-t border-white/10 pt-4">
+        <button
+          onClick={onEdit}
+          className="pressable flex flex-1 items-center justify-center gap-2 rounded-full bg-white/8 py-2.5 text-xs font-medium text-fog ring-1 ring-white/10 hover:bg-white/12"
+        >
+          <IconPencil className="h-3.5 w-3.5" /> Edit
+        </button>
+        <button
+          onClick={onToggle}
+          className="pressable flex flex-1 items-center justify-center gap-2 rounded-full bg-white/8 py-2.5 text-xs font-medium text-fog ring-1 ring-white/10 hover:bg-white/12"
+        >
+          {item.active ? (
+            <>
+              <IconPause className="h-3.5 w-3.5" /> Pause
+            </>
+          ) : (
+            <>
+              <IconPlay className="h-3.5 w-3.5" /> Resume
+            </>
+          )}
+        </button>
+        <button
+          onClick={onDelete}
+          aria-label="Delete"
+          className="pressable flex items-center justify-center rounded-full bg-white/8 px-4 py-2.5 text-ember ring-1 ring-white/10 hover:bg-ember/15"
+        >
+          <IconTrash className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </article>
   )
 }
 
@@ -175,93 +239,41 @@ export default function Watchlist() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="rise flex items-end justify-between pt-4">
+    <div className="space-y-5">
+      <div className="rise flex items-end justify-between gap-3 pt-3">
         <div>
-          <h1 className="font-display text-4xl font-light text-fog">Watchlist</h1>
-          <p className="mt-1 text-sm text-fog-dim">Assets being watched for ATH dips</p>
+          <h1 className="text-gradient font-display text-4xl font-light">Watchlist</h1>
+          <p className="mt-1.5 text-sm text-fog-dim">Assets being watched for ATH dips</p>
         </div>
         <button
           onClick={() => setModal('new')}
-          className="flex items-center gap-2 rounded-full bg-moss px-5 py-2.5 text-sm font-semibold text-ink transition-transform hover:scale-105"
+          className="pressable flex shrink-0 items-center gap-2 rounded-full bg-moss px-5 py-3 text-sm font-semibold text-ink shadow-[0_8px_24px_-8px_rgba(163,233,116,0.6)]"
         >
-          <IconPlus className="h-4 w-4" /> Add asset
+          <IconPlus className="h-4 w-4" /> <span className="hidden sm:inline">Add asset</span>
+          <span className="sm:hidden">Add</span>
         </button>
       </div>
 
-      <div className="glass rise overflow-hidden rounded-3xl" style={{ animationDelay: '100ms' }}>
-        {loading ? (
-          <p className="p-8 text-center text-sm text-fog-dim">Loading…</p>
-        ) : items.length === 0 ? (
-          <p className="p-8 text-center text-sm text-fog-dim">Nothing tracked yet.</p>
-        ) : (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-white/8 text-xs tracking-wide text-fog-dim uppercase">
-                <th className="px-5 py-4 font-medium">Asset</th>
-                <th className="hidden px-5 py-4 font-medium sm:table-cell">Threshold</th>
-                <th className="hidden px-5 py-4 font-medium sm:table-cell">Reminder</th>
-                <th className="px-5 py-4 font-medium">Status</th>
-                <th className="px-5 py-4" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/6">
-              {items.map((item) => (
-                <tr key={item.id} className="transition-colors hover:bg-white/4">
-                  <td className="px-5 py-4">
-                    <p className="font-medium text-fog">{item.display_name}</p>
-                    <p className="text-xs text-fog-dim">{item.ticker}</p>
-                  </td>
-                  <td className="num hidden px-5 py-4 text-fog sm:table-cell">
-                    every −{item.threshold_pct}%
-                  </td>
-                  <td className="num hidden px-5 py-4 text-fog sm:table-cell">
-                    {fmtAmount(item.invest_amount)}
-                  </td>
-                  <td className="px-5 py-4">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        item.active ? 'bg-moss/15 text-moss' : 'bg-white/8 text-fog-dim'
-                      }`}
-                    >
-                      {item.active ? 'tracking' : 'paused'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex justify-end gap-1">
-                      <button
-                        onClick={() => setModal(item)}
-                        title="Edit"
-                        className="rounded-full p-2 text-fog-dim hover:bg-white/8 hover:text-fog"
-                      >
-                        <IconPencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => togglePause(item)}
-                        title={item.active ? 'Pause' : 'Resume'}
-                        className="rounded-full p-2 text-fog-dim hover:bg-white/8 hover:text-fog"
-                      >
-                        {item.active ? (
-                          <IconPause className="h-4 w-4" />
-                        ) : (
-                          <IconPlay className="h-4 w-4" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => remove(item)}
-                        title="Delete"
-                        className="rounded-full p-2 text-fog-dim hover:bg-ember/15 hover:text-ember"
-                      >
-                        <IconTrash className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {loading ? (
+        <p className="glass rounded-3xl p-8 text-center text-sm text-fog-dim">Loading…</p>
+      ) : items.length === 0 ? (
+        <p className="glass rounded-3xl p-8 text-center text-sm text-fog-dim">
+          Nothing tracked yet — add your first asset.
+        </p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {items.map((item, i) => (
+            <AssetCard
+              key={item.id}
+              item={item}
+              delay={90 + i * 70}
+              onEdit={() => setModal(item)}
+              onToggle={() => togglePause(item)}
+              onDelete={() => remove(item)}
+            />
+          ))}
+        </div>
+      )}
 
       {modal && (
         <AssetModal

@@ -1,0 +1,50 @@
+- generic [ref=e3]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]: Dip Alert
+      - generic [ref=e8]: Nifty ATH tracker
+  - main [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - heading "Settings" [level=1] [ref=e12]
+        - paragraph [ref=e13]: WhatsApp delivery and check frequency
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - generic [ref=e16]: WhatsApp phone (with country code)
+          - textbox "+919876543210" [ref=e17]
+        - generic [ref=e18]:
+          - generic [ref=e19]: CallMeBot API key
+          - textbox "123456" [ref=e20]
+        - generic [ref=e21]:
+          - generic [ref=e22]: Check interval (minutes, during market hours)
+          - spinbutton [ref=e23]: "5"
+        - generic [ref=e24]:
+          - button "Send test alert" [ref=e25]
+          - button "Save settings" [ref=e26]
+      - generic [ref=e27]:
+        - heading "One-time CallMeBot setup" [level=3] [ref=e28]
+        - list [ref=e29]:
+          - listitem [ref=e30]: Save +34 644 59 89 29 in your phone's contacts.
+          - listitem [ref=e31]:
+            - text: "From WhatsApp, send it the message:"
+            - emphasis [ref=e32]: "\"I allow callmebot to send me messages\""
+          - listitem [ref=e33]: You'll receive your personal API key back on WhatsApp within a minute.
+          - listitem [ref=e34]: Paste your phone number and that key above, save, then send a test alert.
+  - navigation [ref=e35]:
+    - generic [ref=e36]:
+      - link "Home" [ref=e37] [cursor=pointer]:
+        - /url: /
+        - img [ref=e38]
+        - generic [ref=e42]: Home
+      - link "Watchlist" [ref=e43] [cursor=pointer]:
+        - /url: /watchlist
+        - img [ref=e44]
+        - generic [ref=e49]: Watchlist
+      - link "Alerts" [ref=e50] [cursor=pointer]:
+        - /url: /alerts
+        - img [ref=e51]
+        - generic [ref=e54]: Alerts
+      - link "Settings" [ref=e55] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e56]
+        - generic [ref=e59]: Settings

@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getSettings, sendTestAlert, updateSettings } from '../api.js'
 
-const field =
-  'w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-fog placeholder:text-fog-dim/60 focus:border-moss/50 focus:outline-none'
-
 export default function Settings() {
   const [form, setForm] = useState({ whatsapp_phone: '', callmebot_apikey: '', check_interval_min: 5 })
   const [status, setStatus] = useState(null) // { kind: 'ok' | 'err', msg }
@@ -49,45 +46,46 @@ export default function Settings() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div className="rise pt-4">
-        <h1 className="font-display text-4xl font-light text-fog">Settings</h1>
-        <p className="mt-1 text-sm text-fog-dim">WhatsApp delivery and check frequency</p>
+    <div className="mx-auto max-w-2xl space-y-5">
+      <div className="rise pt-3">
+        <h1 className="text-gradient font-display text-4xl font-light">Settings</h1>
+        <p className="mt-1.5 text-sm text-fog-dim">WhatsApp delivery and check frequency</p>
       </div>
 
       <form
         onSubmit={save}
-        className="glass rise space-y-5 rounded-3xl p-6"
-        style={{ animationDelay: '100ms' }}
+        className="glass rise space-y-5 rounded-[1.75rem] p-5 sm:p-6"
+        style={{ animationDelay: '90ms' }}
       >
         <div>
-          <label className="mb-1.5 block text-xs tracking-wide text-fog-dim uppercase">
+          <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
             WhatsApp phone (with country code)
           </label>
           <input
-            className={field}
+            className="field"
+            type="tel"
             placeholder="+919876543210"
             value={form.whatsapp_phone}
             onChange={set('whatsapp_phone')}
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs tracking-wide text-fog-dim uppercase">
+          <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
             CallMeBot API key
           </label>
           <input
-            className={field}
+            className="field"
             placeholder="123456"
             value={form.callmebot_apikey}
             onChange={set('callmebot_apikey')}
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs tracking-wide text-fog-dim uppercase">
+          <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
             Check interval (minutes, during market hours)
           </label>
           <input
-            className={field}
+            className="field"
             type="number"
             min="1"
             max="60"
@@ -102,32 +100,33 @@ export default function Settings() {
           </p>
         )}
 
-        <div className="flex flex-wrap justify-end gap-3 pt-1">
+        <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={test}
             disabled={busy}
-            className="rounded-full border border-white/15 px-5 py-2.5 text-sm text-fog transition-colors hover:border-moss/50 hover:text-moss disabled:opacity-50"
+            className="pressable rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-fog hover:border-moss/50 hover:text-moss disabled:opacity-50"
           >
             Send test alert
           </button>
           <button
             type="submit"
             disabled={busy}
-            className="rounded-full bg-moss px-6 py-2.5 text-sm font-semibold text-ink transition-transform hover:scale-105 disabled:opacity-50"
+            className="pressable rounded-full bg-moss px-6 py-3 text-sm font-semibold text-ink shadow-[0_8px_24px_-8px_rgba(163,233,116,0.6)] disabled:opacity-50"
           >
             {busy ? 'Working…' : 'Save settings'}
           </button>
         </div>
       </form>
 
-      <div className="glass rise rounded-3xl p-6" style={{ animationDelay: '200ms' }}>
-        <h3 className="mb-3 text-sm font-medium tracking-wide text-fog-dim uppercase">
+      <div className="glass rise rounded-[1.75rem] p-5 sm:p-6" style={{ animationDelay: '180ms' }}>
+        <h3 className="mb-3 text-[0.7rem] font-semibold tracking-[0.18em] text-fog-dim uppercase">
           One-time CallMeBot setup
         </h3>
-        <ol className="list-inside list-decimal space-y-2 text-sm leading-relaxed text-fog-dim">
+        <ol className="list-inside list-decimal space-y-2.5 text-sm leading-relaxed text-fog-dim">
           <li>
-            Save <span className="num text-fog">+34 644 59 89 29</span> in your phone's contacts.
+            Save <span className="num font-medium text-fog">+34 644 59 89 29</span> in your phone's
+            contacts.
           </li>
           <li>
             From WhatsApp, send it the message:{' '}

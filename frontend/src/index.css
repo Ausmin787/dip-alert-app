@@ -4,88 +4,231 @@
   --font-display: "Fraunces", Georgia, serif;
   --font-body: "Outfit", system-ui, sans-serif;
 
-  --color-ink: #0b0f0c;
-  --color-moss: #9fe870;
-  --color-moss-dim: #6fae4e;
+  --color-ink: #070a08;
+  --color-moss: #a3e974;
+  --color-moss-deep: #5d9a3f;
   --color-amber-soft: #f5c451;
-  --color-ember: #f07857;
-  --color-fog: #e8ece6;
-  --color-fog-dim: #9aa39a;
+  --color-ember: #ff8a65;
+  --color-fog: #eef2ea;
+  --color-fog-dim: #a8b3a6;
 }
 
 html {
-  background: #0b0f0c;
+  background: #070a08;
 }
 
 body {
   font-family: var(--font-body);
   color: var(--color-fog);
-  background: #0b0f0c;
+  /* Must stay transparent: an opaque body background paints over the
+     negative z-index aurora layer (CSS painting order). */
+  background: transparent;
   min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
-/* Ambient backdrop: layered green glows on near-black, like dawn light */
-.ambient {
+/* ---------- Aurora backdrop: drifting light the glass can actually blur ---------- */
+
+.aurora {
   position: fixed;
   inset: 0;
-  z-index: -2;
-  background:
-    radial-gradient(ellipse 60% 45% at 70% -5%, rgba(110, 160, 80, 0.28), transparent 65%),
-    radial-gradient(ellipse 45% 35% at 15% 10%, rgba(70, 120, 90, 0.18), transparent 60%),
-    radial-gradient(ellipse 70% 50% at 50% 110%, rgba(30, 60, 45, 0.25), transparent 65%),
-    #0b0f0c;
+  z-index: -3;
+  background: #070a08;
+  overflow: hidden;
 }
 
-/* Film grain over the glow so it feels organic, not vector-clean */
+.aurora .blob {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.aurora .b1 {
+  width: 80vmax;
+  height: 60vmax;
+  top: -22vmax;
+  right: -18vmax;
+  background: radial-gradient(circle at 35% 60%, rgba(140, 205, 100, 0.6), rgba(56, 110, 68, 0.3) 55%, transparent 74%);
+  animation: drift1 38s ease-in-out infinite alternate;
+}
+
+.aurora .b2 {
+  width: 60vmax;
+  height: 50vmax;
+  top: 10vmax;
+  left: -20vmax;
+  background: radial-gradient(circle at 60% 40%, rgba(52, 140, 122, 0.7), rgba(28, 84, 74, 0.32) 55%, transparent 74%);
+  animation: drift2 46s ease-in-out infinite alternate;
+}
+
+.aurora .b3 {
+  width: 65vmax;
+  height: 50vmax;
+  bottom: -25vmax;
+  right: -8vmax;
+  background: radial-gradient(circle at 50% 30%, rgba(196, 172, 80, 0.5), rgba(104, 92, 36, 0.22) 55%, transparent 74%);
+  animation: drift3 52s ease-in-out infinite alternate;
+}
+
+.aurora .b4 {
+  width: 44vmax;
+  height: 44vmax;
+  top: 38%;
+  left: 32%;
+  background: radial-gradient(circle, rgba(163, 233, 116, 0.38), transparent 66%);
+  animation: drift2 33s ease-in-out infinite alternate-reverse;
+}
+
+/* Gentle vignette so content stays readable over the light */
+.aurora::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(7, 10, 8, 0.38) 0%, rgba(7, 10, 8, 0.1) 30%, rgba(7, 10, 8, 0.38) 100%),
+    radial-gradient(ellipse 130% 100% at 50% 45%, transparent 50%, rgba(7, 10, 8, 0.45) 100%);
+}
+
+@keyframes drift1 {
+  from { transform: translate(0, 0) scale(1) rotate(0deg); }
+  to { transform: translate(-14vmax, 10vmax) scale(1.18) rotate(18deg); }
+}
+
+@keyframes drift2 {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(12vmax, -8vmax) scale(1.12); }
+}
+
+@keyframes drift3 {
+  from { transform: translate(0, 0) scale(1.05); }
+  to { transform: translate(-10vmax, -12vmax) scale(0.92); }
+}
+
 .grain {
   position: fixed;
   inset: 0;
   z-index: -1;
-  opacity: 0.5;
+  opacity: 0.55;
   pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
+
+/* ---------- Glass ---------- */
 
 .glass {
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  position: relative;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035) 55%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  box-shadow:
+    0 18px 50px -18px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
-.glass-deep {
-  background: rgba(10, 14, 11, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+/* Soft sheen sweeping the top of a glass card */
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(120% 60% at 20% -10%, rgba(255, 255, 255, 0.14), transparent 55%);
 }
+
+.glass-strong {
+  background: linear-gradient(150deg, rgba(20, 28, 20, 0.72), rgba(12, 18, 13, 0.6));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  box-shadow:
+    0 18px 50px -12px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.field {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.8rem 1rem;
+  font-size: 0.95rem;
+  color: var(--color-fog);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.field::placeholder {
+  color: rgba(168, 179, 166, 0.55);
+}
+
+.field:focus {
+  outline: none;
+  border-color: rgba(163, 233, 116, 0.55);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+/* ---------- Type & numbers ---------- */
 
 .num {
   font-variant-numeric: tabular-nums;
 }
 
-/* Staggered page-load reveal */
+.text-gradient {
+  background: linear-gradient(120deg, #f4f8f0 30%, #a3e974 85%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- Motion ---------- */
+
 @keyframes rise {
-  from { opacity: 0; transform: translateY(14px); }
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .rise {
-  animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes sheet-up {
+  from { opacity: 0; transform: translateY(48px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sheet-up {
+  animation: sheet-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+  0%, 100% { opacity: 1; box-shadow: 0 0 10px 2px rgba(163, 233, 116, 0.45); }
+  50% { opacity: 0.45; box-shadow: 0 0 4px 0 rgba(163, 233, 116, 0.2); }
 }
 
 .live-dot {
-  animation: pulse-dot 2s ease-in-out infinite;
+  animation: pulse-dot 2.2s ease-in-out infinite;
+}
+
+.pressable {
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pressable:active {
+  transform: scale(0.95);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora .blob, .rise, .sheet-up, .live-dot {
+    animation: none;
+  }
 }
 
 ::selection {
-  background: rgba(159, 232, 112, 0.3);
+  background: rgba(163, 233, 116, 0.32);
 }
 
 input, select {
