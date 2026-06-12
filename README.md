@@ -1,0 +1,88 @@
+# Dip Alert — Nifty ATH Tracker
+
+A personal web app that watches the **Nifty 50 index** during NSE market hours, detects every new **−1% level below its all-time high**, and sends a **WhatsApp alert** with a quick-buy link. Inspired by the r/IndianStreetBets strategy: *"Buy ₹1L of Nifty 50 ETF for every −1% fall from ATH."*
+
+![Dashboard](docs/screenshots/dashboard-desktop.png)
+
+## How it works
+
+```
+drop% = (ATH − current) / ATH × 100
+Alert fires when floor(drop% / threshold) > last_alerted_level
+```
+
+- No re-alerts at the same level within a dip cycle
+- Levels reset when price recovers to within 0.5% of ATH (or makes a new ATH)
+- Price checks every 5 min (configurable), 9:15 AM–3:30 PM IST, Mon–Fri only
+- Per-asset custom threshold %, investment reminder amount, and broker Buy link
+
+## Stack
+
+| Layer | Tech |
+|---|---|
+| Backend | Python 3.11+, FastAPI, SQLModel (SQLite), APScheduler, yfinance |
+| Alerts | CallMeBot WhatsApp API (free, personal use) |
+| Frontend | React + Vite, Tailwind CSS v4, Recharts, Axios |
+| Hosting | Railway (backend + SQLite volume), Vercel (frontend) |
+
+## Run locally
+
+**Backend** (http://localhost:8000):
+
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt   # Windows
+.venv\Scripts\python -m uvicorn app.main:app --port 8000
+```
+
+**Frontend** (http://localhost:5173, proxies `/api` to the backend):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+**Core-logic tests:**
+
+```bash
+cd backend
+.venv\Scripts\python test_logic.py
+```
+
+## WhatsApp setup (one-time, done by the app's owner)
+
+1. Save `+34 644 59 89 29` in your phone's contacts
+2. From WhatsApp, message it: `I allow callmebot to send me messages`
+3. You'll get your personal API key back on WhatsApp
+4. Open the app's **Settings** page → enter phone (with country code) + API key → **Send test alert**
+
+Credentials live in the app's database — never in code, git, or env vars.
+
+## Deploy (owner's own accounts — zero developer involvement)
+
+**Backend → Railway:**
+1. Create a Railway account, deploy from this GitHub repo with root directory `backend`
+2. Add a **volume** mounted at `/data` and set env var `DATABASE_URL=sqlite:////data/dip_alert.db` (otherwise the DB resets on each redeploy)
+3. Set `FRONTEND_ORIGIN=https://<your-vercel-app>.vercel.app` for CORS
+4. Note your Railway public URL
+
+**Frontend → Vercel:**
+1. Create a Vercel account, import this repo with root directory `frontend`
+2. Set env var `VITE_API_URL=https://<your-railway-app>.up.railway.app`
+3. Deploy — then open `/settings` and configure WhatsApp
+
+## API
+
+```
+GET  /api/status            current price, ATH, drop %, next level per asset
+GET  /api/history/{ticker}  last N days of closes (chart data)
+GET  /api/watchlist         POST /api/watchlist        add asset
+PUT  /api/watchlist/{id}    DELETE /api/watchlist/{id}
+GET  /api/alerts            paginated alert history
+GET  /api/settings          PUT /api/settings
+POST /api/test-alert        send a test WhatsApp message
+```
+
+Tickers use Yahoo Finance format: `^NSEI` (Nifty 50 index), `SETFNIF50.NS` (SBI Nifty 50 ETF), `RELIANCE.NS` (NSE stocks), `.BO` suffix for BSE.
