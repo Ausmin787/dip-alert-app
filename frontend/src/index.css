@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Outfit", system-ui, sans-serif;
+
+  --color-ink: #0b0f0c;
+  --color-moss: #9fe870;
+  --color-moss-dim: #6fae4e;
+  --color-amber-soft: #f5c451;
+  --color-ember: #f07857;
+  --color-fog: #e8ece6;
+  --color-fog-dim: #9aa39a;
+}
+
+html {
+  background: #0b0f0c;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-fog);
+  background: #0b0f0c;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ambient backdrop: layered green glows on near-black, like dawn light */
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(ellipse 60% 45% at 70% -5%, rgba(110, 160, 80, 0.28), transparent 65%),
+    radial-gradient(ellipse 45% 35% at 15% 10%, rgba(70, 120, 90, 0.18), transparent 60%),
+    radial-gradient(ellipse 70% 50% at 50% 110%, rgba(30, 60, 45, 0.25), transparent 65%),
+    #0b0f0c;
+}
+
+/* Film grain over the glow so it feels organic, not vector-clean */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.5;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.glass-deep {
+  background: rgba(10, 14, 11, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Staggered page-load reveal */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rise {
+  animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.live-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+::selection {
+  background: rgba(159, 232, 112, 0.3);
+}
+
+input, select {
+  color-scheme: dark;
+}
