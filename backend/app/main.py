@@ -36,9 +36,23 @@ def seed_defaults() -> None:
         session.commit()
 
 
+def migrate_db() -> None:
+    """Additive SQLite migrations for DBs created before new columns existed."""
+    with engine.connect() as conn:
+        cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(alert_log)")]
+        if cols and "level_pct" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE alert_log ADD COLUMN level_pct FLOAT NOT NULL DEFAULT 0"
+            )
+            # Old rows were all written with threshold_pct=1.0, so level == pct
+            conn.exec_driver_sql("UPDATE alert_log SET level_pct = alert_level")
+            conn.commit()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    migrate_db()
     seed_defaults()
     # Populate ATH in the background so the dashboard has data immediately
     threading.Thread(target=refresh_all_aths, daemon=True).start()

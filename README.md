@@ -22,7 +22,7 @@ Alert fires when floor(drop% / threshold) > last_alerted_level
 |---|---|
 | Backend | Python 3.11+, FastAPI, SQLModel (SQLite), APScheduler, yfinance |
 | Alerts | CallMeBot WhatsApp API (free, personal use) |
-| Frontend | React + Vite, Tailwind CSS v4, Recharts, Axios |
+| Frontend | React + Vite, Tailwind CSS v4, Motion, Recharts, Axios (requires Node 20.19+ — Vite 8 floor) |
 | Hosting | Railway (backend + SQLite volume), Vercel (frontend) |
 
 ## Run locally

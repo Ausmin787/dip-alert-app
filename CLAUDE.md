@@ -54,7 +54,9 @@ State rules that must not be broken (all in `backend/app/ath_logic.py`, verified
 - **No re-alert** at the same level within a dip cycle (`last_alerted_level` gate)
 - **Recovery reset**: price within 0.5% of ATH (`RECOVERY_RESET_PCT`) resets `last_alerted_level = 0` so levels re-trigger on the next dip
 - **New ATH** updates the tracker and resets the level to 0
-- Levels are in units of the asset's `threshold_pct` (default 1.0 → whole percents)
+- Levels are in units of the asset's `threshold_pct` (default 1.0 → whole percents); the user-facing percentage is `level_pct = level × threshold_pct` (stored on `AlertLog`, shown in WhatsApp + UI)
+- **Failed WhatsApp delivery does not consume the level**: no `AlertLog` row, `last_alerted_level` unchanged, next scheduler tick retries. Only an actually-sent alert (or a deliberate unconfigured-credentials run, where the dashboard is the record) advances the level.
+- **Scheduler loops must `session.rollback()` in their per-asset exception handlers** (`check_all_assets`/`refresh_all_aths`) — without it, one DB error poisons the shared session (`PendingRollbackError`) for every remaining asset in the pass. Regression-tested in `test_logic.py`.
 
 ### Backend layout (`backend/app/`)
 
@@ -64,27 +66,34 @@ State rules that must not be broken (all in `backend/app/ath_logic.py`, verified
 - `main.py` — lifespan: create tables → seed default `^NSEI` row → refresh ATHs in a background thread → start scheduler
   - Default seed broker URL for SBI Nifty 50 ETF: `https://groww.in/etfs/sbietf-nifty` (Groww's actual slug — not `sbi-nifty-50-etf`, that 404s)
 - WhatsApp credentials live in the `settings` DB row (entered via the UI), **never** in env vars or code
+- **Settings API is redacted**: GET/PUT `/api/settings` return only `whatsapp_phone_masked` + `apikey_set` + `check_interval_min` — raw credentials never leave the server. Blank phone/key in a PUT means "keep the stored value" (the UI can't echo secrets back, so don't break this)
+- Input validation lives on the Pydantic models in `routes.py`: `threshold_pct` >0 and ≤50 (guards a ZeroDivisionError in status + scheduler), `check_interval_min` 1–60, ticker changes via PUT /watchlist are rejected (would orphan the `ath_tracker` row)
 - Changing `check_interval_min` via PUT /api/settings reschedules the running APScheduler job
 - Tickers are Yahoo Finance format: `^NSEI`, `SETFNIF50.NS` (NSE), `.BO` (BSE)
+- `main.py migrate_db()` holds additive SQLite migrations (e.g. `alert_log.level_pct`) — `create_all` doesn't alter existing tables
 
 ### Frontend layout (`frontend/src/`)
 
 - `api.js` — all backend calls; baseURL is `VITE_API_URL` in production, relative (proxied) in dev
 - `pages/` — Dashboard, Watchlist, Alerts, Settings (routed in `App.jsx`)
-- `components/DipLadder.jsx` — the signature UI element: pill ladder of −1%…−N% levels (filled = crossed, ✓ = alerted, dashed = next trigger)
-- `lib.js` — formatters and the severity mapping (green <1%, amber 1–3%, red 3%+ below ATH)
+- `components/DipLadder.jsx` — the signature UI element: segmented track of −1%…−N% levels (filled = crossed, ✓ = alert delivered, pulsing dashed = next trigger)
+- `components/Sparkline.jsx` — self-drawing SVG sparkline (Motion `pathLength`); `components/motion.jsx` — `Page` (route transitions), `Reveal` (staggered entrances), `AnimatedNumber` (count-up)
+- `lib.js` — formatters, `severity()` (mint <1%, gold 1–3%, blush 3%+ below ATH), `fmtLevel`, and client-side `isMarketOpenIST()`/`istClock()` so the status bar stays live without polling the backend
 
-### Design system (don't regress these)
+### Design system: "Precision Terminal" (don't regress these)
 
-The look is dark glassmorphism over an animated "aurora" backdrop, defined entirely in `frontend/src/index.css`:
-- `.aurora` (z-index −3) + `.grain` (z-index −1) are fixed background layers; **`body` background must stay `transparent`** — an opaque body background paints over negative z-index layers (CSS painting order) and kills the whole effect
-- Reusable classes: `.glass`, `.glass-strong`, `.field`, `.rise`/`.sheet-up` (entry animations), `.pressable`; fonts are Fraunces (display) + Outfit (body), colors via `@theme` tokens (moss/amber-soft/ember/fog/ink)
-- Mobile-first: bottom-sheet modals, safe-area insets on the dock/nav, card lists instead of tables on small screens
+Dark trading-terminal aesthetic, defined in `frontend/src/index.css` + Motion (`motion/react`):
+- Tokens (`@theme`): canvas `abyss #07080c`, surfaces `pane`/`pane-2`, text `frost`/`mist`, accents `pulse #6e6bff` (indigo) → `flux #22d3ee` (cyan), severity `mint`/`gold`/`blush`. Fonts: Bricolage Grotesque (display), Instrument Sans (body), JetBrains Mono (every numeral/ticker via `.num`/`.tag`)
+- `.backdrop-grid` (dot grid, z −3) + `.backdrop-glow` (breathing indigo bloom, z −2) are fixed layers; **`body` background must stay `transparent`** — an opaque body paints over negative z-index layers (CSS painting order)
+- `.panel` is the card recipe: 1px hairline border + inset top highlight + stacked shadows, never opaque fills; `.panel-hover` adds the lift/glow. Buttons: `.btn-primary` (indigo→cyan gradient) / `.btn-ghost`
+- Shell: desktop = fixed left sidebar (`layoutId="side-active"` sliding indicator) + sticky status bar (NSE live chip, ticking IST clock, `.horizon` hairline); mobile = floating bottom tab bar (`layoutId="tab-active"`), bottom-sheet modals, safe-area insets
+- Motion everywhere but respectful: `MotionConfig reducedMotion="user"` wraps the app; route changes go through `AnimatePresence mode="wait"`
 - Recharts: keep `isAnimationActive={false}` on series — the draw animation renders blank under React StrictMode
 
 ## Gotchas
 
 - Market-hours check uses `Asia/Kolkata` via `zoneinfo` — never compare against UTC or server-local time
+- **Known limitation**: NSE holidays are not modeled (weekday + hours only). Harmless — prices don't move on holidays so no level can be crossed — but polls run idle. A holiday calendar would need yearly maintenance; deliberately skipped.
 - yfinance is unauthenticated and rate-limited; don't poll faster than every few minutes
 - SQLite on Railway needs a volume: `DATABASE_URL=sqlite:////data/dip_alert.db`, else data resets every deploy
 - `git add -A` traps: `.playwright-mcp/`, `*.db` are gitignored — keep it that way

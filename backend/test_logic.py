@@ -89,8 +89,56 @@ with Session(engine) as s:
     a = ath_logic.check_asset(s, item2)
     check("custom 2% threshold: 3% drop = level 1", a is not None and a.alert_level == 1)
 
+    check("level_pct = 2.0 for 2% threshold level 1", a.level_pct == 2.0)
+
     n_alerts = len(s.exec(select(AlertLog)).all())
     check("alert log has 4 rows", n_alerts == 4)
+
+    def tracker2():
+        return s.exec(select(AthTracker).where(AthTracker.ticker == "TEST.NS")).first()
+
+    # 10. Failed WhatsApp send: no log row, level NOT consumed (retries next tick)
+    ath_logic.send_whatsapp = lambda phone, key, msg: False
+    PRICE["value"] = 958.0  # 4.2% below 1000 => level 2 on 2% threshold
+    check("failed send returns no alert", ath_logic.check_asset(s, item2) is None)
+    check("failed send does not advance level", tracker2().last_alerted_level == 1)
+    check("failed send writes no log row", len(s.exec(select(AlertLog)).all()) == 4)
+
+    # 11. Next tick with working delivery fires the same level
+    ath_logic.send_whatsapp = lambda phone, key, msg: True
+    a = ath_logic.check_asset(s, item2)
+    check("retry after failure fires level 2",
+          a is not None and a.alert_level == 2 and a.whatsapp_sent)
+    check("retry level_pct = 4.0", a.level_pct == 4.0)
+
+    # 12. Unconfigured credentials: alert still logged (dashboard is the record), level advances
+    settings_row = s.exec(select(Settings)).first()
+    settings_row.whatsapp_phone = ""
+    s.commit()
+    PRICE["value"] = 939.0  # 6.1% below 1000 => level 3
+    a = ath_logic.check_asset(s, item2)
+    check("unconfigured creds still logs alert", a is not None and a.whatsapp_sent is False)
+    check("unconfigured creds advances level", tracker2().last_alerted_level == 3)
+
+    # 13. Scheduler pass survives a DB error mid-loop (handler must rollback,
+    # or the poisoned session raises PendingRollbackError for every later asset)
+    real_check_asset = ath_logic.check_asset
+    loop_log = []
+
+    def poison_then_query(session, item):
+        if not loop_log:
+            loop_log.append('poisoned')
+            session.add(AlertLog(ticker=None, alert_level=1, current_price=1.0,
+                                 ath_price=1.0, drop_pct=1.0))
+            session.flush()  # NOT NULL violation -> session enters failed state
+        else:
+            session.exec(select(Settings)).first()  # raises unless rolled back
+            loop_log.append('recovered')
+
+    ath_logic.check_asset = poison_then_query
+    ath_logic.check_all_assets()
+    ath_logic.check_asset = real_check_asset
+    check("scheduler recovers after a DB error", loop_log == ['poisoned', 'recovered'])
 
 print()
 if failures:

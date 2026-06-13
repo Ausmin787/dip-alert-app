@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import { addAsset, deleteAsset, getWatchlist, updateAsset } from '../api.js'
+import { Reveal } from '../components/motion.jsx'
 import { IconPause, IconPencil, IconPlay, IconPlus, IconTrash } from '../components/icons.jsx'
-import { fmtAmount } from '../lib.js'
+import { fmtAmount, fmtLevel } from '../lib.js'
 
 const emptyForm = {
   ticker: '',
@@ -12,7 +14,6 @@ const emptyForm = {
   active: true,
 }
 
-// Bottom sheet on mobile, centered dialog on larger screens
 function AssetModal({ initial, onClose, onSave }) {
   const [form, setForm] = useState(initial ?? emptyForm)
   const [saving, setSaving] = useState(false)
@@ -39,27 +40,35 @@ function AssetModal({ initial, onClose, onSave }) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/55 backdrop-blur-sm sm:items-center sm:p-6"
+    <motion.div
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-abyss/70 backdrop-blur-sm sm:items-center sm:p-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       onClick={onClose}
     >
-      <div
-        className="glass-strong sheet-up w-full rounded-t-[2rem] p-6 sm:max-w-md sm:rounded-[2rem]"
+      <motion.div
+        className="w-full rounded-t-2xl border border-white/8 bg-pane-2 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_24px_80px_-12px_rgba(0,0,0,0.9)] sm:max-w-md sm:rounded-2xl"
         style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}
+        initial={{ y: 48, opacity: 0, scale: 0.98 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: 32, opacity: 0, scale: 0.98 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 32 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/25 sm:hidden" />
-        <h2 className="font-display mb-5 text-2xl font-light text-fog">
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20 sm:hidden" />
+        <h2 className="font-display mb-1 text-xl font-semibold tracking-tight text-frost">
           {isEdit ? 'Edit asset' : 'Track a new asset'}
         </h2>
+        <p className="mb-5 text-xs text-mist">
+          {isEdit ? 'Ticker is locked — delete and re-add to change it.' : 'Yahoo Finance tickers: ^NSEI, SETFNIF50.NS, RELIANCE.NS…'}
+        </p>
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
-              Ticker (Yahoo Finance)
-            </label>
+            <label className="tag mb-1.5 block">Ticker</label>
             <input
               className="field"
-              placeholder="^NSEI, SETFNIF50.NS, RELIANCE.NS…"
+              placeholder="^NSEI"
               value={form.ticker}
               onChange={set('ticker')}
               required
@@ -67,9 +76,7 @@ function AssetModal({ initial, onClose, onSave }) {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
-              Display name
-            </label>
+            <label className="tag mb-1.5 block">Display name</label>
             <input
               className="field"
               placeholder="SBI Nifty 50 ETF"
@@ -80,23 +87,20 @@ function AssetModal({ initial, onClose, onSave }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
-                Alert every (%)
-              </label>
+              <label className="tag mb-1.5 block">Alert every (%)</label>
               <input
                 className="field"
                 type="number"
                 step="0.1"
                 min="0.1"
+                max="50"
                 value={form.threshold_pct}
                 onChange={set('threshold_pct')}
                 required
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
-                Amount (₹)
-              </label>
+              <label className="tag mb-1.5 block">Amount (₹)</label>
               <input
                 className="field"
                 type="number"
@@ -109,9 +113,7 @@ function AssetModal({ initial, onClose, onSave }) {
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
-              Broker URL (Buy button)
-            </label>
+            <label className="tag mb-1.5 block">Broker URL (buy button)</label>
             <input
               className="field"
               type="url"
@@ -120,102 +122,87 @@ function AssetModal({ initial, onClose, onSave }) {
               onChange={set('broker_url')}
             />
           </div>
-          {error && <p className="text-sm text-ember">{error}</p>}
+          {error && <p className="text-sm text-blush">{error}</p>}
           <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="pressable rounded-full px-5 py-3 text-sm text-fog-dim hover:text-fog"
-            >
+            <button type="button" onClick={onClose} className="btn-ghost">
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="pressable rounded-full bg-moss px-6 py-3 text-sm font-semibold text-ink shadow-[0_8px_24px_-8px_rgba(163,233,116,0.6)] disabled:opacity-50"
-            >
+            <button type="submit" disabled={saving} className="btn-primary">
               {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Start tracking'}
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
-function AssetCard({ item, delay, onEdit, onToggle, onDelete }) {
+function AssetRow({ item, delay, onEdit, onToggle, onDelete }) {
   return (
-    <article
-      className="glass rise rounded-[1.5rem] p-5"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="font-medium text-fog">{item.display_name}</h3>
-          <p className="text-xs tracking-wide text-fog-dim">{item.ticker}</p>
+    <Reveal delay={delay}>
+      <article className="panel panel-hover flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+          <span
+            className={`h-9 w-1 shrink-0 rounded-full ${
+              item.active ? 'bg-gradient-to-b from-pulse to-flux' : 'bg-white/10'
+            }`}
+          />
+          <div>
+            <h3 className="text-sm font-semibold text-frost">{item.display_name}</h3>
+            <p className="num mt-0.5 text-[0.65rem] text-mist">{item.ticker}</p>
+          </div>
         </div>
-        <span
-          className={`rounded-full px-3 py-1 text-[0.7rem] font-semibold tracking-wide uppercase ${
-            item.active
-              ? 'bg-moss/20 text-moss ring-1 ring-moss/30'
-              : 'bg-white/10 text-fog-dim ring-1 ring-white/10'
-          }`}
-        >
-          {item.active ? 'tracking' : 'paused'}
-        </span>
-      </div>
 
-      <div className="num mt-4 flex gap-5 text-sm text-fog">
-        <span>
-          every <span className="font-semibold">−{item.threshold_pct}%</span>
-        </span>
-        <span>
-          reminds <span className="font-semibold">{fmtAmount(item.invest_amount)}</span>
-        </span>
-      </div>
+        <div className="num flex items-center gap-6 text-xs text-mist sm:gap-8">
+          <span>
+            <span className="tag mr-2 normal-case">step</span>
+            <span className="font-semibold text-frost">−{fmtLevel(item.threshold_pct)}%</span>
+          </span>
+          <span>
+            <span className="tag mr-2 normal-case">deploys</span>
+            <span className="font-semibold text-frost">{fmtAmount(item.invest_amount)}</span>
+          </span>
+          <span
+            className={`rounded-full px-2.5 py-1 text-[0.6rem] font-semibold tracking-[0.12em] uppercase ring-1 ${
+              item.active ? 'bg-mint/10 text-mint ring-mint/25' : 'bg-white/4 text-mist ring-white/10'
+            }`}
+          >
+            {item.active ? 'tracking' : 'paused'}
+          </span>
+        </div>
 
-      <div className="mt-4 flex gap-2 border-t border-white/10 pt-4">
-        <button
-          onClick={onEdit}
-          className="pressable flex flex-1 items-center justify-center gap-2 rounded-full bg-white/8 py-2.5 text-xs font-medium text-fog ring-1 ring-white/10 hover:bg-white/12"
-        >
-          <IconPencil className="h-3.5 w-3.5" /> Edit
-        </button>
-        <button
-          onClick={onToggle}
-          className="pressable flex flex-1 items-center justify-center gap-2 rounded-full bg-white/8 py-2.5 text-xs font-medium text-fog ring-1 ring-white/10 hover:bg-white/12"
-        >
-          {item.active ? (
-            <>
-              <IconPause className="h-3.5 w-3.5" /> Pause
-            </>
-          ) : (
-            <>
-              <IconPlay className="h-3.5 w-3.5" /> Resume
-            </>
-          )}
-        </button>
-        <button
-          onClick={onDelete}
-          aria-label="Delete"
-          className="pressable flex items-center justify-center rounded-full bg-white/8 px-4 py-2.5 text-ember ring-1 ring-white/10 hover:bg-ember/15"
-        >
-          <IconTrash className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </article>
+        <div className="flex gap-2">
+          <button onClick={onEdit} className="btn-ghost !px-3.5 !py-2.5" aria-label="Edit">
+            <IconPencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={onToggle}
+            className="btn-ghost !px-3.5 !py-2.5"
+            aria-label={item.active ? 'Pause' : 'Resume'}
+          >
+            {item.active ? <IconPause className="h-3.5 w-3.5" /> : <IconPlay className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            onClick={onDelete}
+            className="btn-ghost !px-3.5 !py-2.5 text-blush hover:!border-blush/40 hover:!bg-blush/10"
+            aria-label="Delete"
+          >
+            <IconTrash className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </article>
+    </Reveal>
   )
 }
 
 export default function Watchlist() {
-  const [items, setItems] = useState([])
+  const [items, setItems] = useState(null) // null = loading
   const [modal, setModal] = useState(null) // null | 'new' | item
-  const [loading, setLoading] = useState(true)
 
   const load = () =>
     getWatchlist()
       .then(setItems)
-      .finally(() => setLoading(false))
+      .catch(() => setItems([]))
 
   useEffect(() => {
     load()
@@ -240,33 +227,34 @@ export default function Watchlist() {
 
   return (
     <div className="space-y-5">
-      <div className="rise flex items-end justify-between gap-3 pt-3">
+      <Reveal className="flex items-end justify-between gap-3">
         <div>
-          <h1 className="text-gradient font-display text-4xl font-light">Watchlist</h1>
-          <p className="mt-1.5 text-sm text-fog-dim">Assets being watched for ATH dips</p>
+          <p className="tag mb-3">Assets under watch</p>
+          <h1 className="text-gradient font-display text-4xl font-semibold tracking-tight">
+            Watchlist
+          </h1>
         </div>
-        <button
-          onClick={() => setModal('new')}
-          className="pressable flex shrink-0 items-center gap-2 rounded-full bg-moss px-5 py-3 text-sm font-semibold text-ink shadow-[0_8px_24px_-8px_rgba(163,233,116,0.6)]"
-        >
+        <button onClick={() => setModal('new')} className="btn-primary shrink-0">
           <IconPlus className="h-4 w-4" /> <span className="hidden sm:inline">Add asset</span>
           <span className="sm:hidden">Add</span>
         </button>
-      </div>
+      </Reveal>
 
-      {loading ? (
-        <p className="glass rounded-3xl p-8 text-center text-sm text-fog-dim">Loading…</p>
+      {items === null ? (
+        <div className="panel p-8 text-center text-sm text-mist">Loading…</div>
       ) : items.length === 0 ? (
-        <p className="glass rounded-3xl p-8 text-center text-sm text-fog-dim">
-          Nothing tracked yet — add your first asset.
-        </p>
+        <Reveal>
+          <div className="panel p-10 text-center">
+            <p className="text-sm text-mist">Nothing tracked yet — add your first asset.</p>
+          </div>
+        </Reveal>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-3">
           {items.map((item, i) => (
-            <AssetCard
+            <AssetRow
               key={item.id}
               item={item}
-              delay={90 + i * 70}
+              delay={0.08 + i * 0.06}
               onEdit={() => setModal(item)}
               onToggle={() => togglePause(item)}
               onDelete={() => remove(item)}
@@ -275,13 +263,15 @@ export default function Watchlist() {
         </div>
       )}
 
-      {modal && (
-        <AssetModal
-          initial={modal === 'new' ? null : modal}
-          onClose={() => setModal(null)}
-          onSave={save}
-        />
-      )}
+      <AnimatePresence>
+        {modal && (
+          <AssetModal
+            initial={modal === 'new' ? null : modal}
+            onClose={() => setModal(null)}
+            onSave={save}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

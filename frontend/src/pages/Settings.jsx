@@ -1,20 +1,42 @@
 import { useEffect, useState } from 'react'
 import { getSettings, sendTestAlert, updateSettings } from '../api.js'
+import { Reveal } from '../components/motion.jsx'
+import { IconAlertTriangle, IconCheck } from '../components/icons.jsx'
+
+const blankForm = { whatsapp_phone: '', callmebot_apikey: '', check_interval_min: 5 }
 
 export default function Settings() {
-  const [form, setForm] = useState({ whatsapp_phone: '', callmebot_apikey: '', check_interval_min: 5 })
+  const [loadState, setLoadState] = useState('loading') // loading | error | ready
+  const [saved, setSaved] = useState(null) // redacted server state
+  const [form, setForm] = useState(blankForm)
   const [status, setStatus] = useState(null) // { kind: 'ok' | 'err', msg }
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    getSettings().then((s) =>
-      setForm({
-        whatsapp_phone: s.whatsapp_phone ?? '',
-        callmebot_apikey: s.callmebot_apikey ?? '',
-        check_interval_min: s.check_interval_min ?? 5,
-      }),
-    )
+    let active = true
+    getSettings()
+      .then((s) => {
+        if (!active) return
+        setSaved(s)
+        setForm((f) => ({ ...f, check_interval_min: s.check_interval_min ?? 5 }))
+        setLoadState('ready')
+      })
+      .catch(() => active && setLoadState('error'))
+    return () => {
+      active = false
+    }
   }, [])
+
+  const retry = () => {
+    setLoadState('loading')
+    getSettings()
+      .then((s) => {
+        setSaved(s)
+        setForm((f) => ({ ...f, check_interval_min: s.check_interval_min ?? 5 }))
+        setLoadState('ready')
+      })
+      .catch(() => setLoadState('error'))
+  }
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value })
 
@@ -23,7 +45,12 @@ export default function Settings() {
     setBusy(true)
     setStatus(null)
     try {
-      await updateSettings({ ...form, check_interval_min: parseInt(form.check_interval_min, 10) })
+      const s = await updateSettings({
+        ...form,
+        check_interval_min: parseInt(form.check_interval_min, 10),
+      })
+      setSaved(s)
+      setForm({ ...blankForm, check_interval_min: s.check_interval_min })
       setStatus({ kind: 'ok', msg: 'Settings saved.' })
     } catch {
       setStatus({ kind: 'err', msg: 'Failed to save settings.' })
@@ -47,95 +74,115 @@ export default function Settings() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      <div className="rise pt-3">
-        <h1 className="text-gradient font-display text-4xl font-light">Settings</h1>
-        <p className="mt-1.5 text-sm text-fog-dim">WhatsApp delivery and check frequency</p>
-      </div>
+      <Reveal>
+        <p className="tag mb-3">Delivery & polling</p>
+        <h1 className="text-gradient font-display text-4xl font-semibold tracking-tight">Settings</h1>
+      </Reveal>
 
-      <form
-        onSubmit={save}
-        className="glass rise space-y-5 rounded-[1.75rem] p-5 sm:p-6"
-        style={{ animationDelay: '90ms' }}
-      >
-        <div>
-          <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
-            WhatsApp phone (with country code)
-          </label>
-          <input
-            className="field"
-            type="tel"
-            placeholder="+919876543210"
-            value={form.whatsapp_phone}
-            onChange={set('whatsapp_phone')}
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
-            CallMeBot API key
-          </label>
-          <input
-            className="field"
-            placeholder="123456"
-            value={form.callmebot_apikey}
-            onChange={set('callmebot_apikey')}
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-[0.65rem] font-medium tracking-[0.15em] text-fog-dim uppercase">
-            Check interval (minutes, during market hours)
-          </label>
-          <input
-            className="field"
-            type="number"
-            min="1"
-            max="60"
-            value={form.check_interval_min}
-            onChange={set('check_interval_min')}
-          />
-        </div>
+      {loadState === 'error' && (
+        <Reveal>
+          <div className="panel flex items-center justify-between gap-4 border-blush/30 p-5">
+            <p className="flex items-center gap-3 text-sm text-blush">
+              <IconAlertTriangle className="h-4 w-4 shrink-0" />
+              Couldn't load saved settings — saving is disabled so nothing gets wiped.
+            </p>
+            <button onClick={retry} className="btn-ghost shrink-0 !py-2 text-xs">
+              Retry
+            </button>
+          </div>
+        </Reveal>
+      )}
 
-        {status && (
-          <p className={`text-sm ${status.kind === 'ok' ? 'text-moss' : 'text-ember'}`}>
-            {status.msg}
-          </p>
-        )}
+      <Reveal delay={0.08}>
+        <form onSubmit={save} className="panel space-y-5 p-5 sm:p-7">
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="tag">WhatsApp phone (with country code)</label>
+              {saved?.whatsapp_phone_masked && (
+                <span className="num flex items-center gap-1 text-[0.62rem] text-mint">
+                  <IconCheck className="h-3 w-3" /> {saved.whatsapp_phone_masked}
+                </span>
+              )}
+            </div>
+            <input
+              className="field"
+              type="tel"
+              placeholder={saved?.whatsapp_phone_masked ? 'Leave blank to keep saved number' : '+919876543210'}
+              value={form.whatsapp_phone}
+              onChange={set('whatsapp_phone')}
+              disabled={loadState !== 'ready'}
+            />
+          </div>
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="tag">CallMeBot API key</label>
+              {saved?.apikey_set && (
+                <span className="num flex items-center gap-1 text-[0.62rem] text-mint">
+                  <IconCheck className="h-3 w-3" /> key saved
+                </span>
+              )}
+            </div>
+            <input
+              className="field"
+              type="password"
+              placeholder={saved?.apikey_set ? 'Leave blank to keep saved key' : '123456'}
+              value={form.callmebot_apikey}
+              onChange={set('callmebot_apikey')}
+              disabled={loadState !== 'ready'}
+              autoComplete="off"
+            />
+            <p className="mt-1.5 text-[0.68rem] leading-relaxed text-mist">
+              Secrets never leave the server — only a masked preview is shown here.
+            </p>
+          </div>
+          <div>
+            <label className="tag mb-1.5 block">Check interval (minutes, during market hours)</label>
+            <input
+              className="field"
+              type="number"
+              min="1"
+              max="60"
+              value={form.check_interval_min}
+              onChange={set('check_interval_min')}
+              disabled={loadState !== 'ready'}
+            />
+          </div>
 
-        <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={test}
-            disabled={busy}
-            className="pressable rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-fog hover:border-moss/50 hover:text-moss disabled:opacity-50"
-          >
-            Send test alert
-          </button>
-          <button
-            type="submit"
-            disabled={busy}
-            className="pressable rounded-full bg-moss px-6 py-3 text-sm font-semibold text-ink shadow-[0_8px_24px_-8px_rgba(163,233,116,0.6)] disabled:opacity-50"
-          >
-            {busy ? 'Working…' : 'Save settings'}
-          </button>
+          {status && (
+            <p className={`text-sm ${status.kind === 'ok' ? 'text-mint' : 'text-blush'}`}>{status.msg}</p>
+          )}
+
+          <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
+            <button type="button" onClick={test} disabled={busy || loadState !== 'ready'} className="btn-ghost">
+              Send test alert
+            </button>
+            <button type="submit" disabled={busy || loadState !== 'ready'} className="btn-primary">
+              {busy ? 'Working…' : 'Save settings'}
+            </button>
+          </div>
+        </form>
+      </Reveal>
+
+      <Reveal delay={0.16}>
+        <div className="panel p-5 sm:p-7">
+          <h3 className="tag mb-5">One-time CallMeBot setup</h3>
+          <ol className="space-y-4">
+            {[
+              <>Save <span className="num font-medium text-frost">+34 644 59 89 29</span> in your phone's contacts.</>,
+              <>From WhatsApp, send it: <em className="text-frost">"I allow callmebot to send me messages"</em></>,
+              <>Your personal API key arrives back on WhatsApp within a minute.</>,
+              <>Enter your number and that key above, save, then fire a test alert.</>,
+            ].map((step, i) => (
+              <li key={i} className="flex gap-4 text-sm leading-relaxed text-mist">
+                <span className="num shrink-0 pt-0.5 text-[0.7rem] font-semibold text-pulse">
+                  0{i + 1}
+                </span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
         </div>
-      </form>
-
-      <div className="glass rise rounded-[1.75rem] p-5 sm:p-6" style={{ animationDelay: '180ms' }}>
-        <h3 className="mb-3 text-[0.7rem] font-semibold tracking-[0.18em] text-fog-dim uppercase">
-          One-time CallMeBot setup
-        </h3>
-        <ol className="list-inside list-decimal space-y-2.5 text-sm leading-relaxed text-fog-dim">
-          <li>
-            Save <span className="num font-medium text-fog">+34 644 59 89 29</span> in your phone's
-            contacts.
-          </li>
-          <li>
-            From WhatsApp, send it the message:{' '}
-            <em className="text-fog">"I allow callmebot to send me messages"</em>
-          </li>
-          <li>You'll receive your personal API key back on WhatsApp within a minute.</li>
-          <li>Paste your phone number and that key above, save, then send a test alert.</li>
-        </ol>
-      </div>
+      </Reveal>
     </div>
   )
 }

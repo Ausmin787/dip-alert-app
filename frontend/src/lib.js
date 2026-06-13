@@ -18,38 +18,58 @@ export const fmtDateTime = (iso) =>
       })
     : '—'
 
-// Severity by % below ATH: green within 1%, amber 1-3%, red 3%+
+// "-2%" not "-2.0%", but "-1.5%" keeps its decimal
+export const fmtLevel = (pct) => (pct == null ? '—' : pct % 1 === 0 ? `${pct}` : pct.toFixed(1))
+
+// Severity by % below ATH: mint within 1%, gold 1-3%, blush 3%+
 export const severity = (dropPct) => {
   if (dropPct == null)
-    return { label: 'no data', text: 'text-fog-dim', chip: 'bg-white/10 text-fog-dim', glow: '' }
+    return {
+      label: 'no data',
+      text: 'text-mist',
+      chip: 'bg-white/5 text-mist ring-1 ring-white/10',
+      bar: '#878da1',
+    }
   if (dropPct < 1)
     return {
       label: 'near high',
-      text: 'text-moss',
-      chip: 'bg-moss/20 text-moss ring-1 ring-moss/30',
-      glow: 'shadow-[0_0_70px_-12px_rgba(163,233,116,0.35)]',
+      text: 'text-mint',
+      chip: 'bg-mint/10 text-mint ring-1 ring-mint/25',
+      bar: '#34d399',
     }
   if (dropPct < 3)
     return {
       label: 'dipping',
-      text: 'text-amber-soft',
-      chip: 'bg-amber-soft/20 text-amber-soft ring-1 ring-amber-soft/30',
-      glow: 'shadow-[0_0_70px_-12px_rgba(245,196,81,0.3)]',
+      text: 'text-gold',
+      chip: 'bg-gold/10 text-gold ring-1 ring-gold/25',
+      bar: '#fbbf24',
     }
   return {
     label: 'deep dip',
-    text: 'text-ember',
-    chip: 'bg-ember/20 text-ember ring-1 ring-ember/30',
-    glow: 'shadow-[0_0_70px_-12px_rgba(255,138,101,0.35)]',
+    text: 'text-blush',
+    chip: 'bg-blush/10 text-blush ring-1 ring-blush/25',
+    bar: '#fb7185',
   }
 }
 
-export const greeting = () => {
-  const h = new Date().getHours()
-  if (h < 12) return 'Good Morning'
-  if (h < 17) return 'Good Afternoon'
-  return 'Good Evening'
+// NSE hours client-side (9:15–15:30 IST, Mon–Fri) so the status bar stays live
+// without polling the backend.
+export const isMarketOpenIST = (now = new Date()) => {
+  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
+  const day = ist.getDay()
+  if (day === 0 || day === 6) return false
+  const mins = ist.getHours() * 60 + ist.getMinutes()
+  return mins >= 9 * 60 + 15 && mins <= 15 * 60 + 30
 }
+
+export const istClock = (now = new Date()) =>
+  now.toLocaleTimeString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
 
 export const todayLine = () =>
   new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })

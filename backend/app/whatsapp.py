@@ -11,7 +11,7 @@ CALLMEBOT_URL = "https://api.callmebot.com/whatsapp.php"
 
 def format_alert_message(
     display_name: str,
-    level: int,
+    level_pct: float,
     current_price: float,
     ath_price: float,
     drop_pct: float,
@@ -21,7 +21,7 @@ def format_alert_message(
     invest_str = f"₹{invest_amount:,}"
     msg = (
         "\U0001f6a8 NIFTY DIP ALERT \U0001f6a8\n"
-        f"Level: -{level}% from ATH\n"
+        f"Level: -{level_pct:g}% from ATH\n"
         f"Current: {current_price:,.2f} | ATH: {ath_price:,.2f}\n"
         f"Drop: {drop_pct:.2f}%\n"
         f"Invest: {invest_str} → {display_name}"
