@@ -1,4 +1,6 @@
-import { motion } from 'motion/react'
+import { useLayoutEffect, useRef } from 'react'
+import gsap from 'gsap'
+import { useReducedMotion } from './useReducedMotion.js'
 import { fmtLevel } from '../lib.js'
 
 /* The signature element: a segmented track of dip levels below ATH.
@@ -8,42 +10,57 @@ export default function DipLadder({ thresholdPct, dropPct, lastAlertedLevel }) {
   const crossed = dropPct != null ? Math.floor(dropPct / thresholdPct) : 0
   const count = Math.max(6, crossed + 2)
   const levels = Array.from({ length: count }, (_, i) => i + 1)
+  const trackRef = useRef(null)
+  const reduced = useReducedMotion()
+
+  useLayoutEffect(() => {
+    if (reduced || !trackRef.current) return undefined
+    const ctx = gsap.context(() => {
+      gsap.from('[data-seg]', {
+        scaleX: 0.6,
+        opacity: 0,
+        transformOrigin: 'left center',
+        duration: 0.4,
+        ease: 'power2.out',
+        stagger: 0.05,
+      })
+    }, trackRef)
+    return () => ctx.revert()
+  }, [reduced, count])
 
   const fillFor = (pct) => {
-    if (pct < 1) return 'bg-mint text-abyss'
-    if (pct < 3) return 'bg-gold text-abyss'
-    return 'bg-blush text-abyss'
+    if (pct < 1) return 'bg-mint text-canvas'
+    if (pct < 3) return 'bg-orange text-canvas'
+    return 'bg-coral text-canvas'
   }
 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
         <span className="tag">Dip levels</span>
-        <span className="tag text-pulse">next −{fmtLevel((crossed + 1) * thresholdPct)}%</span>
+        <span className="tag text-violet">next −{fmtLevel((crossed + 1) * thresholdPct)}%</span>
       </div>
-      <div className="scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1 py-1">
-        {levels.map((level, i) => {
+      <div ref={trackRef} className="scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1 py-1">
+        {levels.map((level) => {
           const pct = level * thresholdPct
           const isCrossed = level <= crossed
           const isNext = level === crossed + 1
           const wasAlerted = level <= lastAlertedLevel
           return (
-            <motion.div
+            <div
               key={level}
-              initial={{ opacity: 0, scaleX: 0.6 }}
-              animate={{ opacity: 1, scaleX: 1 }}
-              transition={{ delay: 0.25 + i * 0.05, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              data-seg
               title={wasAlerted ? 'alert delivered' : isNext ? 'next trigger' : undefined}
               className={`num flex h-9 min-w-[3.4rem] flex-1 shrink-0 items-center justify-center gap-1 rounded-lg text-[0.7rem] font-semibold ${
                 isCrossed
                   ? fillFor(pct)
                   : isNext
-                    ? 'pulse-next border border-dashed text-frost'
-                    : 'border border-white/8 text-mist/50'
+                    ? 'pulse-next border border-dashed text-ink'
+                    : 'border border-hairline text-ink-muted/60'
               }`}
             >
               −{fmtLevel(pct)}%{wasAlerted && <span className="text-[0.6rem]">✓</span>}
-            </motion.div>
+            </div>
           )
         })}
       </div>

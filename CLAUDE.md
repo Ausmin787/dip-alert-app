@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This App Is
 
-A single-user web app (built for a friend — no auth) that watches the Nifty 50 index during NSE market hours, fires a WhatsApp alert (via CallMeBot) each time price crosses a new −1% level below its all-time high, and shows a glassmorphism dashboard. Strategy: "buy ₹1L of Nifty 50 ETF for every −1% fall from ATH."
+A single-user web app (built for a friend — no auth) that watches the Nifty 50 index during NSE market hours, fires a WhatsApp alert (via CallMeBot) each time price crosses a new −1% level below its all-time high, and shows a viewport-locked, three-pane "market terminal" dashboard (sidebar dock · 320px live asset feed · workspace) with a three.js hero and GSAP/Motion animation. Strategy: "buy ₹1L of Nifty 50 ETF for every −1% fall from ATH."
 
 GitHub: https://github.com/Ausmin787/dip-alert-app (branch: `master`)
+
+> **Parallel tooling:** `.planning/` (a GSD phase/roadmap system) and `GEMINI.md` are artifacts from an Antigravity/Gemini session — leave them be. This `CLAUDE.md` is the source of truth for Claude; some `.planning/` docs have minor drift (e.g. they say "Python 3.14" / "Jest" — neither is accurate).
 
 ## Commands
 
@@ -28,6 +30,7 @@ Set `DISABLE_SCHEDULER=1` to run the API without APScheduler (useful in dev/test
 ```powershell
 cd frontend
 npm run dev      # dev server on :5173, proxies /api -> localhost:8000
+npm test         # tiny Node regression tests for shared frontend helpers
 npm run build    # production build (run this to typecheck/verify changes)
 npm run lint
 ```
@@ -71,25 +74,37 @@ State rules that must not be broken (all in `backend/app/ath_logic.py`, verified
 - Input validation lives on the Pydantic models in `routes.py`: `threshold_pct` >0 and ≤50 (guards a ZeroDivisionError in status + scheduler), `check_interval_min` 1–60, ticker changes via PUT /watchlist are rejected (would orphan the `ath_tracker` row)
 - Changing `check_interval_min` via PUT /api/settings reschedules the running APScheduler job
 - Tickers are Yahoo Finance format: `^NSEI`, `SETFNIF50.NS` (NSE), `.BO` (BSE)
-- `main.py migrate_db()` holds additive SQLite migrations (e.g. `alert_log.level_pct`) — `create_all` doesn't alter existing tables
+- `main.py migrate_db()` holds additive SQLite migrations (`alert_log.level_pct`; `watchlist.threshold_pct`/`invest_amount`/`broker_url`/`active`) — `create_all` only creates missing *tables*, never adds columns to an existing one, so any column added after the first schema needs a guard here or an old DB crashes at `seed_defaults()` on startup. Each block checks `PRAGMA table_info` and is safe to re-run.
 
 ### Frontend layout (`frontend/src/`)
 
 - `api.js` — all backend calls; baseURL is `VITE_API_URL` in production, relative (proxied) in dev
 - `pages/` — Dashboard, Watchlist, Alerts, Settings (routed in `App.jsx`)
-- `components/DipLadder.jsx` — the signature UI element: segmented track of −1%…−N% levels (filled = crossed, ✓ = alert delivered, pulsing dashed = next trigger)
-- `components/Sparkline.jsx` — self-drawing SVG sparkline (Motion `pathLength`); `components/motion.jsx` — `Page` (route transitions), `Reveal` (staggered entrances), `AnimatedNumber` (count-up)
-- `lib.js` — formatters, `severity()` (mint <1%, gold 1–3%, blush 3%+ below ATH), `fmtLevel`, and client-side `isMarketOpenIST()`/`istClock()` so the status bar stays live without polling the backend
+- `App.jsx` — implements the **Stripe-Style Split Pane** layout:
+  - Collapsible Icon Left Sidebar Dock (`SidebarDock`, expands 64px ➔ 200px on hover) containing page routing links and live market chip.
+  - Middle Live Asset Feed Pane (`middle-feed-pane`, hidden on mobile) displaying watchlist asset cards with inline SVG sparklines, live prices, severity badges, and an IST clock header.
+  - Right Workspace Main Panel (`workspace-pane`) showing page routes.
+  - Fallback bottom navigation (`BottomNav`, visible on mobile `sm:hidden`).
+- `AssetContext.jsx` — the `AssetProvider` component: unified data loading from `/api/status`, parallel 30-day history pre-fetching for all assets, active selection memory (`localStorage`), and a `refresh()` the Watchlist CRUD calls. The `useAssets` hook + context object live in **`useAssets.js`** (split out so the provider file exports only a component — fast-refresh rule). The 60s poll reads selection via a ref, so it never resets a selection the user just made.
+- `pages/Dashboard.jsx` — active page view showing hero selected asset metrics, standard `DipLadder`, `RecentAlerts`, and `DipChart` (price history vs. ATH).
+  - Refactored to consume `useAssets()` context directly for zero-lag chart loading.
+  - **Mobile switcher:** Includes `MobileAssetSwitcher` (rendered `<md` viewports) containing a horizontally scrollable row of asset pill-chips (since the middle pane is hidden on mobile) so users can browse and select assets.
+- `pages/Watchlist.jsx` — watchlist CRUD (add/edit/delete/pause). Triggers context `refresh()` on CRUD operations to synchronize the middle feed pane instantly.
+- `components/three/IndexOrb.jsx` — the three.js hero (React-Three-Fiber point-cloud sphere); recolors mint→amber→rose with `drop_pct`, ripples a shockwave on each new dip level, slow auto-rotate + pointer parallax. **Lazy-loaded** (own bundle chunk) and `frameloop="never"` under reduced motion.
+- `components/anim.jsx` — GSAP helpers: `Reveal` (ScrollTrigger entrance), `CountUp`, `SplitReveal` (headline word stagger), `Magnetic` (cursor-pull buttons). **Gotcha:** `Reveal` blocks start at opacity 0 until scrolled into view, so a *full-page* Playwright screenshot shows below-fold content blank — screenshot per-viewport and scroll to verify.
+- `components/useReducedMotion.js` — matchMedia hook gating GSAP + the orb (split into its own file so `anim.jsx` stays component-only for the fast-refresh lint rule).
+- `components/motion.jsx` — now just `Page` (route transition). `components/DipLadder.jsx` — signature segmented −1%…−N% ladder (GSAP-staggered fill, gradient by severity, ✓ delivered, pulsing dashed next). `components/Sparkline.jsx` — self-drawing SVG sparkline.
+- `lib.js` — formatters, `severity()` (mint <1%, amber 1–3%, rose 3%+ below ATH), `fmtLevel`, and client-side `isMarketOpenIST()`/`istClock()` so the nav chip stays live without polling the backend
 
-### Design system: "Precision Terminal" (don't regress these)
+### Design system: "Market Terminal" (don't regress these)
 
-Dark trading-terminal aesthetic, defined in `frontend/src/index.css` + Motion (`motion/react`):
-- Tokens (`@theme`): canvas `abyss #07080c`, surfaces `pane`/`pane-2`, text `frost`/`mist`, accents `pulse #6e6bff` (indigo) → `flux #22d3ee` (cyan), severity `mint`/`gold`/`blush`. Fonts: Bricolage Grotesque (display), Instrument Sans (body), JetBrains Mono (every numeral/ticker via `.num`/`.tag`)
-- `.backdrop-grid` (dot grid, z −3) + `.backdrop-glow` (breathing indigo bloom, z −2) are fixed layers; **`body` background must stay `transparent`** — an opaque body paints over negative z-index layers (CSS painting order)
-- `.panel` is the card recipe: 1px hairline border + inset top highlight + stacked shadows, never opaque fills; `.panel-hover` adds the lift/glow. Buttons: `.btn-primary` (indigo→cyan gradient) / `.btn-ghost`
-- Shell: desktop = fixed left sidebar (`layoutId="side-active"` sliding indicator) + sticky status bar (NSE live chip, ticking IST clock, `.horizon` hairline); mobile = floating bottom tab bar (`layoutId="tab-active"`), bottom-sheet modals, safe-area insets
-- Motion everywhere but respectful: `MotionConfig reducedMotion="user"` wraps the app; route changes go through `AnimatePresence mode="wait"`
-- Recharts: keep `isAnimationActive={false}` on series — the draw animation renders blank under React StrictMode
+Dark, motion-first "market terminal" aesthetic (a blue/teal palette evolved from a Framer DESIGN.md base), in `frontend/src/index.css` + GSAP + `motion`. The viewport-locked split-pane shell uses `.app-container` / `.sidebar-dock` / `.middle-feed-pane` (320px) / `.workspace-pane` (each `100dvh`, panes scroll internally):
+- Tokens (`@theme`): Palette 1 / Market Terminal — canvas `#070a0e`, `surface-1 #10161d`, `surface-2 #18212b`, `hairline #263241`, text `ink #f4f7fa` / `ink-muted #8a97a6`, `accent #2d7dff` for links/focus ONLY (**never a generic fill**), gradient palette `violet #2d7dff` / `magenta #20c7b5` / `orange #f6c65b` / `coral #ff5e6c`, severity `mint #2fe6a3` / amber / rose. Font: **Inter** everywhere; display via `.display` (weight 700, hard negative tracking `-0.045em`); numerals via `.num` (tabular-nums) — no separate mono font.
+- `.backdrop-grid` (dot grid, z −3) + `.backdrop-glow` (blue→mint bloom, z −2) are fixed layers; **`body` background must stay `transparent`** — an opaque body paints over negative z-index layers (CSS painting order)
+- Recipes: `.panel` (surface-1 card, hairline border, `.panel-hover` lift); `.spotlight` (the signature gradient tile — **one per page**, blue→teal default, override the gradient via inline `style`); `.btn-primary` = **white pill**, `.btn-ghost` = charcoal pill (never bordered/squared CTAs)
+- Two animation libs, by design: **GSAP** (content reveals + micro-interactions via `anim.jsx`, plus the orb shockwave) and **`motion`** (route transitions, the SidebarDock hover spring, the Watchlist modal). Both honor reduced motion (`useReducedMotion` + `MotionConfig reducedMotion="user"`); route changes go through `AnimatePresence mode="wait"`
+- **three.js**: keep the orb lazy-loaded and capped (`dpr={[1, 2]}`); no postprocessing/bloom dep (bundle weight) — emissive + additive blending instead
+- Recharts: keep `isAnimationActive={false}` on series — the draw animation renders blank under React StrictMode. The chart lives in `components/DipChart.jsx` and is **lazy-loaded** (recharts is ~330 kB; keep it out of the main bundle)
 
 ## Gotchas
 

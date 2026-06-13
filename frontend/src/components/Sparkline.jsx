@@ -1,7 +1,7 @@
 import { motion } from 'motion/react'
 
 /* Self-drawing inline sparkline with a soft area fill. */
-export default function Sparkline({ data, width = 180, height = 56, stroke = '#6e6bff' }) {
+export default function Sparkline({ data, width = 180, height = 56, stroke = '#2D7DFF' }) {
   if (!data || data.length < 2) return null
 
   const min = Math.min(...data)

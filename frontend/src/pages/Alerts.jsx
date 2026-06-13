@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getAlerts } from '../api.js'
-import { Reveal } from '../components/motion.jsx'
+import { Reveal } from '../components/anim.jsx'
 import { IconAlertTriangle, IconCheck } from '../components/icons.jsx'
 import { fmtDateTime, fmtLevel, fmtPrice, severity } from '../lib.js'
 
@@ -32,17 +32,15 @@ export default function Alerts() {
     <div className="space-y-5">
       <Reveal>
         <p className="tag mb-3">Every dip level crossing, logged</p>
-        <h1 className="text-gradient font-display text-4xl font-semibold tracking-tight">
-          Alert history
-        </h1>
+        <h1 className="display text-4xl font-bold tracking-tight text-ink">Alert history</h1>
       </Reveal>
 
       {state.status === 'loading' ? (
-        <div className="panel p-8 text-center text-sm text-mist">Loading…</div>
+        <div className="panel p-8 text-center text-sm text-ink-muted">Loading…</div>
       ) : state.status === 'error' ? (
         <Reveal>
-          <div className="panel flex items-center justify-between gap-4 border-blush/30 p-5">
-            <p className="flex items-center gap-3 text-sm text-blush">
+          <div className="panel flex items-center justify-between gap-4 border-coral/40 p-5">
+            <p className="flex items-center gap-3 text-sm text-coral">
               <IconAlertTriangle className="h-4 w-4 shrink-0" />
               Couldn't load alerts — the backend may be unreachable.
             </p>
@@ -53,18 +51,21 @@ export default function Alerts() {
         </Reveal>
       ) : data.alerts.length === 0 ? (
         <Reveal>
-          <div className="panel p-10 text-center text-sm text-mist">
+          <div className="panel p-10 text-center text-sm text-ink-muted">
             No alerts logged yet — they'll show up here once a dip level is crossed.
           </div>
         </Reveal>
       ) : (
-        <Reveal delay={0.06}>
-          <div className="panel divide-y divide-white/5">
+        <Reveal>
+          <div className="panel divide-y divide-hairline">
             {data.alerts.map((a) => {
               const pct = a.level_pct ?? a.alert_level
               const sev = severity(pct)
               return (
-                <div key={a.id} className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5">
+                <div
+                  key={a.id}
+                  className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5"
+                >
                   <div className="flex items-center gap-3.5">
                     <span
                       className={`num flex h-10 w-14 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${sev.chip}`}
@@ -72,18 +73,18 @@ export default function Alerts() {
                       −{fmtLevel(pct)}%
                     </span>
                     <div>
-                      <p className="num text-sm font-medium text-frost">{a.ticker}</p>
-                      <p className="num mt-0.5 text-[0.68rem] text-mist">
+                      <p className="num text-sm font-medium text-ink">{a.ticker}</p>
+                      <p className="num mt-0.5 text-[0.68rem] text-ink-muted">
                         at {fmtPrice(a.current_price)} · ATH {fmtPrice(a.ath_price)} · drop{' '}
                         <span className={sev.text}>{a.drop_pct.toFixed(2)}%</span>
                       </p>
                     </div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="num text-[0.65rem] text-mist">{fmtDateTime(a.alerted_at)}</p>
+                    <p className="num text-[0.65rem] text-ink-muted">{fmtDateTime(a.alerted_at)}</p>
                     <p
                       className={`mt-1 flex items-center justify-end gap-1 text-[0.65rem] font-medium ${
-                        a.whatsapp_sent ? 'text-mint' : 'text-mist'
+                        a.whatsapp_sent ? 'text-mint' : 'text-ink-muted'
                       }`}
                     >
                       {a.whatsapp_sent && <IconCheck className="h-3 w-3" />}
@@ -99,10 +100,14 @@ export default function Alerts() {
 
       {totalPages > 1 && state.status === 'ready' && (
         <div className="flex items-center justify-center gap-4 text-sm">
-          <button disabled={page <= 1} onClick={() => goto(page - 1)} className="btn-ghost !py-2 text-xs">
+          <button
+            disabled={page <= 1}
+            onClick={() => goto(page - 1)}
+            className="btn-ghost !py-2 text-xs"
+          >
             ← Prev
           </button>
-          <span className="num text-xs text-mist">
+          <span className="num text-xs text-ink-muted">
             {page} / {totalPages}
           </span>
           <button
