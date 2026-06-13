@@ -7,7 +7,7 @@ This roadmap covers the transition of the Dip Alert application from its current
 
 - [x] **Phase 1: App Shell & Sidebar Dock** - Setup the `100dvh` layout, collapsible left navigation dock, and configure page routing. (completed 2026-06-13)
 - [x] **Phase 2: Live Asset Feed & State** - Build the middle feed pane with watchlist cards, live price/severity tracking, inline SVG sparklines, and active selection state. (completed 2026-06-14)
-- [ ] **Phase 3: Workspace Detail Pane & Actions** - Construct the right detail pane containing asset metrics, Recharts drop charts, segment-colored dip ladders, buy triggers, and API write protection.
+- [x] **Phase 3: Workspace Detail Pane & Actions** - Construct the right detail pane containing asset metrics, Recharts drop charts, segment-colored dip ladders, buy triggers, and API write protection. (completed 2026-06-14)
 
 ## Phase Details
 
@@ -52,7 +52,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 03-01: Build the right detail panel, Recharts chart wrapper, dip ladder component, buy links, and connect write API headers.
+- [x] 03-01: Build the right detail panel, Recharts chart wrapper, dip ladder component, buy links, and connect write API headers.
 
 ## Progress
 
@@ -63,7 +63,7 @@ Phases execute in numeric order: 1 ➔ 2 ➔ 3
 |-------|----------------|--------|-----------|
 | 1. App Shell & Sidebar | 1/1 | Complete    | 2026-06-13 |
 | 2. Live Asset Feed | 1/1 | Complete    | 2026-06-14 |
-| 3. Workspace Detail | 0/1 | Not started | - |
+| 3. Workspace Detail | 1/1 | Complete    | 2026-06-14 |
 
 ---
 *Roadmap defined: 2026-06-14*
