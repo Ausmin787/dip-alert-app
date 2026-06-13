@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getAppToken, getSettings, sendTestAlert, setAppToken, updateSettings } from '../api.js'
-import { Reveal } from '../components/motion.jsx'
+import { Reveal } from '../components/anim.jsx'
 import { IconAlertTriangle, IconCheck } from '../components/icons.jsx'
 
 const blankForm = { whatsapp_phone: '', callmebot_apikey: '', check_interval_min: 5 }
@@ -78,13 +78,13 @@ export default function Settings() {
     <div className="mx-auto max-w-2xl space-y-5">
       <Reveal>
         <p className="tag mb-3">Delivery & polling</p>
-        <h1 className="text-gradient font-display text-4xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="display text-4xl font-bold tracking-tight text-ink">Settings</h1>
       </Reveal>
 
       {loadState === 'error' && (
         <Reveal>
-          <div className="panel flex items-center justify-between gap-4 border-blush/30 p-5">
-            <p className="flex items-center gap-3 text-sm text-blush">
+          <div className="panel flex items-center justify-between gap-4 border-coral/40 p-5">
+            <p className="flex items-center gap-3 text-sm text-coral">
               <IconAlertTriangle className="h-4 w-4 shrink-0" />
               Couldn't load saved settings — saving is disabled so nothing gets wiped.
             </p>
@@ -95,7 +95,7 @@ export default function Settings() {
         </Reveal>
       )}
 
-      <Reveal delay={0.08}>
+      <Reveal>
         <form onSubmit={save} className="panel space-y-5 p-5 sm:p-7">
           <div>
             <div className="mb-1.5 flex items-center justify-between">
@@ -109,7 +109,9 @@ export default function Settings() {
             <input
               className="field"
               type="tel"
-              placeholder={saved?.whatsapp_phone_masked ? 'Leave blank to keep saved number' : '+919876543210'}
+              placeholder={
+                saved?.whatsapp_phone_masked ? 'Leave blank to keep saved number' : '+919876543210'
+              }
               value={form.whatsapp_phone}
               onChange={set('whatsapp_phone')}
               disabled={loadState !== 'ready'}
@@ -133,7 +135,7 @@ export default function Settings() {
               disabled={loadState !== 'ready'}
               autoComplete="off"
             />
-            <p className="mt-1.5 text-[0.68rem] leading-relaxed text-mist">
+            <p className="mt-1.5 text-[0.68rem] leading-relaxed text-ink-muted">
               Secrets never leave the server — only a masked preview is shown here.
             </p>
           </div>
@@ -158,7 +160,9 @@ export default function Settings() {
                     <IconCheck className="h-3 w-3" /> stored in this browser
                   </span>
                 ) : (
-                  <span className="num text-[0.62rem] text-gold">required — writes will fail without it</span>
+                  <span className="num text-[0.62rem] text-orange">
+                    required — writes will fail without it
+                  </span>
                 )}
               </div>
               <input
@@ -170,18 +174,25 @@ export default function Settings() {
                 disabled={loadState !== 'ready'}
                 autoComplete="off"
               />
-              <p className="mt-1.5 text-[0.68rem] leading-relaxed text-mist">
+              <p className="mt-1.5 text-[0.68rem] leading-relaxed text-ink-muted">
                 This backend requires a token for changes. It's saved only in this browser.
               </p>
             </div>
           )}
 
           {status && (
-            <p className={`text-sm ${status.kind === 'ok' ? 'text-mint' : 'text-blush'}`}>{status.msg}</p>
+            <p className={`text-sm ${status.kind === 'ok' ? 'text-mint' : 'text-coral'}`}>
+              {status.msg}
+            </p>
           )}
 
           <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
-            <button type="button" onClick={test} disabled={busy || loadState !== 'ready'} className="btn-ghost">
+            <button
+              type="button"
+              onClick={test}
+              disabled={busy || loadState !== 'ready'}
+              className="btn-ghost"
+            >
               Send test alert
             </button>
             <button type="submit" disabled={busy || loadState !== 'ready'} className="btn-primary">
@@ -191,18 +202,24 @@ export default function Settings() {
         </form>
       </Reveal>
 
-      <Reveal delay={0.16}>
+      <Reveal>
         <div className="panel p-5 sm:p-7">
           <h3 className="tag mb-5">One-time CallMeBot setup</h3>
           <ol className="space-y-4">
             {[
-              <>Save <span className="num font-medium text-frost">+34 644 59 89 29</span> in your phone's contacts.</>,
-              <>From WhatsApp, send it: <em className="text-frost">"I allow callmebot to send me messages"</em></>,
+              <>
+                Save <span className="num font-medium text-ink">+34 644 59 89 29</span> in your phone's
+                contacts.
+              </>,
+              <>
+                From WhatsApp, send it:{' '}
+                <em className="text-ink">"I allow callmebot to send me messages"</em>
+              </>,
               <>Your personal API key arrives back on WhatsApp within a minute.</>,
               <>Enter your number and that key above, save, then fire a test alert.</>,
             ].map((step, i) => (
-              <li key={i} className="flex gap-4 text-sm leading-relaxed text-mist">
-                <span className="num shrink-0 pt-0.5 text-[0.7rem] font-semibold text-pulse">
+              <li key={i} className="flex gap-4 text-sm leading-relaxed text-ink-muted">
+                <span className="num shrink-0 pt-0.5 text-[0.7rem] font-semibold text-violet">
                   0{i + 1}
                 </span>
                 <span>{step}</span>

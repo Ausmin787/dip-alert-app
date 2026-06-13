@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import {
   Area,
   AreaChart,
@@ -11,27 +11,48 @@ import {
 import { getAlerts, getHistory, getStatus } from '../api.js'
 import DipLadder from '../components/DipLadder.jsx'
 import Sparkline from '../components/Sparkline.jsx'
-import { AnimatedNumber, Reveal } from '../components/motion.jsx'
+import { CountUp, Magnetic, Reveal, SplitReveal } from '../components/anim.jsx'
+import { useReducedMotion } from '../components/useReducedMotion.js'
 import { IconAlertTriangle, IconExternal, IconTrendDown } from '../components/icons.jsx'
 import { fmtAmount, fmtDate, fmtDateTime, fmtLevel, fmtPrice, severity, todayLine } from '../lib.js'
+
+const IndexOrb = lazy(() => import('../components/three/IndexOrb.jsx'))
+
+function OrbFallback() {
+  return (
+    <div className="absolute inset-0 grid place-items-center">
+      <div className="h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(106,76,245,0.45),transparent_70%)] blur-2xl" />
+    </div>
+  )
+}
+
+const spotlightBg = (dropPct) => {
+  const linear =
+    dropPct == null || dropPct < 1
+      ? 'linear-gradient(135deg, #6a4cf5, #d44df0)'
+      : dropPct < 3
+        ? 'linear-gradient(135deg, #ff7a3d, #d44df0)'
+        : 'linear-gradient(135deg, #ff5577, #6a4cf5)'
+  return `radial-gradient(120% 120% at 0% 0%, rgba(255,255,255,0.18), transparent 45%), ${linear}`
+}
 
 function HeroAsset({ item, history }) {
   const sev = severity(item.drop_pct)
   const closes = history.map((d) => d.close)
 
   return (
-    <Reveal delay={0.08}>
+    <Reveal>
       <article className="panel p-6 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="font-display text-xl font-semibold tracking-tight text-frost">
-              {item.display_name}
-            </h2>
-            <span className="num mt-1 inline-block rounded-md bg-white/4 px-2 py-0.5 text-[0.65rem] text-mist ring-1 ring-white/8">
+            <h2 className="display text-xl font-bold tracking-tight text-ink">{item.display_name}</h2>
+            <span className="num mt-1 inline-block rounded-md bg-surface-2 px-2 py-0.5 text-[0.65rem] text-ink-muted ring-1 ring-hairline">
               {item.ticker}
             </span>
           </div>
-          <span className={`rounded-full px-3 py-1.5 text-[0.65rem] font-semibold tracking-[0.14em] uppercase ${sev.chip}`}>
+          <span
+            className={`rounded-full px-3 py-1.5 text-[0.65rem] font-semibold tracking-[0.1em] uppercase ${sev.chip}`}
+          >
             {item.active ? sev.label : 'paused'}
           </span>
         </div>
@@ -39,12 +60,12 @@ function HeroAsset({ item, history }) {
         <div className="mt-7 flex flex-wrap items-end justify-between gap-x-8 gap-y-6">
           <div>
             <p className="tag mb-2">Last price</p>
-            <AnimatedNumber
+            <CountUp
               value={item.current_price}
               format={fmtPrice}
-              className="num block text-[2.75rem] leading-none font-semibold tracking-tight text-frost sm:text-[3.4rem]"
+              className="num display block text-[2.75rem] leading-none font-bold text-ink sm:text-[3.4rem]"
             />
-            <p className="num mt-3 text-xs text-mist">
+            <p className="num mt-3 text-xs text-ink-muted">
               ATH {fmtPrice(item.ath_price)} · {fmtDate(item.ath_date)}
             </p>
           </div>
@@ -52,7 +73,7 @@ function HeroAsset({ item, history }) {
             {closes.length > 1 && <Sparkline data={closes} stroke={sev.bar} />}
             <div className="text-right">
               <p className="tag mb-2">Drawdown</p>
-              <p className={`num text-3xl font-semibold sm:text-4xl ${sev.text}`}>
+              <p className={`num display text-3xl font-bold sm:text-4xl ${sev.text}`}>
                 {item.drop_pct != null ? `−${item.drop_pct.toFixed(2)}%` : '—'}
               </p>
             </div>
@@ -66,48 +87,64 @@ function HeroAsset({ item, history }) {
             lastAlertedLevel={item.last_alerted_level}
           />
         </div>
-
-        <div className="mt-6 flex flex-col gap-4 border-t border-white/6 pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs leading-relaxed text-mist">
-            Next alert at{' '}
-            <span className="num font-semibold text-pulse">
-              −{item.next_alert_level != null ? fmtLevel(item.next_alert_level) : '?'}%
-            </span>{' '}
-            · deploy <span className="num font-semibold text-frost">{fmtAmount(item.invest_amount)}</span>{' '}
-            per level
-          </p>
-          {item.broker_url && (
-            <a href={item.broker_url} target="_blank" rel="noreferrer" className="btn-primary">
-              Buy the dip <IconExternal className="h-3.5 w-3.5" />
-            </a>
-          )}
-        </div>
       </article>
     </Reveal>
   )
 }
 
-function CompactAsset({ item, delay }) {
+function SpotlightCTA({ item }) {
   const sev = severity(item.drop_pct)
   return (
-    <Reveal delay={delay}>
+    <Reveal>
+      <article
+        className="spotlight flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between"
+        style={{ background: spotlightBg(item.drop_pct) }}
+      >
+        <div>
+          <p className="text-sm font-medium tracking-wide text-white/75 uppercase">Next buy signal</p>
+          <p className="display mt-2 text-5xl font-bold text-white">
+            −{item.next_alert_level != null ? fmtLevel(item.next_alert_level) : '?'}%
+          </p>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/85">
+            Deploy <span className="num font-semibold text-white">{fmtAmount(item.invest_amount)}</span>{' '}
+            at every −{fmtLevel(item.threshold_pct)}% step from the all-time high · {sev.label}.
+          </p>
+        </div>
+        {item.broker_url && (
+          <Magnetic className="shrink-0">
+            <a href={item.broker_url} target="_blank" rel="noreferrer" className="btn-primary">
+              Buy the dip <IconExternal className="h-3.5 w-3.5" />
+            </a>
+          </Magnetic>
+        )}
+      </article>
+    </Reveal>
+  )
+}
+
+function CompactAsset({ item }) {
+  const sev = severity(item.drop_pct)
+  return (
+    <Reveal>
       <article className="panel panel-hover p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-frost">{item.display_name}</h3>
-            <p className="num mt-0.5 text-[0.65rem] text-mist">{item.ticker}</p>
+            <h3 className="text-sm font-semibold text-ink">{item.display_name}</h3>
+            <p className="num mt-0.5 text-[0.65rem] text-ink-muted">{item.ticker}</p>
           </div>
-          <span className={`rounded-full px-2.5 py-1 text-[0.6rem] font-semibold tracking-[0.12em] uppercase ${sev.chip}`}>
+          <span
+            className={`rounded-full px-2.5 py-1 text-[0.6rem] font-semibold tracking-[0.08em] uppercase ${sev.chip}`}
+          >
             {item.active ? sev.label : 'paused'}
           </span>
         </div>
         <div className="mt-4 flex items-end justify-between gap-4">
-          <p className="num text-2xl font-semibold text-frost">{fmtPrice(item.current_price)}</p>
+          <p className="num text-2xl font-semibold text-ink">{fmtPrice(item.current_price)}</p>
           <p className={`num text-sm font-semibold ${sev.text}`}>
             {item.drop_pct != null ? `−${item.drop_pct.toFixed(2)}%` : '—'}
           </p>
         </div>
-        <p className="num mt-2 text-[0.65rem] text-mist">
+        <p className="num mt-2 text-[0.65rem] text-ink-muted">
           next −{item.next_alert_level != null ? fmtLevel(item.next_alert_level) : '?'}% · ATH{' '}
           {fmtPrice(item.ath_price)}
         </p>
@@ -126,20 +163,20 @@ function DipChart({ ticker, ath, data }) {
     <section className="panel p-5 sm:p-6">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="tag">30-day trace vs ATH</h3>
-        <span className="num text-[0.65rem] text-mist">{ticker}</span>
+        <span className="num text-[0.65rem] text-ink-muted">{ticker}</span>
       </div>
       <div className="-mx-2">
         <ResponsiveContainer width="100%" height={230}>
           <AreaChart data={data} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
             <defs>
-              <linearGradient id="pulseFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#6e6bff" stopOpacity={0.32} />
-                <stop offset="100%" stopColor="#6e6bff" stopOpacity={0.01} />
+              <linearGradient id="violetFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#6a4cf5" stopOpacity={0.32} />
+                <stop offset="100%" stopColor="#6a4cf5" stopOpacity={0.01} />
               </linearGradient>
             </defs>
             <XAxis
               dataKey="date"
-              tick={{ fill: '#878da1', fontSize: 10, fontFamily: 'JetBrains Mono' }}
+              tick={{ fill: '#999999', fontSize: 10 }}
               tickFormatter={(d) => d.slice(5)}
               axisLine={false}
               tickLine={false}
@@ -147,7 +184,7 @@ function DipChart({ ticker, ath, data }) {
             />
             <YAxis
               domain={[min - pad, max + pad]}
-              tick={{ fill: '#878da1', fontSize: 10, fontFamily: 'JetBrains Mono' }}
+              tick={{ fill: '#999999', fontSize: 10 }}
               tickFormatter={(v) => v.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
               axisLine={false}
               tickLine={false}
@@ -155,35 +192,28 @@ function DipChart({ ticker, ath, data }) {
             />
             <Tooltip
               contentStyle={{
-                background: 'rgba(19, 22, 34, 0.95)',
-                border: '1px solid rgba(110,107,255,0.3)',
+                background: '#1c1c1c',
+                border: '1px solid #262626',
                 borderRadius: 10,
-                color: '#e9ebf1',
+                color: '#ffffff',
                 fontSize: 12,
-                fontFamily: 'JetBrains Mono',
               }}
               formatter={(v) => [fmtPrice(v), 'close']}
             />
             {ath && (
               <ReferenceLine
                 y={ath}
-                stroke="#fbbf24"
+                stroke="#ff7a3d"
                 strokeDasharray="5 5"
-                label={{
-                  value: 'ATH',
-                  fill: '#fbbf24',
-                  fontSize: 10,
-                  fontFamily: 'JetBrains Mono',
-                  position: 'insideTopRight',
-                }}
+                label={{ value: 'ATH', fill: '#ff7a3d', fontSize: 10, position: 'insideTopRight' }}
               />
             )}
             <Area
               type="monotone"
               dataKey="close"
-              stroke="#6e6bff"
+              stroke="#6a4cf5"
               strokeWidth={2}
-              fill="url(#pulseFill)"
+              fill="url(#violetFill)"
               isAnimationActive={false}
             />
           </AreaChart>
@@ -200,7 +230,7 @@ function RecentAlerts({ alerts }) {
         <IconTrendDown className="h-3.5 w-3.5" /> Recent alerts
       </h3>
       {alerts.length === 0 ? (
-        <p className="flex flex-1 items-center justify-center py-6 text-center text-xs leading-relaxed text-mist">
+        <p className="flex flex-1 items-center justify-center py-6 text-center text-xs leading-relaxed text-ink-muted">
           No alerts yet — they land here when
           <br />a new dip level is crossed.
         </p>
@@ -212,18 +242,20 @@ function RecentAlerts({ alerts }) {
             return (
               <li
                 key={a.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-white/6 bg-white/2 px-3.5 py-2.5"
+                className="flex items-center justify-between gap-3 rounded-xl border border-hairline bg-surface-2 px-3.5 py-2.5"
               >
                 <div className="flex items-center gap-3">
                   <span className={`num rounded-lg px-2 py-1 text-[0.7rem] font-bold ${sev.chip}`}>
                     −{fmtLevel(pct)}%
                   </span>
                   <div>
-                    <p className="num text-xs font-medium text-frost">{a.ticker}</p>
-                    <p className="num text-[0.65rem] text-mist">{fmtPrice(a.current_price)}</p>
+                    <p className="num text-xs font-medium text-ink">{a.ticker}</p>
+                    <p className="num text-[0.65rem] text-ink-muted">{fmtPrice(a.current_price)}</p>
                   </div>
                 </div>
-                <span className="num shrink-0 text-[0.62rem] text-mist">{fmtDateTime(a.alerted_at)}</span>
+                <span className="num shrink-0 text-[0.62rem] text-ink-muted">
+                  {fmtDateTime(a.alerted_at)}
+                </span>
               </li>
             )
           })}
@@ -245,6 +277,7 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState([])
   const [history, setHistory] = useState([])
   const [error, setError] = useState(null)
+  const reduced = useReducedMotion()
 
   const load = () => {
     getStatus()
@@ -266,6 +299,9 @@ export default function Dashboard() {
 
   const primary = status?.items?.find((i) => i.active) ?? status?.items?.[0]
   const rest = status?.items?.filter((i) => i.id !== primary?.id) ?? []
+  const orbDrop = primary?.drop_pct ?? null
+  const orbLevel =
+    primary && primary.drop_pct != null ? Math.floor(primary.drop_pct / primary.threshold_pct) : 0
 
   useEffect(() => {
     if (!primary?.ticker) return
@@ -275,39 +311,49 @@ export default function Dashboard() {
   }, [primary?.ticker])
 
   return (
-    <div className="space-y-5">
-      <Reveal>
-        <p className="tag mb-3">{todayLine()} · refreshed every 60s</p>
-        <h1 className="text-gradient font-display text-4xl font-semibold tracking-tight sm:text-5xl">
-          {subtitleFor(status)}
-        </h1>
-      </Reveal>
+    <div className="space-y-6">
+      <section className="grid items-center gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <div>
+          <p className="tag mb-4">{todayLine()} · refreshed every 60s</p>
+          <h1 className="display text-5xl text-ink sm:text-6xl">
+            <SplitReveal text={subtitleFor(status)} />
+          </h1>
+          <p className="mt-5 max-w-md leading-relaxed text-ink-muted">
+            ₹1L deployed for every −1% fall from the all-time high. The orb glows calm near the top and
+            burns coral as the drawdown deepens.
+          </p>
+        </div>
+        <div className="relative h-[260px] sm:h-[340px]">
+          <Suspense fallback={<OrbFallback />}>
+            <IndexOrb dropPct={orbDrop} level={orbLevel} reduced={reduced} className="absolute inset-0" />
+          </Suspense>
+        </div>
+      </section>
 
       {error && (
         <Reveal>
-          <div className="panel flex items-center gap-3 border-blush/30 p-4 text-sm text-blush">
+          <div className="panel flex items-center gap-3 border-coral/40 p-4 text-sm text-coral">
             <IconAlertTriangle className="h-4 w-4 shrink-0" /> {error}
           </div>
         </Reveal>
       )}
 
       {primary && <HeroAsset item={primary} history={history} />}
+      {primary && <SpotlightCTA item={primary} />}
 
       {rest.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2">
-          {rest.map((item, i) => (
-            <CompactAsset key={item.id} item={item} delay={0.16 + i * 0.07} />
+          {rest.map((item) => (
+            <CompactAsset key={item.id} item={item} />
           ))}
         </div>
       )}
 
       <div className="grid gap-5 xl:grid-cols-3">
-        <Reveal delay={0.2} className="xl:col-span-2">
+        <div className="xl:col-span-2">
           {primary && <DipChart ticker={primary.ticker} ath={primary.ath_price} data={history} />}
-        </Reveal>
-        <Reveal delay={0.26}>
-          <RecentAlerts alerts={alerts} />
-        </Reveal>
+        </div>
+        <RecentAlerts alerts={alerts} />
       </div>
     </div>
   )

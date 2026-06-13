@@ -21,34 +21,34 @@ export const fmtDateTime = (iso) =>
 // "-2%" not "-2.0%", but "-1.5%" keeps its decimal
 export const fmtLevel = (pct) => (pct == null ? '—' : pct % 1 === 0 ? `${pct}` : pct.toFixed(1))
 
-// Severity by % below ATH: mint within 1%, gold 1-3%, blush 3%+
+// Severity by % below ATH: mint within 1%, orange 1-3%, coral 3%+
 export const severity = (dropPct) => {
   if (dropPct == null)
     return {
       label: 'no data',
-      text: 'text-mist',
-      chip: 'bg-white/5 text-mist ring-1 ring-white/10',
-      bar: '#878da1',
+      text: 'text-ink-muted',
+      chip: 'bg-white/5 text-ink-muted ring-1 ring-white/10',
+      bar: '#999999',
     }
   if (dropPct < 1)
     return {
       label: 'near high',
       text: 'text-mint',
-      chip: 'bg-mint/10 text-mint ring-1 ring-mint/25',
+      chip: 'bg-mint/10 text-mint ring-1 ring-mint/30',
       bar: '#34d399',
     }
   if (dropPct < 3)
     return {
       label: 'dipping',
-      text: 'text-gold',
-      chip: 'bg-gold/10 text-gold ring-1 ring-gold/25',
-      bar: '#fbbf24',
+      text: 'text-orange',
+      chip: 'bg-orange/10 text-orange ring-1 ring-orange/30',
+      bar: '#ff7a3d',
     }
   return {
     label: 'deep dip',
-    text: 'text-blush',
-    chip: 'bg-blush/10 text-blush ring-1 ring-blush/25',
-    bar: '#fb7185',
+    text: 'text-coral',
+    chip: 'bg-coral/10 text-coral ring-1 ring-coral/30',
+    bar: '#ff5577',
   }
 }
 

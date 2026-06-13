@@ -1,71 +1,85 @@
 @import 'tailwindcss';
 
-/* ───────────────────────────── Precision Terminal ─────────────────────────────
-   Near-black canvas · hairline borders · inset-highlight panels · mono numerals
-   Accent: indigo → cyan. Severity: mint / gold / blush.
+/* ─────────────────────────────────── Framer ───────────────────────────────────
+   Dark-only · white + near-black anchor surfaces · surface-lift hierarchy
+   Pill CTAs · gradient spotlight cards (the signature) · accent-blue for links only
+   Inter everywhere, hard negative tracking on display type.
 ──────────────────────────────────────────────────────────────────────────────── */
 
 @theme {
-  --font-display: 'Bricolage Grotesque', Georgia, serif;
-  --font-body: 'Instrument Sans', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
 
-  --color-abyss: #07080c; /* page canvas */
-  --color-pane: #0d0f15; /* raised surface */
-  --color-pane-2: #131622; /* higher surface (modals, popovers) */
-  --color-frost: #e9ebf1; /* primary text */
-  --color-mist: #878da1; /* secondary text */
-  --color-pulse: #6e6bff; /* indigo accent */
-  --color-flux: #22d3ee; /* cyan accent */
-  --color-mint: #34d399; /* near high */
-  --color-gold: #fbbf24; /* dipping */
-  --color-blush: #fb7185; /* deep dip */
+  /* anchor surfaces (lift, never opacity, for hierarchy) */
+  --color-canvas: #090909; /* page background */
+  --color-surface-1: #141414; /* card, one step up */
+  --color-surface-2: #1c1c1c; /* featured card / modal, two steps up */
+  --color-hairline: #262626; /* 1px borders, dividers */
+  --color-hairline-soft: #1a1a1a; /* subtler dividers */
+
+  /* binary text hierarchy — only these two */
+  --color-ink: #ffffff;
+  --color-ink-muted: #999999;
+
+  /* accent: links, focus rings, selection ONLY — never a fill */
+  --color-accent: #0099ff;
+
+  /* gradient spotlight palette (cards, not section grounds) */
+  --color-violet: #6a4cf5;
+  --color-magenta: #d44df0;
+  --color-orange: #ff7a3d;
+  --color-coral: #ff5577;
+
+  /* severity + status */
+  --color-mint: #34d399; /* near the high (calm) */
+  --color-success: #22c55e; /* delivered checkmarks */
 }
 
 /* ── canvas & atmosphere ── */
 
 html {
-  background: var(--color-abyss);
+  background: var(--color-canvas);
 }
 
 body {
-  /* Must stay transparent: the fixed backdrop layers below sit at negative
-     z-index, and an opaque body paints over them (CSS painting order). */
+  /* Stays transparent: fixed backdrop layers sit at negative z-index and an
+     opaque body would paint over them (CSS painting order). */
   background: transparent;
-  color: var(--color-frost);
+  color: var(--color-ink);
   font-family: var(--font-body);
+  font-feature-settings: 'cv01', 'cv05', 'cv09', 'cv11', 'ss03';
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   overflow-x: clip;
 }
 
-/* dot-grid graph paper, fading toward the edges */
+/* faint dot grid — the dark canvas IS the whitespace, this just textures it */
 .backdrop-grid {
   position: fixed;
   inset: 0;
   z-index: -3;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px);
-  background-size: 26px 26px;
-  mask-image: radial-gradient(ellipse 90% 75% at 50% 0%, black 35%, transparent 100%);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 30px 30px;
+  mask-image: radial-gradient(ellipse 95% 70% at 50% 0%, black 30%, transparent 100%);
 }
 
-/* one slow-breathing indigo bloom behind the content */
+/* one violet→magenta spotlight bloom (Framer gradient energy, as atmosphere) */
 .backdrop-glow {
   position: fixed;
   z-index: -2;
   left: 50%;
-  top: -28rem;
-  height: 56rem;
-  width: 76rem;
+  top: -30rem;
+  height: 60rem;
+  width: 80rem;
   transform: translateX(-50%);
   border-radius: 50%;
   background: radial-gradient(
     closest-side,
-    rgba(110, 107, 255, 0.16),
-    rgba(34, 211, 238, 0.05) 55%,
+    rgba(106, 76, 245, 0.18),
+    rgba(212, 77, 240, 0.06) 55%,
     transparent 100%
   );
-  animation: breathe 9s ease-in-out infinite;
+  animation: breathe 10s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -77,72 +91,95 @@ body {
   }
   50% {
     opacity: 1;
-    transform: translateX(-50%) scale(1.07);
+    transform: translateX(-50%) scale(1.06);
   }
 }
 
-/* hairline horizon under the status bar */
+/* hairline horizon under the top nav */
 .horizon {
+  height: 1px;
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(110, 107, 255, 0.5) 30%,
-    rgba(34, 211, 238, 0.5) 70%,
+    rgba(106, 76, 245, 0.45) 30%,
+    rgba(212, 77, 240, 0.45) 70%,
     transparent
   );
-  height: 1px;
 }
 
-/* ── the panel recipe (inset top highlight + stacked shadows, never fills) ── */
+/* ── surfaces ── */
 
+/* the charcoal card: surface lift + hairline, never an opaque-on-opacity fill */
 .panel {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.008)),
-    var(--color-pane);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 16px;
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-hairline);
+  border-radius: 20px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.055),
-    0 1px 2px rgba(0, 0, 0, 0.45),
-    0 16px 40px -24px rgba(0, 0, 0, 0.8);
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 10px 30px -22px rgba(0, 0, 0, 0.9);
 }
 
 .panel-hover {
   transition:
+    background 0.25s ease,
     border-color 0.25s ease,
     box-shadow 0.25s ease,
     transform 0.25s ease;
 }
 
 .panel-hover:hover {
-  border-color: rgba(110, 107, 255, 0.35);
+  background: var(--color-surface-2);
+  border-color: #333333;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 1px 2px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(110, 107, 255, 0.12),
-    0 0 44px -10px rgba(110, 107, 255, 0.25),
-    0 20px 48px -24px rgba(0, 0, 0, 0.85);
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 18px 44px -24px rgba(0, 0, 0, 0.95);
   transform: translateY(-2px);
 }
 
-/* ── terminal labels & numerals ── */
+/* the signature: oversized atmospheric gradient tile (violet default).
+   Override the gradient with an inline `style` for variants. */
+.spotlight {
+  position: relative;
+  overflow: hidden;
+  border-radius: 30px;
+  padding: 32px;
+  color: var(--color-ink);
+  background:
+    radial-gradient(120% 120% at 0% 0%, rgba(255, 255, 255, 0.18), transparent 45%),
+    linear-gradient(135deg, var(--color-violet), var(--color-magenta));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 30px 60px -30px rgba(106, 76, 245, 0.6);
+}
 
+/* ── type helpers ── */
+
+/* small uppercase eyebrow / meta label */
 .tag {
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  font-weight: 500;
-  letter-spacing: 0.18em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--color-mist);
+  color: var(--color-ink-muted);
 }
 
+/* tabular figures so prices/levels stay column-aligned (Inter tnum) */
 .num {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
 }
 
+/* display headlines pull hard negative tracking — the Framer signature */
+.display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+/* used sparingly for a single accent word */
 .text-gradient {
-  background: linear-gradient(92deg, var(--color-frost) 20%, var(--color-pulse) 75%, var(--color-flux));
+  background: linear-gradient(100deg, var(--color-violet), var(--color-magenta));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -153,28 +190,24 @@ body {
 .field {
   width: 100%;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-hairline);
+  background: var(--color-surface-1);
   padding: 0.7rem 0.9rem;
-  font-size: 0.875rem;
-  font-family: var(--font-mono);
-  color: var(--color-frost);
+  font-size: 0.9rem;
+  color: var(--color-ink);
   outline: none;
   transition:
     border-color 0.2s ease,
-    background 0.2s ease,
     box-shadow 0.2s ease;
 }
 
 .field::placeholder {
-  color: rgba(135, 141, 161, 0.55);
-  font-family: var(--font-body);
+  color: rgba(153, 153, 153, 0.6);
 }
 
 .field:focus {
-  border-color: rgba(110, 107, 255, 0.6);
-  background: rgba(110, 107, 255, 0.05);
-  box-shadow: 0 0 0 3px rgba(110, 107, 255, 0.15);
+  border-color: rgba(0, 153, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(0, 153, 255, 0.15);
 }
 
 .field:disabled {
@@ -182,31 +215,28 @@ body {
   cursor: not-allowed;
 }
 
+/* primary = white pill (ink-on-white). Never squared. */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 10px;
-  background: linear-gradient(120deg, var(--color-pulse), #5ba8f5 55%, var(--color-flux));
-  color: #06070b;
+  border-radius: 9999px;
+  background: var(--color-ink);
+  color: #000000;
   font-weight: 600;
   font-size: 0.875rem;
-  padding: 0.7rem 1.25rem;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 8px 24px -10px rgba(110, 107, 255, 0.7);
+  padding: 0.65rem 1.3rem;
+  border: 1px solid transparent;
   transition:
-    filter 0.2s ease,
     transform 0.15s ease,
+    filter 0.2s ease,
     box-shadow 0.2s ease;
 }
 
 .btn-primary:hover {
-  filter: brightness(1.12);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 10px 32px -10px rgba(110, 107, 255, 0.9);
+  filter: brightness(0.92);
+  box-shadow: 0 10px 30px -12px rgba(255, 255, 255, 0.35);
 }
 
 .btn-primary:active {
@@ -214,32 +244,32 @@ body {
 }
 
 .btn-primary:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   pointer-events: none;
 }
 
+/* secondary = charcoal pill (surface lift, not a bordered ghost) */
 .btn-ghost {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--color-frost);
+  border-radius: 9999px;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-surface-1);
+  color: var(--color-ink);
   font-weight: 500;
   font-size: 0.875rem;
-  padding: 0.7rem 1.25rem;
+  padding: 0.65rem 1.3rem;
   transition:
-    border-color 0.2s ease,
     background 0.2s ease,
-    color 0.2s ease,
+    border-color 0.2s ease,
     transform 0.15s ease;
 }
 
 .btn-ghost:hover {
-  border-color: rgba(110, 107, 255, 0.45);
-  background: rgba(110, 107, 255, 0.07);
+  background: var(--color-surface-2);
+  border-color: #383838;
 }
 
 .btn-ghost:active {
@@ -247,7 +277,7 @@ body {
 }
 
 .btn-ghost:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   pointer-events: none;
 }
 
@@ -277,19 +307,19 @@ body {
 @keyframes pulseNext {
   0%,
   100% {
-    border-color: rgba(110, 107, 255, 0.7);
-    box-shadow: 0 0 12px -4px rgba(110, 107, 255, 0.6);
+    border-color: rgba(106, 76, 245, 0.75);
+    box-shadow: 0 0 14px -4px rgba(106, 76, 245, 0.65);
   }
   50% {
-    border-color: rgba(110, 107, 255, 0.25);
-    box-shadow: 0 0 4px -4px rgba(110, 107, 255, 0);
+    border-color: rgba(106, 76, 245, 0.25);
+    box-shadow: 0 0 4px -4px rgba(106, 76, 245, 0);
   }
 }
 
 /* ── misc ── */
 
 ::selection {
-  background: rgba(110, 107, 255, 0.4);
+  background: rgba(0, 153, 255, 0.35);
 }
 
 input,

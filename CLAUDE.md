@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This App Is
 
-A single-user web app (built for a friend — no auth) that watches the Nifty 50 index during NSE market hours, fires a WhatsApp alert (via CallMeBot) each time price crosses a new −1% level below its all-time high, and shows a glassmorphism dashboard. Strategy: "buy ₹1L of Nifty 50 ETF for every −1% fall from ATH."
+A single-user web app (built for a friend — no auth) that watches the Nifty 50 index during NSE market hours, fires a WhatsApp alert (via CallMeBot) each time price crosses a new −1% level below its all-time high, and shows a dark, motion-first dashboard (Framer-style, with a three.js hero and GSAP animation). Strategy: "buy ₹1L of Nifty 50 ETF for every −1% fall from ATH."
 
 GitHub: https://github.com/Ausmin787/dip-alert-app (branch: `master`)
 
@@ -77,18 +77,21 @@ State rules that must not be broken (all in `backend/app/ath_logic.py`, verified
 
 - `api.js` — all backend calls; baseURL is `VITE_API_URL` in production, relative (proxied) in dev
 - `pages/` — Dashboard, Watchlist, Alerts, Settings (routed in `App.jsx`)
-- `components/DipLadder.jsx` — the signature UI element: segmented track of −1%…−N% levels (filled = crossed, ✓ = alert delivered, pulsing dashed = next trigger)
-- `components/Sparkline.jsx` — self-drawing SVG sparkline (Motion `pathLength`); `components/motion.jsx` — `Page` (route transitions), `Reveal` (staggered entrances), `AnimatedNumber` (count-up)
-- `lib.js` — formatters, `severity()` (mint <1%, gold 1–3%, blush 3%+ below ATH), `fmtLevel`, and client-side `isMarketOpenIST()`/`istClock()` so the status bar stays live without polling the backend
+- `App.jsx` — the **Dynamic Island** nav (no sidebar, no bottom tab bar): a floating top-center pill that shows a full bar (brand + inline pill links with `layoutId="island-active"` + NSE/clock chip) at scroll-top, and springs into a compact pill (`brand glyph + active route + chevron`) once `scrollY > 24` **or** below the `lg` breakpoint; the compact pill opens a popover menu. Built with `motion` `layout` spring + `AnimatePresence`. Main content needs top padding (`pt-28`) to clear the floating island.
+- `components/three/IndexOrb.jsx` — the three.js hero (React-Three-Fiber point-cloud sphere); recolors mint→orange→coral with `drop_pct`, ripples a shockwave on each new dip level, slow auto-rotate + pointer parallax. **Lazy-loaded** (own bundle chunk) and `frameloop="never"` under reduced motion.
+- `components/anim.jsx` — GSAP helpers: `Reveal` (ScrollTrigger entrance), `CountUp`, `SplitReveal` (headline word stagger), `Magnetic` (cursor-pull buttons). **Gotcha:** `Reveal` blocks start at opacity 0 until scrolled into view, so a *full-page* Playwright screenshot shows below-fold content blank — screenshot per-viewport and scroll to verify.
+- `components/useReducedMotion.js` — matchMedia hook gating GSAP + the orb (split into its own file so `anim.jsx` stays component-only for the fast-refresh lint rule).
+- `components/motion.jsx` — now just `Page` (route transition). `components/DipLadder.jsx` — signature segmented −1%…−N% ladder (GSAP-staggered fill, gradient by severity, ✓ delivered, pulsing dashed next). `components/Sparkline.jsx` — self-drawing SVG sparkline.
+- `lib.js` — formatters, `severity()` (mint <1%, orange 1–3%, coral 3%+ below ATH), `fmtLevel`, and client-side `isMarketOpenIST()`/`istClock()` so the nav chip stays live without polling the backend
 
-### Design system: "Precision Terminal" (don't regress these)
+### Design system: "Framer" (don't regress these)
 
-Dark trading-terminal aesthetic, defined in `frontend/src/index.css` + Motion (`motion/react`):
-- Tokens (`@theme`): canvas `abyss #07080c`, surfaces `pane`/`pane-2`, text `frost`/`mist`, accents `pulse #6e6bff` (indigo) → `flux #22d3ee` (cyan), severity `mint`/`gold`/`blush`. Fonts: Bricolage Grotesque (display), Instrument Sans (body), JetBrains Mono (every numeral/ticker via `.num`/`.tag`)
-- `.backdrop-grid` (dot grid, z −3) + `.backdrop-glow` (breathing indigo bloom, z −2) are fixed layers; **`body` background must stay `transparent`** — an opaque body paints over negative z-index layers (CSS painting order)
-- `.panel` is the card recipe: 1px hairline border + inset top highlight + stacked shadows, never opaque fills; `.panel-hover` adds the lift/glow. Buttons: `.btn-primary` (indigo→cyan gradient) / `.btn-ghost`
-- Shell: desktop = fixed left sidebar (`layoutId="side-active"` sliding indicator) + sticky status bar (NSE live chip, ticking IST clock, `.horizon` hairline); mobile = floating bottom tab bar (`layoutId="tab-active"`), bottom-sheet modals, safe-area insets
-- Motion everywhere but respectful: `MotionConfig reducedMotion="user"` wraps the app; route changes go through `AnimatePresence mode="wait"`
+Dark, motion-first aesthetic adapted from Framer's DESIGN.md (getdesign.md / VoltAgent/awesome-design-md), in `frontend/src/index.css` + GSAP + `motion`:
+- Tokens (`@theme`): canvas `#090909`, surfaces `surface-1`/`surface-2` (hierarchy via **lift, not opacity**), text `ink`/`ink-muted` (binary — only these two greys), `accent #0099ff` for links/focus ONLY (**never a fill**), gradient spotlight palette `violet #6a4cf5`/`magenta #d44df0`/`orange #ff7a3d`/`coral #ff5577`, severity `mint`/`orange`/`coral`. Font: **Inter** everywhere; display via `.display` (weight 700, hard negative tracking `-0.045em`); numerals via `.num` (tabular-nums) — no separate mono font.
+- `.backdrop-grid` (dot grid, z −3) + `.backdrop-glow` (violet→magenta bloom, z −2) are fixed layers; **`body` background must stay `transparent`** — an opaque body paints over negative z-index layers (CSS painting order)
+- Recipes: `.panel` (surface-1 card, hairline border, `.panel-hover` lift); `.spotlight` (the signature gradient tile — **one per page**, violet→magenta default, override the gradient via inline `style`); `.btn-primary` = **white pill**, `.btn-ghost` = charcoal pill (never bordered/squared CTAs)
+- Two animation libs, by design: **GSAP** (content reveals + micro-interactions via `anim.jsx`, plus the orb shockwave) and **`motion`** (route transitions, the Dynamic Island `layout` morph + nav indicator, the Watchlist modal). Both honor reduced motion (`useReducedMotion` + `MotionConfig reducedMotion="user"`); route changes go through `AnimatePresence mode="wait"`
+- **three.js**: keep the orb lazy-loaded and capped (`dpr={[1, 2]}`); no postprocessing/bloom dep (bundle weight) — emissive + additive blending instead
 - Recharts: keep `isAnimationActive={false}` on series — the draw animation renders blank under React StrictMode
 
 ## Gotchas
