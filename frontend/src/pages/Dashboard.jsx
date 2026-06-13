@@ -1,11 +1,12 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { getAlerts, getHistory, getStatus } from '../api.js'
+import { getAlerts } from '../api.js'
 import DipLadder from '../components/DipLadder.jsx'
 import Sparkline from '../components/Sparkline.jsx'
 import { CountUp, Magnetic, Reveal, SplitReveal } from '../components/anim.jsx'
 import { useReducedMotion } from '../components/useReducedMotion.js'
 import { IconAlertTriangle, IconExternal, IconTrendDown } from '../components/icons.jsx'
 import { fmtAmount, fmtDate, fmtDateTime, fmtLevel, fmtPrice, severity, todayLine } from '../lib.js'
+import { useAssets } from '../AssetContext.jsx'
 
 const IndexOrb = lazy(() => import('../components/three/IndexOrb.jsx'))
 const DipChart = lazy(() => import('../components/DipChart.jsx'))
@@ -187,60 +188,66 @@ function RecentAlerts({ alerts }) {
   )
 }
 
-const subtitleFor = (status) => {
-  const worst = Math.max(0, ...(status?.items ?? []).map((i) => i.drop_pct ?? 0))
+function MobileAssetSwitcher({ items, selectedAsset, setSelectedAsset }) {
+  if (!items || items.length <= 1) return null
+
+  return (
+    <div className="md:hidden w-full overflow-x-auto scrollbar-none py-2 -mx-4 px-4 flex gap-2.5">
+      {items.map((item) => {
+        const isSelected = selectedAsset === item.ticker
+        const sev = severity(item.drop_pct)
+        return (
+          <button
+            key={item.id}
+            onClick={() => setSelectedAsset(item.ticker)}
+            className={`num flex items-center gap-2.5 rounded-full border px-4 py-2 text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+              isSelected
+                ? 'bg-surface-2 border-accent text-ink shadow-[0_2px_10px_-4px_rgba(45,125,255,0.4)]'
+                : 'bg-surface-1/40 border-hairline text-ink-muted hover:bg-surface-2/40'
+            }`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${item.active ? (item.drop_pct < 1 ? 'bg-mint' : sev.bar === '#FF5E6C' ? 'bg-coral' : 'bg-orange') : 'bg-ink-muted/50'}`} />
+            <span>{item.ticker}</span>
+            <span className={item.active ? sev.text : 'text-ink-muted'}>
+              {item.drop_pct != null ? `−${item.drop_pct.toFixed(2)}%` : '—'}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+const subtitleFor = (items) => {
+  const worst = Math.max(0, ...(items ?? []).map((i) => i.drop_pct ?? 0))
   if (worst >= 3) return 'The dip is here. Stay ready.'
   if (worst >= 1) return 'A dip is forming — eyes open.'
   return 'All quiet near the highs.'
 }
 
 export default function Dashboard() {
-  const [status, setStatus] = useState(null)
+  const { items, selectedAsset, setSelectedAsset, selectedItem, history, loading, error } = useAssets()
   const [alerts, setAlerts] = useState([])
-  const [history, setHistory] = useState([])
-  const [error, setError] = useState(null)
   const reduced = useReducedMotion()
 
-  const load = () => {
-    getStatus()
-      .then((s) => {
-        setStatus(s)
-        setError(null)
-      })
-      .catch(() => setError('Backend unreachable — is the API server running?'))
+  useEffect(() => {
     getAlerts(1, 6)
       .then((a) => setAlerts(a.alerts))
       .catch(() => {})
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center text-sm text-ink-muted">
+        Loading dashboard...
+      </div>
+    )
   }
 
-  useEffect(() => {
-    load()
-    const id = setInterval(load, 60_000)
-    return () => clearInterval(id)
-  }, [])
-
-  const [selectedAsset, setSelectedAsset] = useState(() => localStorage.getItem('selected_asset') || '')
-
-  useEffect(() => {
-    const handleChanged = () => {
-      setSelectedAsset(localStorage.getItem('selected_asset') || '')
-    }
-    window.addEventListener('selected_asset_changed', handleChanged)
-    return () => window.removeEventListener('selected_asset_changed', handleChanged)
-  }, [])
-
-  const primary = status?.items?.find((i) => i.ticker === selectedAsset) ?? status?.items?.find((i) => i.active) ?? status?.items?.[0]
-  const rest = status?.items?.filter((i) => i.id !== primary?.id) ?? []
+  const primary = selectedItem
   const orbDrop = primary?.drop_pct ?? null
   const orbLevel =
     primary && primary.drop_pct != null ? Math.floor(primary.drop_pct / primary.threshold_pct) : 0
-
-  useEffect(() => {
-    if (!primary?.ticker) return
-    getHistory(primary.ticker, 30)
-      .then(setHistory)
-      .catch(() => setHistory([]))
-  }, [primary?.ticker])
 
   return (
     <div className="space-y-6">
@@ -248,12 +255,16 @@ export default function Dashboard() {
         <div>
           <p className="tag mb-4">{todayLine()} · refreshed every 60s</p>
           <h1 className="display text-5xl text-ink sm:text-6xl">
-            <SplitReveal text={subtitleFor(status)} />
+            <SplitReveal text={subtitleFor(items)} />
           </h1>
           <p className="mt-5 max-w-md leading-relaxed text-ink-muted">
             ₹1L deployed for every −1% fall from the all-time high. The orb glows calm near the top and
             burns coral as the drawdown deepens.
           </p>
+          
+          <div className="mt-6">
+            <MobileAssetSwitcher items={items} selectedAsset={selectedAsset} setSelectedAsset={setSelectedAsset} />
+          </div>
         </div>
         <div className="relative h-[260px] sm:h-[340px]">
           <Suspense fallback={<OrbFallback />}>
@@ -270,19 +281,29 @@ export default function Dashboard() {
         </Reveal>
       )}
 
-      {primary && <HeroAsset item={primary} history={history} />}
-      {primary && <SpotlightCTA item={primary} />}
+      {primary ? (
+        <>
+          <HeroAsset item={primary} history={history} />
+          <SpotlightCTA item={primary} />
 
-      <div className="grid gap-5 xl:grid-cols-3">
-        <div className="xl:col-span-2">
-          {primary && history.length > 0 && (
-            <Suspense fallback={<div className="panel h-[296px]" />}>
-              <DipChart ticker={primary.ticker} ath={primary.ath_price} data={history} />
-            </Suspense>
-          )}
-        </div>
-        <RecentAlerts alerts={alerts} />
-      </div>
+          <div className="grid gap-5 xl:grid-cols-3">
+            <div className="xl:col-span-2">
+              {history.length > 0 && (
+                <Suspense fallback={<div className="panel h-[296px]" />}>
+                  <DipChart ticker={primary.ticker} ath={primary.ath_price} data={history} />
+                </Suspense>
+              )}
+            </div>
+            <RecentAlerts alerts={alerts} />
+          </div>
+        </>
+      ) : (
+        <Reveal>
+          <div className="panel p-10 text-center">
+            <p className="text-sm text-ink-muted">No assets under watch — add your first asset in the Watchlist tab.</p>
+          </div>
+        </Reveal>
+      )}
     </div>
   )
 }
