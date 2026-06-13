@@ -71,7 +71,7 @@ State rules that must not be broken (all in `backend/app/ath_logic.py`, verified
 - Input validation lives on the Pydantic models in `routes.py`: `threshold_pct` >0 and ≤50 (guards a ZeroDivisionError in status + scheduler), `check_interval_min` 1–60, ticker changes via PUT /watchlist are rejected (would orphan the `ath_tracker` row)
 - Changing `check_interval_min` via PUT /api/settings reschedules the running APScheduler job
 - Tickers are Yahoo Finance format: `^NSEI`, `SETFNIF50.NS` (NSE), `.BO` (BSE)
-- `main.py migrate_db()` holds additive SQLite migrations (e.g. `alert_log.level_pct`) — `create_all` doesn't alter existing tables
+- `main.py migrate_db()` holds additive SQLite migrations (`alert_log.level_pct`; `watchlist.threshold_pct`/`invest_amount`/`broker_url`/`active`) — `create_all` only creates missing *tables*, never adds columns to an existing one, so any column added after the first schema needs a guard here or an old DB crashes at `seed_defaults()` on startup. Each block checks `PRAGMA table_info` and is safe to re-run.
 
 ### Frontend layout (`frontend/src/`)
 
@@ -92,7 +92,7 @@ Dark, motion-first aesthetic adapted from Framer's DESIGN.md (getdesign.md / Vol
 - Recipes: `.panel` (surface-1 card, hairline border, `.panel-hover` lift); `.spotlight` (the signature gradient tile — **one per page**, violet→magenta default, override the gradient via inline `style`); `.btn-primary` = **white pill**, `.btn-ghost` = charcoal pill (never bordered/squared CTAs)
 - Two animation libs, by design: **GSAP** (content reveals + micro-interactions via `anim.jsx`, plus the orb shockwave) and **`motion`** (route transitions, the Dynamic Island `layout` morph + nav indicator, the Watchlist modal). Both honor reduced motion (`useReducedMotion` + `MotionConfig reducedMotion="user"`); route changes go through `AnimatePresence mode="wait"`
 - **three.js**: keep the orb lazy-loaded and capped (`dpr={[1, 2]}`); no postprocessing/bloom dep (bundle weight) — emissive + additive blending instead
-- Recharts: keep `isAnimationActive={false}` on series — the draw animation renders blank under React StrictMode
+- Recharts: keep `isAnimationActive={false}` on series — the draw animation renders blank under React StrictMode. The chart lives in `components/DipChart.jsx` and is **lazy-loaded** (recharts is ~330 kB; keep it out of the main bundle)
 
 ## Gotchas
 

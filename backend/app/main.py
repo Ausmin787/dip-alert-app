@@ -37,16 +37,34 @@ def seed_defaults() -> None:
 
 
 def migrate_db() -> None:
-    """Additive SQLite migrations for DBs created before new columns existed."""
+    """Additive SQLite migrations for DBs created before new columns existed.
+
+    `create_all` only creates missing *tables*, never alters existing ones, so a
+    DB created with an older schema keeps its old columns. Each block here adds a
+    column only if it's absent, with the model's default, and is safe to re-run.
+    """
     with engine.connect() as conn:
-        cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(alert_log)")]
-        if cols and "level_pct" not in cols:
+        alert_cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(alert_log)")]
+        if alert_cols and "level_pct" not in alert_cols:
             conn.exec_driver_sql(
                 "ALTER TABLE alert_log ADD COLUMN level_pct FLOAT NOT NULL DEFAULT 0"
             )
             # Old rows were all written with threshold_pct=1.0, so level == pct
             conn.exec_driver_sql("UPDATE alert_log SET level_pct = alert_level")
-            conn.commit()
+
+        # watchlist gained per-asset settings after the original (ticker/name) schema
+        wl_cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(watchlist)")]
+        if wl_cols:
+            for col, ddl in (
+                ("threshold_pct", "FLOAT NOT NULL DEFAULT 1.0"),
+                ("invest_amount", "INTEGER NOT NULL DEFAULT 100000"),
+                ("broker_url", "VARCHAR NOT NULL DEFAULT ''"),
+                ("active", "BOOLEAN NOT NULL DEFAULT 1"),
+            ):
+                if col not in wl_cols:
+                    conn.exec_driver_sql(f"ALTER TABLE watchlist ADD COLUMN {col} {ddl}")
+
+        conn.commit()
 
 
 @asynccontextmanager
