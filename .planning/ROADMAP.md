@@ -5,8 +5,8 @@ This roadmap covers the transition of the Dip Alert application from its current
 
 ## Phases
 
-- [ ] **Phase 1: App Shell & Sidebar Dock** - Setup the `100dvh` layout, collapsible left navigation dock, and configure page routing.
-- [ ] **Phase 2: Live Asset Feed & State** - Build the middle feed pane with watchlist cards, live price/severity tracking, inline SVG sparklines, and active selection state.
+- [x] **Phase 1: App Shell & Sidebar Dock** - Setup the `100dvh` layout, collapsible left navigation dock, and configure page routing. (completed 2026-06-13)
+- [x] **Phase 2: Live Asset Feed & State** - Build the middle feed pane with watchlist cards, live price/severity tracking, inline SVG sparklines, and active selection state. (completed 2026-06-14)
 - [ ] **Phase 3: Workspace Detail Pane & Actions** - Construct the right detail pane containing asset metrics, Recharts drop charts, segment-colored dip ladders, buy triggers, and API write protection.
 
 ## Phase Details
@@ -23,7 +23,7 @@ This roadmap covers the transition of the Dip Alert application from its current
 **Plans**: 1 plan
 
 Plans:
-- [ ] 01-01: Set up responsive app-shell container, collapsible navigation sidebar, and wire React routing.
+- [x] 01-01: Set up responsive app-shell container, collapsible navigation sidebar, and wire React routing.
 
 ### Phase 2: Live Asset Feed & State
 **Goal**: Build the middle feed column showcasing the user's watchlist with live indicators, sparklines, and selection memory.
@@ -37,7 +37,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 02-01: Implement the middle asset feed list column, inline sparklines, live clock headers, and active state memory.
+- [x] 02-01: Implement the middle asset feed list column, inline sparklines, live clock headers, and active state memory.
 
 ### Phase 3: Workspace Detail Pane & Actions
 **Goal**: Finish the right-hand panel display featuring key metrics, historical drop charts, colored ladders, buy triggers, and token protection.
@@ -61,8 +61,8 @@ Phases execute in numeric order: 1 ➔ 2 ➔ 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. App Shell & Sidebar | 0/1 | Not started | - |
-| 2. Live Asset Feed | 0/1 | Not started | - |
+| 1. App Shell & Sidebar | 1/1 | Complete    | 2026-06-13 |
+| 2. Live Asset Feed | 1/1 | Complete    | 2026-06-14 |
 | 3. Workspace Detail | 0/1 | Not started | - |
 
 ---
