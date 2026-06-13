@@ -56,6 +56,7 @@ State rules that must not be broken (all in `backend/app/ath_logic.py`, verified
 - **New ATH** updates the tracker and resets the level to 0
 - Levels are in units of the asset's `threshold_pct` (default 1.0 → whole percents); the user-facing percentage is `level_pct = level × threshold_pct` (stored on `AlertLog`, shown in WhatsApp + UI)
 - **Failed WhatsApp delivery does not consume the level**: no `AlertLog` row, `last_alerted_level` unchanged, next scheduler tick retries. Only an actually-sent alert (or a deliberate unconfigured-credentials run, where the dashboard is the record) advances the level.
+- **Scheduler loops must `session.rollback()` in their per-asset exception handlers** (`check_all_assets`/`refresh_all_aths`) — without it, one DB error poisons the shared session (`PendingRollbackError`) for every remaining asset in the pass. Regression-tested in `test_logic.py`.
 
 ### Backend layout (`backend/app/`)
 
