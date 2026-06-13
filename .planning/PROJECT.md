@@ -15,13 +15,13 @@ Fires real-time WhatsApp alerts when drop thresholds are crossed, enabling the u
 - [x] **CORE-04**: Recovery reset (price returning within 0.5% of ATH) and new ATH reset triggers
 - [x] **DB-01**: SQLite storage with automatic, additive startup migrations
 - [x] **API-01**: FastAPI endpoint routing with redacted WhatsApp credentials and write protection interceptor
+- [x] **UI-01**: Viewport-locked (`100dvh` flex) app shell container (Validated in Phase 1)
+- [x] **UI-02**: Far-left collapsible navigation dock (64px expandable sidebar) (Validated in Phase 1)
+- [x] **UI-05**: Responsive mobile bottom navigation tab bar (Validated in Phase 1)
 
 ### Active (Redesign)
-- [ ] **UI-01**: Contain layout inside a viewport-locked (`100dvh` flex) app shell
-- [ ] **UI-02**: Far-left collapsible navigation dock (64px expandable sidebar)
 - [ ] **UI-03**: Middle live-asset feed showing all watchlist cards, current prices, severities, and inline self-drawing sparklines
 - [ ] **UI-04**: Right detail pane presenting selected asset charts (lazy-loaded Recharts) and segmented dip ladders
-- [ ] **UI-05**: Responsive states collapsing the middle feed or side dock on smaller breakpoints
 
 ### Out of Scope
 - Multi-user authentication — Single-user dashboard, security is handled via basic `APP_TOKEN` header check.
@@ -60,4 +60,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-14 after initialization*
+*Last updated: 2026-06-14 after Phase 1 completion*
