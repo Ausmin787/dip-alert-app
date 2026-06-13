@@ -4,6 +4,7 @@ import { addAsset, deleteAsset, getWatchlist, updateAsset } from '../api.js'
 import { Magnetic, Reveal } from '../components/anim.jsx'
 import { IconPause, IconPencil, IconPlay, IconPlus, IconTrash } from '../components/icons.jsx'
 import { fmtAmount, fmtLevel } from '../lib.js'
+import { useAssets } from '../AssetContext.jsx'
 
 const emptyForm = {
   ticker: '',
@@ -202,6 +203,7 @@ function AssetRow({ item, onEdit, onToggle, onDelete }) {
 export default function Watchlist() {
   const [items, setItems] = useState(null) // null = loading
   const [modal, setModal] = useState(null) // null | 'new' | item
+  const { refresh } = useAssets()
 
   const load = () =>
     getWatchlist()
@@ -216,6 +218,7 @@ export default function Watchlist() {
     if (modal === 'new') await addAsset(form)
     else await updateAsset(modal.id, form)
     await load()
+    refresh()
   }
 
   const togglePause = async (item) => {
@@ -225,6 +228,7 @@ export default function Watchlist() {
       window.alert(err.response?.data?.detail ?? 'Update failed')
     }
     await load()
+    refresh()
   }
 
   const remove = async (item) => {
@@ -235,6 +239,7 @@ export default function Watchlist() {
       window.alert(err.response?.data?.detail ?? 'Delete failed')
     }
     await load()
+    refresh()
   }
 
   return (

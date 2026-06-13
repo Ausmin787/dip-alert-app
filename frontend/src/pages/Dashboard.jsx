@@ -273,14 +273,6 @@ export default function Dashboard() {
       {primary && <HeroAsset item={primary} history={history} />}
       {primary && <SpotlightCTA item={primary} />}
 
-      {rest.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {rest.map((item) => (
-            <CompactAsset key={item.id} item={item} />
-          ))}
-        </div>
-      )}
-
       <div className="grid gap-5 xl:grid-cols-3">
         <div className="xl:col-span-2">
           {primary && history.length > 0 && (
