@@ -1,8 +1,10 @@
 """All API endpoints."""
 import math
+import os
+import secrets
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlmodel import Session, desc, select
 
@@ -14,6 +16,17 @@ from .scheduler import is_market_open, reschedule_price_check
 from .whatsapp import format_alert_message, send_whatsapp
 
 router = APIRouter(prefix="/api")
+
+
+def require_write_token(x_app_token: str | None = Header(default=None)):
+    """If APP_TOKEN is set in the environment, every write endpoint requires
+    the matching X-App-Token header. Unset = open (local dev, default)."""
+    expected = os.environ.get("APP_TOKEN", "")
+    if expected and not secrets.compare_digest(x_app_token or "", expected):
+        raise HTTPException(401, "Invalid or missing X-App-Token")
+
+
+write_protected = [Depends(require_write_token)]
 
 
 # ---------- status ----------
@@ -76,7 +89,7 @@ def list_watchlist(session: Session = Depends(get_session)):
     return session.exec(select(Watchlist)).all()
 
 
-@router.post("/watchlist", status_code=201)
+@router.post("/watchlist", status_code=201, dependencies=write_protected)
 def add_watchlist(body: WatchlistIn, session: Session = Depends(get_session)):
     existing = session.exec(select(Watchlist).where(Watchlist.ticker == body.ticker)).first()
     if existing:
@@ -90,7 +103,7 @@ def add_watchlist(body: WatchlistIn, session: Session = Depends(get_session)):
     return item
 
 
-@router.put("/watchlist/{item_id}")
+@router.put("/watchlist/{item_id}", dependencies=write_protected)
 def update_watchlist(item_id: int, body: WatchlistIn, session: Session = Depends(get_session)):
     item = session.get(Watchlist, item_id)
     if not item:
@@ -106,7 +119,7 @@ def update_watchlist(item_id: int, body: WatchlistIn, session: Session = Depends
     return item
 
 
-@router.delete("/watchlist/{item_id}", status_code=204)
+@router.delete("/watchlist/{item_id}", status_code=204, dependencies=write_protected)
 def delete_watchlist(item_id: int, session: Session = Depends(get_session)):
     item = session.get(Watchlist, item_id)
     if not item:
@@ -158,6 +171,8 @@ def _redacted(settings: Settings) -> dict:
         "whatsapp_phone_masked": _mask_phone(settings.whatsapp_phone),
         "apikey_set": bool(settings.callmebot_apikey),
         "check_interval_min": settings.check_interval_min,
+        # Lets the UI know whether writes need an X-App-Token header
+        "write_protected": bool(os.environ.get("APP_TOKEN")),
     }
 
 
@@ -172,7 +187,7 @@ def get_settings(session: Session = Depends(get_session)):
     return _redacted(settings)
 
 
-@router.put("/settings")
+@router.put("/settings", dependencies=write_protected)
 def update_settings(body: SettingsIn, session: Session = Depends(get_session)):
     settings = session.exec(select(Settings)).first()
     if not settings:
@@ -196,7 +211,7 @@ def update_settings(body: SettingsIn, session: Session = Depends(get_session)):
 
 # ---------- test alert ----------
 
-@router.post("/test-alert")
+@router.post("/test-alert", dependencies=write_protected)
 def test_alert(session: Session = Depends(get_session)):
     settings = session.exec(select(Settings)).first()
     if not settings or not settings.whatsapp_phone or not settings.callmebot_apikey:

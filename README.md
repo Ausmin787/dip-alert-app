@@ -66,12 +66,17 @@ Credentials live in the app's database — never in code, git, or env vars.
 1. Create a Railway account, deploy from this GitHub repo with root directory `backend`
 2. Add a **volume** mounted at `/data` and set env var `DATABASE_URL=sqlite:////data/dip_alert.db` (otherwise the DB resets on each redeploy)
 3. Set `FRONTEND_ORIGIN=https://<your-vercel-app>.vercel.app` for CORS
-4. Note your Railway public URL
+4. **Recommended:** set `APP_TOKEN=<any-long-random-string>` — with it set, every write
+   (settings, watchlist changes, test alerts) requires that token, so strangers who find
+   your URL can't touch anything. Leave it unset and the API is open (fine for local dev).
+5. Note your Railway public URL
 
 **Frontend → Vercel:**
 1. Create a Vercel account, import this repo with root directory `frontend`
 2. Set env var `VITE_API_URL=https://<your-railway-app>.up.railway.app`
-3. Deploy — then open `/settings` and configure WhatsApp
+3. Deploy — then open `/settings`, paste your `APP_TOKEN` value into the *Access token*
+   field (it appears only when the backend has one set, and is stored only in your browser),
+   and configure WhatsApp
 
 ## API
 
