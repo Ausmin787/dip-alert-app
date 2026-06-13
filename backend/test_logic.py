@@ -120,6 +120,26 @@ with Session(engine) as s:
     check("unconfigured creds still logs alert", a is not None and a.whatsapp_sent is False)
     check("unconfigured creds advances level", tracker2().last_alerted_level == 3)
 
+    # 13. Scheduler pass survives a DB error mid-loop (handler must rollback,
+    # or the poisoned session raises PendingRollbackError for every later asset)
+    real_check_asset = ath_logic.check_asset
+    loop_log = []
+
+    def poison_then_query(session, item):
+        if not loop_log:
+            loop_log.append('poisoned')
+            session.add(AlertLog(ticker=None, alert_level=1, current_price=1.0,
+                                 ath_price=1.0, drop_pct=1.0))
+            session.flush()  # NOT NULL violation -> session enters failed state
+        else:
+            session.exec(select(Settings)).first()  # raises unless rolled back
+            loop_log.append('recovered')
+
+    ath_logic.check_asset = poison_then_query
+    ath_logic.check_all_assets()
+    ath_logic.check_asset = real_check_asset
+    check("scheduler recovers after a DB error", loop_log == ['poisoned', 'recovered'])
+
 print()
 if failures:
     print(f"{len(failures)} FAILED")

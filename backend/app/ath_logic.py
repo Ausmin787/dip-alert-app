@@ -121,10 +121,14 @@ def check_all_assets() -> None:
     with Session(engine) as session:
         items = session.exec(select(Watchlist).where(Watchlist.active == True)).all()  # noqa: E712
         for item in items:
+            ticker = item.ticker  # read while the session is healthy
             try:
                 check_asset(session, item)
             except Exception:
-                logger.exception("Check failed for %s", item.ticker)
+                # Roll back so one bad asset can't poison the shared session
+                # (PendingRollbackError) for the rest of the pass.
+                session.rollback()
+                logger.exception("Check failed for %s", ticker)
 
 
 def refresh_all_aths() -> None:
@@ -132,7 +136,9 @@ def refresh_all_aths() -> None:
     with Session(engine) as session:
         items = session.exec(select(Watchlist).where(Watchlist.active == True)).all()  # noqa: E712
         for item in items:
+            ticker = item.ticker
             try:
-                refresh_ath(session, item.ticker)
+                refresh_ath(session, ticker)
             except Exception:
-                logger.exception("ATH refresh failed for %s", item.ticker)
+                session.rollback()
+                logger.exception("ATH refresh failed for %s", ticker)
