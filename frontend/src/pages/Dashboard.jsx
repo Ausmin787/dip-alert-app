@@ -219,7 +219,17 @@ export default function Dashboard() {
     return () => clearInterval(id)
   }, [])
 
-  const primary = status?.items?.find((i) => i.active) ?? status?.items?.[0]
+  const [selectedAsset, setSelectedAsset] = useState(() => localStorage.getItem('selected_asset') || '')
+
+  useEffect(() => {
+    const handleChanged = () => {
+      setSelectedAsset(localStorage.getItem('selected_asset') || '')
+    }
+    window.addEventListener('selected_asset_changed', handleChanged)
+    return () => window.removeEventListener('selected_asset_changed', handleChanged)
+  }, [])
+
+  const primary = status?.items?.find((i) => i.ticker === selectedAsset) ?? status?.items?.find((i) => i.active) ?? status?.items?.[0]
   const rest = status?.items?.filter((i) => i.id !== primary?.id) ?? []
   const orbDrop = primary?.drop_pct ?? null
   const orbLevel =

@@ -7,7 +7,9 @@ import Alerts from './pages/Alerts.jsx'
 import Settings from './pages/Settings.jsx'
 import { Page } from './components/motion.jsx'
 import { IconBell, IconChevronDown, IconDip, IconGear, IconGrid, IconLayers } from './components/icons.jsx'
-import { isMarketOpenIST, istClock } from './lib.js'
+import { isMarketOpenIST, istClock, fmtPrice, fmtLevel, severity } from './lib.js'
+import { AssetProvider, useAssets } from './AssetContext.jsx'
+import Sparkline from './components/Sparkline.jsx'
 
 const navItems = [
   { to: '/', label: 'Overview', icon: IconGrid },
@@ -18,32 +20,6 @@ const navItems = [
 
 const isActivePath = (to, path) => (to === '/' ? path === '/' : path.startsWith(to))
 
-function MarketChip() {
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(id)
-  }, [])
-  const open = isMarketOpenIST(now)
-  return (
-    <div className="flex items-center gap-2.5">
-      <span
-        className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-[0.62rem] font-semibold tracking-[0.1em] whitespace-nowrap uppercase ${
-          open
-            ? 'bg-mint/10 text-mint ring-1 ring-mint/25'
-            : 'bg-surface-2 text-ink-muted ring-1 ring-hairline'
-        }`}
-      >
-        <span className={`h-1.5 w-1.5 rounded-full ${open ? 'live-dot bg-mint' : 'bg-ink-muted/60'}`} />
-        {open ? 'NSE live' : 'NSE closed'}
-      </span>
-      <span className="num hidden whitespace-nowrap text-xs text-ink-muted sm:inline">
-        {istClock(now)} IST
-      </span>
-    </div>
-  )
-}
-
 function BrandGlyph() {
   return (
     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet to-magenta text-ink shadow-[0_8px_24px_-8px_rgba(45,125,255,0.8)]">
@@ -52,171 +28,299 @@ function BrandGlyph() {
   )
 }
 
-/* Horizontal pill links with a sliding active indicator (full-bar mode). */
-function InlineLinks() {
+function SidebarMarketChip({ expanded }) {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const open = isMarketOpenIST(now)
+
+  if (!expanded) {
+    return (
+      <div
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 border border-hairline cursor-help"
+        title={open ? 'NSE Live Market Open' : 'NSE Market Closed'}
+      >
+        <span className={`h-2.5 w-2.5 rounded-full ${open ? 'live-dot bg-mint' : 'bg-ink-muted/50'}`} />
+      </div>
+    )
+  }
+
   return (
-    <div className="flex items-center gap-1">
-      {navItems.map(({ to, label }) => (
-        <NavLink key={to} to={to} end={to === '/'}>
-          {({ isActive }) => (
-            <span
-              className={`relative flex items-center rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors duration-200 ${
-                isActive ? 'text-ink' : 'text-ink-muted hover:text-ink'
-              }`}
-            >
-              {isActive && (
-                <motion.span
-                  layoutId="island-active"
-                  className="absolute inset-0 rounded-full border border-hairline bg-surface-2"
-                  transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                />
-              )}
-              <span className="relative">{label}</span>
-            </span>
-          )}
-        </NavLink>
-      ))}
-    </div>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex flex-col gap-2 w-full px-1"
+    >
+      <div
+        className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-[0.62rem] font-semibold tracking-[0.1em] uppercase ${
+          open
+            ? 'bg-mint/10 text-mint ring-1 ring-mint/25'
+            : 'bg-surface-2 text-ink-muted ring-1 ring-hairline'
+        }`}
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${open ? 'live-dot bg-mint' : 'bg-ink-muted/60'}`} />
+        <span className="whitespace-nowrap text-xs">{open ? 'NSE live' : 'NSE closed'}</span>
+      </div>
+      <span className="num text-center text-xs text-ink-muted whitespace-nowrap">
+        {istClock(now)} IST
+      </span>
+    </motion.div>
   )
 }
 
-/* The Dynamic Island: a full bar that springs into a compact floating pill on
-   scroll (or on narrow screens). The compact pill opens a popover menu. */
-function IslandNav() {
+function SidebarDock() {
   const location = useLocation()
-  const [scrolled, setScrolled] = useState(false)
-  const [narrow, setNarrow] = useState(false)
-  const [open, setOpen] = useState(false)
-
-  useEffect(() => {
-    const update = () => {
-      const s = window.scrollY > 24
-      const n = window.innerWidth < 1024
-      setScrolled(s)
-      setNarrow(n)
-      if (!s && !n) setOpen(false) // expanded back to the full bar — drop the menu
-    }
-    update()
-    window.addEventListener('scroll', update, { passive: true })
-    window.addEventListener('resize', update)
-    return () => {
-      window.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
-    }
-  }, [])
-
-  const compact = scrolled || narrow
-  const active = navItems.find((n) => isActivePath(n.to, location.pathname)) ?? navItems[0]
-  const ActiveIcon = active.icon
+  const [hovered, setHovered] = useState(false)
+  const expanded = hovered
 
   return (
-    <nav className="fixed top-4 left-1/2 z-50 -translate-x-1/2" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-      <motion.div
-        layout
-        transition={{ type: 'spring', stiffness: 400, damping: 34 }}
-        className="flex items-center gap-3 rounded-full border border-hairline bg-surface-1/75 px-3 py-2 shadow-[0_18px_50px_-18px_rgba(0,0,0,0.95)] backdrop-blur-xl"
-      >
-        {!compact ? (
-          <motion.div
-            key="full"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-5 pr-1 pl-1"
-          >
-            <div className="flex items-center gap-2.5">
-              <BrandGlyph />
-              <span className="display text-base leading-none font-bold tracking-tight whitespace-nowrap text-ink">
-                Dip Alert
-              </span>
-            </div>
-            <InlineLinks />
-            <MarketChip />
-          </motion.div>
-        ) : (
-          <motion.button
-            key="compact"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            onClick={() => setOpen((o) => !o)}
-            className="flex items-center gap-2.5 rounded-full pr-2 pl-1"
-            aria-label="Toggle navigation menu"
-            aria-expanded={open}
-          >
-            <BrandGlyph />
-            <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-              <ActiveIcon className="h-4 w-4 text-violet" />
-              {active.label}
-            </span>
-            <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.25 }}>
-              <IconChevronDown className="h-4 w-4 text-ink-muted" />
+    <motion.aside
+      className="sidebar-dock hidden sm:flex flex-col justify-between py-6 px-3"
+      animate={{ width: expanded ? 200 : 64 }}
+      transition={{ type: 'spring', stiffness: 350, damping: 32 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Top Section: Brand Logo */}
+      <div className="flex flex-col gap-8 w-full">
+        <div className="flex items-center gap-3 px-1">
+          <BrandGlyph />
+          {expanded && (
+            <motion.span
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="display text-base font-bold tracking-tight text-ink whitespace-nowrap"
+            >
+              Dip Alert
             </motion.span>
-          </motion.button>
-        )}
-      </motion.div>
+          )}
+        </div>
 
-      <AnimatePresence>
-        {compact && open && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.96 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            className="absolute top-[calc(100%+0.6rem)] left-1/2 w-64 -translate-x-1/2 rounded-2xl border border-hairline bg-surface-1/95 p-2 shadow-[0_24px_60px_-16px_rgba(0,0,0,0.95)] backdrop-blur-xl"
-          >
-            {navItems.map(({ to, label, icon: Icon }, i) => {
-              const isActive = isActivePath(to, location.pathname)
-              return (
-                <motion.div
-                  key={to}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.04 * i }}
-                >
-                  <NavLink
-                    to={to}
-                    end={to === '/'}
-                    onClick={() => setOpen(false)}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-surface-2 text-ink ring-1 ring-hairline'
-                        : 'text-ink-muted hover:bg-surface-2 hover:text-ink'
+        {/* Navigation Links */}
+        <div className="flex flex-col gap-1.5 w-full">
+          {navItems.map(({ to, label, icon: Icon }) => {
+            const isActive = isActivePath(to, location.pathname)
+            return (
+              <NavLink key={to} to={to} end={to === '/'} className="relative block">
+                {({ isActive }) => (
+                  <span
+                    className={`flex items-center gap-3.5 rounded-xl py-3 px-3.5 text-sm font-medium transition-colors w-full cursor-pointer relative ${
+                      isActive ? 'text-ink font-semibold' : 'text-ink-muted hover:text-ink hover:bg-surface-2/40'
                     }`}
                   >
-                    <Icon className={`h-[1.1rem] w-[1.1rem] ${isActive ? 'text-violet' : ''}`} />
-                    {label}
-                  </NavLink>
-                </motion.div>
-              )
-            })}
-            <div className="mt-1 flex justify-center border-t border-hairline px-3 pt-3 pb-1">
-              <MarketChip />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                    {isActive && (
+                      <motion.span
+                        layoutId="sidebar-active"
+                        className="absolute inset-0 rounded-xl bg-surface-2 border border-hairline"
+                        transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+                      />
+                    )}
+                    <span className="relative z-10 shrink-0">
+                      <Icon className={`h-[1.1rem] w-[1.1rem] ${isActive ? 'text-violet' : ''}`} />
+                    </span>
+                    {expanded && (
+                      <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="relative z-10 whitespace-nowrap"
+                      >
+                        {label}
+                      </motion.span>
+                    )}
+                  </span>
+                )}
+              </NavLink>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Bottom Section: Market Ticker */}
+      <div className="w-full border-t border-hairline/60 pt-4 flex flex-col items-center">
+        <SidebarMarketChip expanded={expanded} />
+      </div>
+    </motion.aside>
+  )
+}
+
+function BottomNav() {
+  const location = useLocation()
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const open = isMarketOpenIST(now)
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-16 border-t border-hairline bg-surface-1/90 px-4 pb-safe-bottom backdrop-blur-lg sm:hidden justify-around items-center">
+      {navItems.map(({ to, label, icon: Icon }) => {
+        const isActive = isActivePath(to, location.pathname)
+        return (
+          <NavLink key={to} to={to} className="flex flex-col items-center justify-center gap-1.5 px-3 py-1" end={to === '/'}>
+            <span className={`relative flex items-center justify-center text-ink-muted ${isActive ? 'text-violet' : ''}`}>
+              <Icon className="h-[1.2rem] w-[1.2rem]" />
+            </span>
+            <span className={`text-[0.62rem] font-semibold tracking-wide ${isActive ? 'text-ink' : 'text-ink-muted'}`}>
+              {label}
+            </span>
+          </NavLink>
+        )
+      })}
+      
+      {/* Compact status marker on mobile bottom nav */}
+      <div className="flex flex-col items-center justify-center px-3">
+        <span className={`h-2.5 w-2.5 rounded-full ${open ? 'live-dot bg-mint' : 'bg-ink-muted/50'}`} />
+        <span className="text-[0.55rem] font-semibold text-ink-muted mt-1 uppercase tracking-wider">Live</span>
+      </div>
     </nav>
   )
 }
 
-export default function App() {
+function FeedHeader() {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const open = isMarketOpenIST(now)
+
+  return (
+    <div className="mb-4 flex flex-col gap-2 border-b border-hairline/60 pb-3">
+      <div className="flex items-center justify-between">
+        <span className="display text-lg font-bold tracking-tight text-ink">Watchlist</span>
+        <div className="flex items-center gap-1.5 rounded-full bg-surface-2/60 px-2.5 py-0.5 border border-hairline/50 text-[0.62rem] font-semibold text-ink-muted">
+          <span className={`h-1.5 w-1.5 rounded-full ${open ? 'live-dot bg-mint' : 'bg-ink-muted/50'}`} />
+          <span>{open ? 'NSE Live' : 'NSE Closed'}</span>
+        </div>
+      </div>
+      <div className="flex justify-between items-center text-[0.65rem] text-ink-muted">
+        <span className="num">{new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+        <span className="num">{istClock(now)} IST</span>
+      </div>
+    </div>
+  )
+}
+
+function AppContent() {
   const location = useLocation()
+  const { items, selectedAsset, setSelectedAsset, histories, loading, error } = useAssets()
+
   return (
     <MotionConfig reducedMotion="user">
       <div className="backdrop-grid" />
       <div className="backdrop-glow" />
 
-      <IslandNav />
+      <div className="app-container">
+        {/* Left Side Dock */}
+        <SidebarDock />
 
-      <main className="mx-auto max-w-6xl px-5 pt-28 pb-20 sm:px-8">
-        <AnimatePresence mode="wait" initial={false}>
-          <Routes location={location} key={location.pathname}>
-            <Route path="/" element={<Page><Dashboard /></Page>} />
-            <Route path="/watchlist" element={<Page><Watchlist /></Page>} />
-            <Route path="/alerts" element={<Page><Alerts /></Page>} />
-            <Route path="/settings" element={<Page><Settings /></Page>} />
-          </Routes>
-        </AnimatePresence>
-      </main>
+        {/* Middle Feed Column */}
+        <div className="middle-feed-pane border-r border-hairline p-5 hidden md:flex flex-col h-full overflow-hidden">
+          <FeedHeader />
+          
+          <div className="flex-grow overflow-y-auto pr-1 space-y-2.5 scrollbar-none pb-4">
+            {loading ? (
+              <div className="flex h-40 items-center justify-center text-xs text-ink-muted">
+                Loading watchlist...
+              </div>
+            ) : error ? (
+              <div className="text-xs text-coral border border-coral/30 rounded-xl bg-coral/5 p-3 leading-relaxed">
+                {error}
+              </div>
+            ) : items.length === 0 ? (
+              <div className="flex h-40 items-center justify-center text-xs text-ink-muted text-center leading-relaxed">
+                No assets in watchlist.<br />Add one in Watchlist tab.
+              </div>
+            ) : (
+              items.map((item) => {
+                const isSelected = selectedAsset === item.ticker
+                const sev = severity(item.drop_pct)
+                const closes = (histories[item.ticker] || []).map((d) => d.close)
+
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setSelectedAsset(item.ticker)}
+                    className={`w-full text-left rounded-xl border p-3.5 transition-all outline-none cursor-pointer flex flex-col gap-3.5 ${
+                      isSelected
+                        ? 'bg-surface-2 border-accent/60 shadow-[0_4px_20px_-8px_rgba(45,125,255,0.3)]'
+                        : 'bg-surface-2/20 border-hairline hover:bg-surface-2/50 hover:border-hairline/80'
+                    }`}
+                  >
+                    {/* Top row: Ticker & Status Badge */}
+                    <div className="flex items-start justify-between gap-2 w-full">
+                      <div className="min-w-0">
+                        <span className={`num font-semibold text-xs transition-colors ${isSelected ? 'text-accent' : 'text-ink-muted'}`}>
+                          {item.ticker}
+                        </span>
+                        <h3 className="text-[0.85rem] font-bold text-ink mt-0.5 line-clamp-1">
+                          {item.display_name}
+                        </h3>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.55rem] font-semibold tracking-[0.05em] uppercase ${sev.chip}`}>
+                        {item.active ? (item.drop_pct < 1 ? 'Calm' : sev.label) : 'Paused'}
+                      </span>
+                    </div>
+
+                    {/* Middle row: Closes Sparkline */}
+                    <div className="h-10 w-full flex items-center justify-center overflow-hidden">
+                      {closes.length > 1 ? (
+                        <Sparkline data={closes} stroke={item.active ? sev.bar : '#8A97A6'} width={240} height={40} />
+                      ) : (
+                        <span className="text-[0.62rem] text-ink-muted">No historical data</span>
+                      )}
+                    </div>
+
+                    {/* Bottom row: Prices and drawdowns */}
+                    <div className="flex items-end justify-between w-full border-t border-hairline/30 pt-2 text-xs">
+                      <div>
+                        <span className="text-[0.6rem] uppercase tracking-wider text-ink-muted">Price</span>
+                        <p className="num text-[0.85rem] font-bold text-ink mt-0.5">
+                          {fmtPrice(item.current_price)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[0.6rem] uppercase tracking-wider text-ink-muted">Drawdown</span>
+                        <p className={`num text-[0.85rem] font-bold mt-0.5 ${sev.text}`}>
+                          {item.drop_pct != null ? `−${item.drop_pct.toFixed(2)}%` : '—'}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Main Workspace Frame */}
+        <main className="workspace-pane pb-16 sm:pb-0">
+          <div className="flex-grow p-5 md:p-8 overflow-y-auto">
+            <AnimatePresence mode="wait" initial={false}>
+              <Routes location={location} key={location.pathname}>
+                <Route path="/" element={<Page><Dashboard /></Page>} />
+                <Route path="/watchlist" element={<Page><Watchlist /></Page>} />
+                <Route path="/alerts" element={<Page><Alerts /></Page>} />
+                <Route path="/settings" element={<Page><Settings /></Page>} />
+              </Routes>
+            </AnimatePresence>
+          </div>
+        </main>
+      </div>
+
+      {/* Bottom Nav Bar on Mobile */}
+      <BottomNav />
     </MotionConfig>
+  )
+}
+
+export default function App() {
+  return (
+    <AssetProvider>
+      <AppContent />
+    </AssetProvider>
   )
 }
