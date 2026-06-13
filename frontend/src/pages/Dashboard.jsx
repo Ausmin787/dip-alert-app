@@ -6,7 +6,7 @@ import { CountUp, Magnetic, Reveal, SplitReveal } from '../components/anim.jsx'
 import { useReducedMotion } from '../components/useReducedMotion.js'
 import { IconAlertTriangle, IconExternal, IconTrendDown } from '../components/icons.jsx'
 import { fmtAmount, fmtDate, fmtDateTime, fmtLevel, fmtPrice, severity, todayLine } from '../lib.js'
-import { useAssets } from '../AssetContext.jsx'
+import { useAssets } from '../useAssets.js'
 
 const IndexOrb = lazy(() => import('../components/three/IndexOrb.jsx'))
 const DipChart = lazy(() => import('../components/DipChart.jsx'))
@@ -110,37 +110,6 @@ function SpotlightCTA({ item }) {
             </a>
           </Magnetic>
         )}
-      </article>
-    </Reveal>
-  )
-}
-
-function CompactAsset({ item }) {
-  const sev = severity(item.drop_pct)
-  return (
-    <Reveal>
-      <article className="panel panel-hover p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-semibold text-ink">{item.display_name}</h3>
-            <p className="num mt-0.5 text-[0.65rem] text-ink-muted">{item.ticker}</p>
-          </div>
-          <span
-            className={`rounded-full px-2.5 py-1 text-[0.6rem] font-semibold tracking-[0.08em] uppercase ${sev.chip}`}
-          >
-            {item.active ? sev.label : 'paused'}
-          </span>
-        </div>
-        <div className="mt-4 flex items-end justify-between gap-4">
-          <p className="num text-2xl font-semibold text-ink">{fmtPrice(item.current_price)}</p>
-          <p className={`num text-sm font-semibold ${sev.text}`}>
-            {item.drop_pct != null ? `−${item.drop_pct.toFixed(2)}%` : '—'}
-          </p>
-        </div>
-        <p className="num mt-2 text-[0.65rem] text-ink-muted">
-          next −{item.next_alert_level != null ? fmtLevel(item.next_alert_level) : '?'}% · ATH{' '}
-          {fmtPrice(item.ath_price)}
-        </p>
       </article>
     </Reveal>
   )

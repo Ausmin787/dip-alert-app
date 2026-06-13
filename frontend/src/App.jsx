@@ -6,9 +6,10 @@ import Watchlist from './pages/Watchlist.jsx'
 import Alerts from './pages/Alerts.jsx'
 import Settings from './pages/Settings.jsx'
 import { Page } from './components/motion.jsx'
-import { IconBell, IconChevronDown, IconDip, IconGear, IconGrid, IconLayers } from './components/icons.jsx'
-import { isMarketOpenIST, istClock, fmtPrice, fmtLevel, severity } from './lib.js'
-import { AssetProvider, useAssets } from './AssetContext.jsx'
+import { IconBell, IconDip, IconGear, IconGrid, IconLayers } from './components/icons.jsx'
+import { isMarketOpenIST, istClock, fmtPrice, severity } from './lib.js'
+import { AssetProvider } from './AssetContext.jsx'
+import { useAssets } from './useAssets.js'
 import Sparkline from './components/Sparkline.jsx'
 
 const navItems = [
@@ -71,7 +72,6 @@ function SidebarMarketChip({ expanded }) {
 }
 
 function SidebarDock() {
-  const location = useLocation()
   const [hovered, setHovered] = useState(false)
   const expanded = hovered
 
@@ -101,7 +101,6 @@ function SidebarDock() {
         {/* Navigation Links */}
         <div className="flex flex-col gap-1.5 w-full">
           {navItems.map(({ to, label, icon: Icon }) => {
-            const isActive = isActivePath(to, location.pathname)
             return (
               <NavLink key={to} to={to} end={to === '/'} className="relative block">
                 {({ isActive }) => (

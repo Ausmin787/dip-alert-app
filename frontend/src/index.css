@@ -1,9 +1,9 @@
 @import 'tailwindcss';
 
-/* ─────────────────────────────────── Framer ───────────────────────────────────
-   Dark-only · white + near-black anchor surfaces · surface-lift hierarchy
-   Pill CTAs · gradient spotlight cards (the signature) · accent-blue for links only
-   Inter everywhere, hard negative tracking on display type.
+/* ─────────────────────────────── Market Terminal ──────────────────────────────
+   Viewport-locked split-pane shell (sidebar dock · 320px asset feed · workspace).
+   Deep navy-black surfaces with lift hierarchy · blue/teal accent · severity
+   green/gold/rose · Inter everywhere, hard negative tracking on display type.
 ──────────────────────────────────────────────────────────────────────────────── */
 
 @theme {
@@ -206,8 +206,8 @@ body {
 }
 
 .field:focus {
-  border-color: rgba(0, 153, 255, 0.5);
-  box-shadow: 0 0 0 3px rgba(0, 153, 255, 0.15);
+  border-color: rgba(45, 125, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(45, 125, 255, 0.15);
 }
 
 .field:disabled {
@@ -319,7 +319,7 @@ body {
 /* ── misc ── */
 
 ::selection {
-  background: rgba(0, 153, 255, 0.35);
+  background: rgba(45, 125, 255, 0.35);
 }
 
 input,

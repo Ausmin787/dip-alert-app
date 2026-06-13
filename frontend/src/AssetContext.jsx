@@ -1,82 +1,87 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getStatus, getHistory } from './api'
+import { AssetContext } from './useAssets.js'
 
-const AssetContext = createContext()
-
+/* Global asset state: fetches /api/status + 30-day histories for every
+   watchlist asset, persists the selected ticker in localStorage, and exposes a
+   refresh() the Watchlist CRUD calls to update the feed instantly. */
 export function AssetProvider({ children }) {
   const [items, setItems] = useState([])
-  const [selectedAsset, setSelectedAssetState] = useState(() => localStorage.getItem('selected_asset') || '')
+  const [selectedAsset, setSelectedAssetState] = useState(
+    () => localStorage.getItem('selected_asset') || '',
+  )
   const [histories, setHistories] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const setSelectedAsset = (ticker) => {
+  // Live mirrors of state so the 60s poll reads the current values, not a stale
+  // closure captured when the effect was created.
+  const selectedRef = useRef(selectedAsset)
+  const historiesRef = useRef(histories)
+  useEffect(() => {
+    historiesRef.current = histories
+  }, [histories])
+
+  const setSelectedAsset = useCallback((ticker) => {
+    selectedRef.current = ticker
     setSelectedAssetState(ticker)
     localStorage.setItem('selected_asset', ticker)
-    // Dispatch custom event to notify other components (like Dashboard)
-    window.dispatchEvent(new Event('selected_asset_changed'))
-  }
+  }, [])
 
-  const loadData = async (isInitial = false) => {
+  const loadData = useCallback(async () => {
     try {
-      if (isInitial) setLoading(true)
       const data = await getStatus()
-      const fetchedItems = data?.items || []
-      setItems(fetchedItems)
+      const fetched = data?.items || []
+      setItems(fetched)
       setError(null)
 
-      // Auto-select first asset if none is selected or selected one doesn't exist
-      let currentSelection = selectedAsset
-      if (!currentSelection || !fetchedItems.some(i => i.ticker === currentSelection)) {
-        const firstActive = fetchedItems.find(i => i.active) ?? fetchedItems[0]
-        if (firstActive) {
-          currentSelection = firstActive.ticker
-          setSelectedAsset(currentSelection)
-        }
+      // Auto-select the first asset only when nothing valid is selected. Reads
+      // selectedRef (not a stale closure), so a poll never snaps the user's own
+      // selection back to the first asset.
+      const current = selectedRef.current
+      if (!current || !fetched.some((i) => i.ticker === current)) {
+        const firstActive = fetched.find((i) => i.active) ?? fetched[0]
+        if (firstActive) setSelectedAsset(firstActive.ticker)
       }
 
-      // Fetch histories for all loaded items in parallel
-      const historyPromises = fetchedItems.map(async (item) => {
-        try {
-          const hist = await getHistory(item.ticker, 30)
-          return { ticker: item.ticker, data: hist }
-        } catch (err) {
-          console.error(`Failed to fetch history for ${item.ticker}`, err)
-          return { ticker: item.ticker, data: [] }
-        }
-      })
-      const results = await Promise.all(historyPromises)
-      const newHistories = {}
-      results.forEach(res => {
-        newHistories[res.ticker] = res.data
-      })
-      setHistories(newHistories)
+      const results = await Promise.all(
+        fetched.map(async (item) => {
+          try {
+            return { ticker: item.ticker, data: await getHistory(item.ticker, 30) }
+          } catch (err) {
+            console.error(`Failed to fetch history for ${item.ticker}`, err)
+            return { ticker: item.ticker, data: [] }
+          }
+        }),
+      )
+      setHistories(Object.fromEntries(results.map((r) => [r.ticker, r.data])))
     } catch (err) {
       console.error('Failed to load asset status', err)
       setError('Backend unreachable — is the API server running?')
     } finally {
-      if (isInitial) setLoading(false)
+      setLoading(false)
     }
-  }
+  }, [setSelectedAsset])
 
   useEffect(() => {
-    loadData(true)
-    const interval = setInterval(() => loadData(false), 60_000)
+    // Fetch on mount + 60s poll. loadData only setStates after its awaits
+    // (async continuations, never a synchronous cascade), so this is safe.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData()
+    const interval = setInterval(loadData, 60_000)
     return () => clearInterval(interval)
-  }, [])
+  }, [loadData])
 
-  // Refetch history for selected asset if it is missing
+  // Backfill history for the selected asset if a poll hasn't covered it yet.
   useEffect(() => {
-    if (selectedAsset && !histories[selectedAsset]) {
+    if (selectedAsset && !historiesRef.current[selectedAsset]) {
       getHistory(selectedAsset, 30)
-        .then(data => {
-          setHistories(prev => ({ ...prev, [selectedAsset]: data }))
-        })
+        .then((data) => setHistories((prev) => ({ ...prev, [selectedAsset]: data })))
         .catch(() => {})
     }
   }, [selectedAsset])
 
-  const selectedItem = items.find(i => i.ticker === selectedAsset)
+  const selectedItem = items.find((i) => i.ticker === selectedAsset)
   const selectedHistory = histories[selectedAsset] || []
 
   return (
@@ -90,18 +95,10 @@ export function AssetProvider({ children }) {
         histories,
         loading,
         error,
-        refresh: () => loadData(false)
+        refresh: loadData,
       }}
     >
       {children}
     </AssetContext.Provider>
   )
-}
-
-export function useAssets() {
-  const context = useContext(AssetContext)
-  if (!context) {
-    throw new Error('useAssets must be used within an AssetProvider')
-  }
-  return context
 }

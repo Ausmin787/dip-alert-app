@@ -4,7 +4,7 @@ import { addAsset, deleteAsset, getWatchlist, updateAsset } from '../api.js'
 import { Magnetic, Reveal } from '../components/anim.jsx'
 import { IconPause, IconPencil, IconPlay, IconPlus, IconTrash } from '../components/icons.jsx'
 import { fmtAmount, fmtLevel } from '../lib.js'
-import { useAssets } from '../AssetContext.jsx'
+import { useAssets } from '../useAssets.js'
 
 const emptyForm = {
   ticker: '',

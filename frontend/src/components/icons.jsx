@@ -98,12 +98,6 @@ export const IconCheck = (props) => (
   </svg>
 )
 
-export const IconChevronDown = (props) => (
-  <svg {...base} {...props}>
-    <path d="M6 9l6 6 6-6" />
-  </svg>
-)
-
 export const IconAlertTriangle = (props) => (
   <svg {...base} {...props}>
     <path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />

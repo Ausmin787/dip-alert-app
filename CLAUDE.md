@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This App Is
 
-A single-user web app (built for a friend — no auth) that watches the Nifty 50 index during NSE market hours, fires a WhatsApp alert (via CallMeBot) each time price crosses a new −1% level below its all-time high, and shows a dark, motion-first dashboard (Framer-style, with a three.js hero and GSAP animation). Strategy: "buy ₹1L of Nifty 50 ETF for every −1% fall from ATH."
+A single-user web app (built for a friend — no auth) that watches the Nifty 50 index during NSE market hours, fires a WhatsApp alert (via CallMeBot) each time price crosses a new −1% level below its all-time high, and shows a viewport-locked, three-pane "market terminal" dashboard (sidebar dock · 320px live asset feed · workspace) with a three.js hero and GSAP/Motion animation. Strategy: "buy ₹1L of Nifty 50 ETF for every −1% fall from ATH."
 
 GitHub: https://github.com/Ausmin787/dip-alert-app (branch: `master`)
+
+> **Parallel tooling:** `.planning/` (a GSD phase/roadmap system) and `GEMINI.md` are artifacts from an Antigravity/Gemini session — leave them be. This `CLAUDE.md` is the source of truth for Claude; some `.planning/` docs have minor drift (e.g. they say "Python 3.14" / "Jest" — neither is accurate).
 
 ## Commands
 
@@ -83,7 +85,7 @@ State rules that must not be broken (all in `backend/app/ath_logic.py`, verified
   - Middle Live Asset Feed Pane (`middle-feed-pane`, hidden on mobile) displaying watchlist asset cards with inline SVG sparklines, live prices, severity badges, and an IST clock header.
   - Right Workspace Main Panel (`workspace-pane`) showing page routes.
   - Fallback bottom navigation (`BottomNav`, visible on mobile `sm:hidden`).
-- `AssetContext.jsx` — exports `AssetProvider` and custom `useAssets` hook. Handles unified data loading from `/api/status`, parallel 30-day history pre-fetching for all assets, active selection memory (`localStorage`), and context refetch triggers.
+- `AssetContext.jsx` — the `AssetProvider` component: unified data loading from `/api/status`, parallel 30-day history pre-fetching for all assets, active selection memory (`localStorage`), and a `refresh()` the Watchlist CRUD calls. The `useAssets` hook + context object live in **`useAssets.js`** (split out so the provider file exports only a component — fast-refresh rule). The 60s poll reads selection via a ref, so it never resets a selection the user just made.
 - `pages/Dashboard.jsx` — active page view showing hero selected asset metrics, standard `DipLadder`, `RecentAlerts`, and `DipChart` (price history vs. ATH).
   - Refactored to consume `useAssets()` context directly for zero-lag chart loading.
   - **Mobile switcher:** Includes `MobileAssetSwitcher` (rendered `<md` viewports) containing a horizontally scrollable row of asset pill-chips (since the middle pane is hidden on mobile) so users can browse and select assets.
@@ -94,9 +96,9 @@ State rules that must not be broken (all in `backend/app/ath_logic.py`, verified
 - `components/motion.jsx` — now just `Page` (route transition). `components/DipLadder.jsx` — signature segmented −1%…−N% ladder (GSAP-staggered fill, gradient by severity, ✓ delivered, pulsing dashed next). `components/Sparkline.jsx` — self-drawing SVG sparkline.
 - `lib.js` — formatters, `severity()` (mint <1%, amber 1–3%, rose 3%+ below ATH), `fmtLevel`, and client-side `isMarketOpenIST()`/`istClock()` so the nav chip stays live without polling the backend
 
-### Design system: "Framer" (don't regress these)
+### Design system: "Market Terminal" (don't regress these)
 
-Dark, motion-first aesthetic adapted from Framer's DESIGN.md (getdesign.md / VoltAgent/awesome-design-md), in `frontend/src/index.css` + GSAP + `motion`:
+Dark, motion-first "market terminal" aesthetic (a blue/teal palette evolved from a Framer DESIGN.md base), in `frontend/src/index.css` + GSAP + `motion`. The viewport-locked split-pane shell uses `.app-container` / `.sidebar-dock` / `.middle-feed-pane` (320px) / `.workspace-pane` (each `100dvh`, panes scroll internally):
 - Tokens (`@theme`): Palette 1 / Market Terminal — canvas `#070a0e`, `surface-1 #10161d`, `surface-2 #18212b`, `hairline #263241`, text `ink #f4f7fa` / `ink-muted #8a97a6`, `accent #2d7dff` for links/focus ONLY (**never a generic fill**), gradient palette `violet #2d7dff` / `magenta #20c7b5` / `orange #f6c65b` / `coral #ff5e6c`, severity `mint #2fe6a3` / amber / rose. Font: **Inter** everywhere; display via `.display` (weight 700, hard negative tracking `-0.045em`); numerals via `.num` (tabular-nums) — no separate mono font.
 - `.backdrop-grid` (dot grid, z −3) + `.backdrop-glow` (blue→mint bloom, z −2) are fixed layers; **`body` background must stay `transparent`** — an opaque body paints over negative z-index layers (CSS painting order)
 - Recipes: `.panel` (surface-1 card, hairline border, `.panel-hover` lift); `.spotlight` (the signature gradient tile — **one per page**, blue→teal default, override the gradient via inline `style`); `.btn-primary` = **white pill**, `.btn-ghost` = charcoal pill (never bordered/squared CTAs)
