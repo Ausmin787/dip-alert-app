@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getSettings, sendTestAlert, updateSettings } from '../api.js'
+import { getAppToken, getSettings, sendTestAlert, setAppToken, updateSettings } from '../api.js'
 import { Reveal } from '../components/motion.jsx'
 import { IconAlertTriangle, IconCheck } from '../components/icons.jsx'
 
@@ -8,7 +8,7 @@ const blankForm = { whatsapp_phone: '', callmebot_apikey: '', check_interval_min
 export default function Settings() {
   const [loadState, setLoadState] = useState('loading') // loading | error | ready
   const [saved, setSaved] = useState(null) // redacted server state
-  const [form, setForm] = useState(blankForm)
+  const [form, setForm] = useState(() => ({ ...blankForm, app_token: getAppToken() }))
   const [status, setStatus] = useState(null) // { kind: 'ok' | 'err', msg }
   const [busy, setBusy] = useState(false)
 
@@ -44,16 +44,18 @@ export default function Settings() {
     e.preventDefault()
     setBusy(true)
     setStatus(null)
+    setAppToken((form.app_token ?? '').trim()) // store locally before the PUT carries it
     try {
       const s = await updateSettings({
-        ...form,
+        whatsapp_phone: form.whatsapp_phone,
+        callmebot_apikey: form.callmebot_apikey,
         check_interval_min: parseInt(form.check_interval_min, 10),
       })
       setSaved(s)
-      setForm({ ...blankForm, check_interval_min: s.check_interval_min })
+      setForm({ ...blankForm, check_interval_min: s.check_interval_min, app_token: getAppToken() })
       setStatus({ kind: 'ok', msg: 'Settings saved.' })
-    } catch {
-      setStatus({ kind: 'err', msg: 'Failed to save settings.' })
+    } catch (err) {
+      setStatus({ kind: 'err', msg: err.response?.data?.detail ?? 'Failed to save settings.' })
     } finally {
       setBusy(false)
     }
@@ -147,6 +149,32 @@ export default function Settings() {
               disabled={loadState !== 'ready'}
             />
           </div>
+          {saved?.write_protected && (
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="tag">Access token (write protection)</label>
+                {form.app_token ? (
+                  <span className="num flex items-center gap-1 text-[0.62rem] text-mint">
+                    <IconCheck className="h-3 w-3" /> stored in this browser
+                  </span>
+                ) : (
+                  <span className="num text-[0.62rem] text-gold">required — writes will fail without it</span>
+                )}
+              </div>
+              <input
+                className="field"
+                type="password"
+                placeholder="The APP_TOKEN value set on Railway"
+                value={form.app_token}
+                onChange={set('app_token')}
+                disabled={loadState !== 'ready'}
+                autoComplete="off"
+              />
+              <p className="mt-1.5 text-[0.68rem] leading-relaxed text-mist">
+                This backend requires a token for changes. It's saved only in this browser.
+              </p>
+            </div>
+          )}
 
           {status && (
             <p className={`text-sm ${status.kind === 'ok' ? 'text-mint' : 'text-blush'}`}>{status.msg}</p>

@@ -215,13 +215,21 @@ export default function Watchlist() {
   }
 
   const togglePause = async (item) => {
-    await updateAsset(item.id, { ...item, active: !item.active })
+    try {
+      await updateAsset(item.id, { ...item, active: !item.active })
+    } catch (err) {
+      window.alert(err.response?.data?.detail ?? 'Update failed')
+    }
     await load()
   }
 
   const remove = async (item) => {
     if (!window.confirm(`Stop tracking ${item.display_name}? Alert history is kept.`)) return
-    await deleteAsset(item.id)
+    try {
+      await deleteAsset(item.id)
+    } catch (err) {
+      window.alert(err.response?.data?.detail ?? 'Delete failed')
+    }
     await load()
   }
 

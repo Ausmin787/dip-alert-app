@@ -5,6 +5,18 @@ import axios from 'axios'
 const base = import.meta.env.VITE_API_URL ?? ''
 const client = axios.create({ baseURL: `${base}/api` })
 
+// Optional write protection: if the backend sets APP_TOKEN, every write
+// needs this header. The token lives only in this browser's localStorage.
+export const getAppToken = () => localStorage.getItem('app_token') ?? ''
+export const setAppToken = (t) =>
+  t ? localStorage.setItem('app_token', t) : localStorage.removeItem('app_token')
+
+client.interceptors.request.use((config) => {
+  const token = getAppToken()
+  if (token) config.headers['X-App-Token'] = token
+  return config
+})
+
 export const getStatus = () => client.get('/status').then((r) => r.data)
 export const getHistory = (ticker, days = 30) =>
   client.get(`/history/${encodeURIComponent(ticker)}`, { params: { days } }).then((r) => r.data)
