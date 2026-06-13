@@ -33,6 +33,7 @@ class AlertLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     ticker: str = Field(index=True)
     alert_level: int
+    level_pct: float = 0.0  # alert_level × threshold_pct at fire time (what the user sees)
     current_price: float
     ath_price: float
     drop_pct: float

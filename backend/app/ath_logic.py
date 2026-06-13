@@ -75,9 +75,11 @@ def check_asset(session: Session, item: Watchlist) -> AlertLog | None:
 
     # New level crossed — fire alert
     settings = session.exec(select(Settings)).first()
+    configured = bool(settings and settings.whatsapp_phone and settings.callmebot_apikey)
+    level_pct = level * item.threshold_pct
     message = format_alert_message(
         display_name=item.display_name,
-        level=level,
+        level_pct=level_pct,
         current_price=price,
         ath_price=tracker.ath_price,
         drop_pct=drop_pct,
@@ -85,12 +87,21 @@ def check_asset(session: Session, item: Watchlist) -> AlertLog | None:
         broker_url=item.broker_url,
     )
     sent = False
-    if settings:
+    if configured:
         sent = send_whatsapp(settings.whatsapp_phone, settings.callmebot_apikey, message)
+        if not sent:
+            # Delivery failed: don't consume the level — the next scheduler
+            # tick retries naturally, so the user never silently loses an alert.
+            logger.warning(
+                "WhatsApp send failed for %s level -%g%%; will retry next check",
+                item.ticker, level_pct,
+            )
+            return None
 
     alert = AlertLog(
         ticker=item.ticker,
         alert_level=level,
+        level_pct=round(level_pct, 2),
         current_price=price,
         ath_price=tracker.ath_price,
         drop_pct=round(drop_pct, 2),
@@ -101,7 +112,7 @@ def check_asset(session: Session, item: Watchlist) -> AlertLog | None:
     tracker.updated_at = datetime.utcnow()
     session.commit()
     session.refresh(alert)
-    logger.info("Alert fired for %s at level -%d%% (drop %.2f%%)", item.ticker, level, drop_pct)
+    logger.info("Alert fired for %s at level -%g%% (drop %.2f%%)", item.ticker, level_pct, drop_pct)
     return alert
 
 
