@@ -21,7 +21,7 @@ function fibonacciSphere(n) {
 }
 
 const hexFor = (dropPct) =>
-  dropPct == null || dropPct < 1 ? '#34d399' : dropPct < 3 ? '#ff7a3d' : '#ff5577'
+  dropPct == null || dropPct < 1 ? '#2FE6A3' : dropPct < 3 ? '#F6C65B' : '#FF5E6C'
 
 /* Soft round sprite so points read as glowing dots, not squares. */
 function makeSprite() {

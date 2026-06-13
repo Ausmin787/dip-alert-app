@@ -13,7 +13,7 @@ const DipChart = lazy(() => import('../components/DipChart.jsx'))
 function OrbFallback() {
   return (
     <div className="absolute inset-0 grid place-items-center">
-      <div className="h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(106,76,245,0.45),transparent_70%)] blur-2xl" />
+      <div className="h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(45,125,255,0.45),transparent_70%)] blur-2xl" />
     </div>
   )
 }
@@ -21,10 +21,10 @@ function OrbFallback() {
 const spotlightBg = (dropPct) => {
   const linear =
     dropPct == null || dropPct < 1
-      ? 'linear-gradient(135deg, #6a4cf5, #d44df0)'
+      ? 'linear-gradient(135deg, #2D7DFF, #20C7B5)'
       : dropPct < 3
-        ? 'linear-gradient(135deg, #ff7a3d, #d44df0)'
-        : 'linear-gradient(135deg, #ff5577, #6a4cf5)'
+        ? 'linear-gradient(135deg, #F6C65B, #2D7DFF)'
+        : 'linear-gradient(135deg, #FF5E6C, #2D7DFF)'
   return `radial-gradient(120% 120% at 0% 0%, rgba(255,255,255,0.18), transparent 45%), ${linear}`
 }
 

@@ -46,7 +46,7 @@ function MarketChip() {
 
 function BrandGlyph() {
   return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet to-magenta text-ink shadow-[0_8px_24px_-8px_rgba(106,76,245,0.8)]">
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet to-magenta text-ink shadow-[0_8px_24px_-8px_rgba(45,125,255,0.8)]">
       <IconDip className="h-[1.1rem] w-[1.1rem]" strokeWidth={2} />
     </span>
   )
