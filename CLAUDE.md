@@ -78,7 +78,16 @@ State rules that must not be broken (all in `backend/app/ath_logic.py`, verified
 
 - `api.js` — all backend calls; baseURL is `VITE_API_URL` in production, relative (proxied) in dev
 - `pages/` — Dashboard, Watchlist, Alerts, Settings (routed in `App.jsx`)
-- `App.jsx` — the **Dynamic Island** nav (no sidebar, no bottom tab bar): a floating top-center pill that shows a full bar (brand + inline pill links with `layoutId="island-active"` + NSE/clock chip) at scroll-top, and springs into a compact pill (`brand glyph + active route + chevron`) once `scrollY > 24` **or** below the `lg` breakpoint; the compact pill opens a popover menu. Built with `motion` `layout` spring + `AnimatePresence`. Main content needs top padding (`pt-28`) to clear the floating island.
+- `App.jsx` — implements the **Stripe-Style Split Pane** layout:
+  - Collapsible Icon Left Sidebar Dock (`SidebarDock`, expands 64px ➔ 200px on hover) containing page routing links and live market chip.
+  - Middle Live Asset Feed Pane (`middle-feed-pane`, hidden on mobile) displaying watchlist asset cards with inline SVG sparklines, live prices, severity badges, and an IST clock header.
+  - Right Workspace Main Panel (`workspace-pane`) showing page routes.
+  - Fallback bottom navigation (`BottomNav`, visible on mobile `sm:hidden`).
+- `AssetContext.jsx` — exports `AssetProvider` and custom `useAssets` hook. Handles unified data loading from `/api/status`, parallel 30-day history pre-fetching for all assets, active selection memory (`localStorage`), and context refetch triggers.
+- `pages/Dashboard.jsx` — active page view showing hero selected asset metrics, standard `DipLadder`, `RecentAlerts`, and `DipChart` (price history vs. ATH).
+  - Refactored to consume `useAssets()` context directly for zero-lag chart loading.
+  - **Mobile switcher:** Includes `MobileAssetSwitcher` (rendered `<md` viewports) containing a horizontally scrollable row of asset pill-chips (since the middle pane is hidden on mobile) so users can browse and select assets.
+- `pages/Watchlist.jsx` — watchlist CRUD (add/edit/delete/pause). Triggers context `refresh()` on CRUD operations to synchronize the middle feed pane instantly.
 - `components/three/IndexOrb.jsx` — the three.js hero (React-Three-Fiber point-cloud sphere); recolors mint→amber→rose with `drop_pct`, ripples a shockwave on each new dip level, slow auto-rotate + pointer parallax. **Lazy-loaded** (own bundle chunk) and `frameloop="never"` under reduced motion.
 - `components/anim.jsx` — GSAP helpers: `Reveal` (ScrollTrigger entrance), `CountUp`, `SplitReveal` (headline word stagger), `Magnetic` (cursor-pull buttons). **Gotcha:** `Reveal` blocks start at opacity 0 until scrolled into view, so a *full-page* Playwright screenshot shows below-fold content blank — screenshot per-viewport and scroll to verify.
 - `components/useReducedMotion.js` — matchMedia hook gating GSAP + the orb (split into its own file so `anim.jsx` stays component-only for the fast-refresh lint rule).
@@ -91,7 +100,7 @@ Dark, motion-first aesthetic adapted from Framer's DESIGN.md (getdesign.md / Vol
 - Tokens (`@theme`): Palette 1 / Market Terminal — canvas `#070a0e`, `surface-1 #10161d`, `surface-2 #18212b`, `hairline #263241`, text `ink #f4f7fa` / `ink-muted #8a97a6`, `accent #2d7dff` for links/focus ONLY (**never a generic fill**), gradient palette `violet #2d7dff` / `magenta #20c7b5` / `orange #f6c65b` / `coral #ff5e6c`, severity `mint #2fe6a3` / amber / rose. Font: **Inter** everywhere; display via `.display` (weight 700, hard negative tracking `-0.045em`); numerals via `.num` (tabular-nums) — no separate mono font.
 - `.backdrop-grid` (dot grid, z −3) + `.backdrop-glow` (blue→mint bloom, z −2) are fixed layers; **`body` background must stay `transparent`** — an opaque body paints over negative z-index layers (CSS painting order)
 - Recipes: `.panel` (surface-1 card, hairline border, `.panel-hover` lift); `.spotlight` (the signature gradient tile — **one per page**, blue→teal default, override the gradient via inline `style`); `.btn-primary` = **white pill**, `.btn-ghost` = charcoal pill (never bordered/squared CTAs)
-- Two animation libs, by design: **GSAP** (content reveals + micro-interactions via `anim.jsx`, plus the orb shockwave) and **`motion`** (route transitions, the Dynamic Island `layout` morph + nav indicator, the Watchlist modal). Both honor reduced motion (`useReducedMotion` + `MotionConfig reducedMotion="user"`); route changes go through `AnimatePresence mode="wait"`
+- Two animation libs, by design: **GSAP** (content reveals + micro-interactions via `anim.jsx`, plus the orb shockwave) and **`motion`** (route transitions, the SidebarDock hover spring, the Watchlist modal). Both honor reduced motion (`useReducedMotion` + `MotionConfig reducedMotion="user"`); route changes go through `AnimatePresence mode="wait"`
 - **three.js**: keep the orb lazy-loaded and capped (`dpr={[1, 2]}`); no postprocessing/bloom dep (bundle weight) — emissive + additive blending instead
 - Recharts: keep `isAnimationActive={false}` on series — the draw animation renders blank under React StrictMode. The chart lives in `components/DipChart.jsx` and is **lazy-loaded** (recharts is ~330 kB; keep it out of the main bundle)
 
