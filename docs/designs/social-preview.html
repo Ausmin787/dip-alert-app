@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>dip-alert-app — Social Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 1280px; height: 640px;
+      overflow: hidden;
+      background: #08071a;
+      font-family: 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .canvas {
+      position: relative;
+      width: 1280px; height: 640px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      background:
+        radial-gradient(ellipse 75% 90% at 18% 52%, rgba(80, 18, 230, 0.26) 0%, transparent 58%),
+        radial-gradient(ellipse 55% 70% at 72% 88%, rgba(14, 95, 235, 0.22) 0%, transparent 55%),
+        #08071a;
+    }
+    .bg-center {
+      position: absolute;
+      width: 960px; height: 960px;
+      background: radial-gradient(circle, rgba(88, 22, 255, 0.30) 0%, transparent 60%);
+      top: 50%; left: 36%;
+      transform: translate(-50%,-50%);
+      pointer-events: none;
+    }
+    .bg-tr {
+      position: absolute;
+      width: 540px; height: 540px;
+      background: radial-gradient(circle, rgba(0, 210, 145, 0.22) 0%, transparent 62%);
+      top: -130px; right: 20px;
+      pointer-events: none;
+    }
+    .bg-br {
+      position: absolute;
+      width: 420px; height: 420px;
+      background: radial-gradient(circle, rgba(239, 60, 80, 0.16) 0%, transparent 62%);
+      bottom: -80px; right: 160px;
+      pointer-events: none;
+    }
+    .bg-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none;
+    }
+
+    /* ── Left ── */
+    .left {
+      position: relative; z-index: 2;
+      flex: 0 0 660px;
+      padding-left: 88px; padding-right: 24px;
+    }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(8, 6, 30, 0.60);
+      border-top: 1px solid rgba(100, 60, 255, 0.48);
+      border-right: 1px solid rgba(100, 60, 255, 0.22);
+      border-bottom: 1px solid rgba(100, 60, 255, 0.14);
+      border-left: 1px solid rgba(100, 60, 255, 0.22);
+      border-radius: 100px;
+      padding: 6px 16px 6px 10px;
+      margin-bottom: 28px;
+      backdrop-filter: blur(20px);
+      box-shadow: inset 0 1px 0 rgba(160, 120, 255, 0.12), 0 4px 16px rgba(0,0,0,0.25);
+    }
+    .eyebrow-dot {
+      width: 6px; height: 6px;
+      background: #4f8cff; border-radius: 50%;
+    }
+    .eyebrow-text {
+      font-size: 12px; font-weight: 600;
+      color: #4f8cff;
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    h1 {
+      font-size: 76px; font-weight: 800;
+      line-height: 1.02; letter-spacing: -0.028em;
+      color: #fff;
+      margin-bottom: 22px;
+    }
+    h1 em { font-style: normal; color: #4f8cff; }
+    .sub {
+      font-size: 19px; font-weight: 400;
+      color: rgba(255,255,255,0.42);
+      line-height: 1.55;
+      max-width: 456px;
+      margin-bottom: 44px;
+    }
+    .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: rgba(8, 6, 28, 0.62);
+      border-top: 1px solid rgba(255,255,255,0.28);
+      border-right: 1px solid rgba(255,255,255,0.12);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      border-left: 1px solid rgba(255,255,255,0.12);
+      border-radius: 100px;
+      padding: 9px 18px;
+      backdrop-filter: blur(32px) saturate(160%);
+      -webkit-backdrop-filter: blur(32px) saturate(160%);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.18);
+    }
+    .pill span {
+      font-size: 13px; font-weight: 500;
+      color: rgba(255,255,255,0.90);
+      white-space: nowrap;
+    }
+
+    /* ── Right ── */
+    .right {
+      position: relative; z-index: 2;
+      flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      padding-right: 72px;
+    }
+    .glass-card {
+      position: relative;
+      width: 368px;
+      background: rgba(7, 5, 28, 0.62);
+      border-top: 1px solid rgba(255,255,255,0.24);
+      border-right: 1px solid rgba(255,255,255,0.10);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-left: 1px solid rgba(255,255,255,0.10);
+      border-radius: 28px;
+      backdrop-filter: blur(52px) saturate(180%);
+      -webkit-backdrop-filter: blur(52px) saturate(180%);
+      padding: 26px 26px 22px;
+      box-shadow: 0 40px 90px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.18);
+      animation: cardPulse 5s ease-in-out infinite;
+    }
+    @keyframes cardPulse {
+      0%,100% { box-shadow: 0 40px 90px rgba(0,0,0,0.55), 0 0 60px rgba(80,22,245,0.12), inset 0 1px 0 rgba(255,255,255,0.18); }
+      50%      { box-shadow: 0 40px 90px rgba(0,0,0,0.55), 0 0 90px rgba(80,22,245,0.22), inset 0 1px 0 rgba(255,255,255,0.18); }
+    }
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .card-label {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.09em; text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+    }
+    .dip-tag {
+      background: rgba(10, 3, 18, 0.65);
+      border-top: 1px solid rgba(239,68,68,0.48);
+      border-right: 1px solid rgba(239,68,68,0.22);
+      border-bottom: 1px solid rgba(239,68,68,0.14);
+      border-left: 1px solid rgba(239,68,68,0.22);
+      border-radius: 100px;
+      padding: 4px 10px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+      color: #ff5a5a;
+      box-shadow: inset 0 1px 0 rgba(255,80,80,0.14), 0 0 12px rgba(239,68,68,0.12);
+    }
+    .divider {
+      height: 1px;
+      background: rgba(255,255,255,0.065);
+      margin: 16px 0;
+    }
+    .card-stats { display: flex; justify-content: space-between; }
+    .stat-lbl {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      color: rgba(255,255,255,0.28);
+      margin-bottom: 4px;
+    }
+    .stat-val {
+      font-size: 20px; font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: #fff;
+    }
+    .stat-val.neg { color: #ef4444; }
+    .bell-badge {
+      position: absolute; top: -18px; right: -18px;
+      width: 54px; height: 54px;
+      background: rgba(6, 4, 24, 0.68);
+      border-top: 1.5px solid rgba(100, 140, 255, 0.60);
+      border-right: 1.5px solid rgba(79,140,255,0.28);
+      border-bottom: 1.5px solid rgba(79,140,255,0.18);
+      border-left: 1.5px solid rgba(79,140,255,0.28);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(28px) saturate(160%);
+      box-shadow: 0 0 36px rgba(79,140,255,0.32), inset 0 1px 0 rgba(130,170,255,0.20);
+    }
+    .bell-dot {
+      position: absolute; top: 10px; right: 10px;
+      width: 11px; height: 11px;
+      background: #ff4444; border-radius: 50%;
+      border: 2px solid #08071a;
+      animation: dotPulse 2s ease-in-out infinite;
+      box-shadow: 0 0 8px rgba(255,68,68,0.6);
+    }
+    @keyframes dotPulse {
+      0%,100% { transform: scale(1); opacity: 1; }
+      50%      { transform: scale(1.25); opacity: 0.75; }
+    }
+
+    /* ── Footer ── */
+    .footer {
+      position: absolute; bottom: 30px;
+      left: 88px; right: 72px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .repo {
+      font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+      font-size: 12px; color: rgba(255,255,255,0.18);
+    }
+    .stack { font-size: 12px; color: rgba(255,255,255,0.16); }
+  </style>
+</head>
+<body>
+<div class="canvas">
+  <div class="bg-center"></div>
+  <div class="bg-tr"></div>
+  <div class="bg-br"></div>
+  <div class="bg-grid"></div>
+
+  <!-- Left -->
+  <div class="left">
+    <div class="eyebrow">
+      <div class="eyebrow-dot"></div>
+      <span class="eyebrow-text">Open Source · Python + React</span>
+    </div>
+    <h1>Never Miss a<br><em>Nifty 50</em> Dip</h1>
+    <p class="sub">Automated WhatsApp alerts for every −1% fall from Nifty 50's all-time high. Real-time monitoring with a glassmorphism dashboard.</p>
+    <div class="pills">
+      <div class="pill">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M7 2v10M3 8l4 4.5L11 8" stroke="#ef4444" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Every −1% Dip</span>
+      </div>
+      <div class="pill">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <polyline points="1,11 4,7 7.5,9.5 10.5,5 13,7" stroke="#22c55e" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+        <span>Nifty 50 Tracked</span>
+      </div>
+      <div class="pill">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M13 7A6 6 0 1 1 3.5 2.6L3 1h3l.5 2A5.97 5.97 0 0 1 13 7z" stroke="#22c55e" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>WhatsApp Delivery</span>
+      </div>
+      <div class="pill">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M3.5 2L1 7l2.5 5M10.5 2L13 7l-2.5 5M8.5 1l-3 12" stroke="#4f8cff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>FastAPI + React</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: glass chart card -->
+  <div class="right">
+    <div class="glass-card">
+      <div class="bell-badge">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#4f8cff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#4f8cff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="bell-dot"></div>
+      </div>
+
+      <div class="card-header">
+        <span class="card-label">NIFTY 50 · Live</span>
+        <span class="dip-tag">−1.2% DIP ▼</span>
+      </div>
+
+      <!-- Candlestick chart -->
+      <svg width="316" height="152" viewBox="0 0 316 152" fill="none">
+        <!-- Grid lines -->
+        <line x1="0" y1="38" x2="316" y2="38" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="0" y1="76" x2="316" y2="76" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="0" y1="114" x2="316" y2="114" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+
+        <!-- ATH dashed line -->
+        <line x1="0" y1="22" x2="155" y2="22" stroke="rgba(79,140,255,0.32)" stroke-width="1" stroke-dasharray="5,3"/>
+        <text x="2" y="16" fill="rgba(79,140,255,0.42)" font-size="8.5" font-family="ui-monospace,monospace" font-weight="500">ATH</text>
+
+        <!-- Candle 1 (green) x=22 -->
+        <line x1="22" y1="14" x2="22" y2="26" stroke="#22c55e" stroke-width="1.5"/>
+        <line x1="22" y1="58" x2="22" y2="68" stroke="#22c55e" stroke-width="1.5"/>
+        <rect x="13" y="26" width="18" height="32" rx="2" fill="#22c55e"/>
+
+        <!-- Candle 2 (green) x=60 -->
+        <line x1="60" y1="10" x2="60" y2="22" stroke="#22c55e" stroke-width="1.5"/>
+        <line x1="60" y1="52" x2="60" y2="62" stroke="#22c55e" stroke-width="1.5"/>
+        <rect x="51" y="22" width="18" height="30" rx="2" fill="#22c55e"/>
+
+        <!-- Candle 3 (green, ATH touch) x=98 -->
+        <line x1="98" y1="8" x2="98" y2="20" stroke="#22c55e" stroke-width="1.5"/>
+        <line x1="98" y1="50" x2="98" y2="60" stroke="#22c55e" stroke-width="1.5"/>
+        <rect x="89" y="20" width="18" height="30" rx="2" fill="#22c55e"/>
+
+        <!-- Candle 4 (doji) x=136 -->
+        <line x1="136" y1="16" x2="136" y2="26" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
+        <line x1="136" y1="40" x2="136" y2="52" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
+        <rect x="127" y="26" width="18" height="14" rx="2" fill="rgba(255,255,255,0.2)"/>
+
+        <!-- Red glow wash behind dip candle -->
+        <rect x="161" y="15" width="26" height="127" rx="4" fill="rgba(239,68,68,0.07)"/>
+
+        <!-- Candle 5 (BIG RED DIP) x=174 -->
+        <line x1="174" y1="12" x2="174" y2="22" stroke="#ef4444" stroke-width="1.5"/>
+        <line x1="174" y1="138" x2="174" y2="148" stroke="#ef4444" stroke-width="1.5"/>
+        <rect x="165" y="22" width="18" height="116" rx="2" fill="#ef4444" opacity="0.88"/>
+
+        <!-- Alert indicator -->
+        <circle cx="174" cy="5" r="4" fill="#4f8cff"/>
+        <line x1="174" y1="9" x2="174" y2="12" stroke="rgba(79,140,255,0.6)" stroke-width="1.2" stroke-dasharray="2,1.5"/>
+
+        <!-- Candle 6 (green recovery) x=212 -->
+        <line x1="212" y1="108" x2="212" y2="120" stroke="#22c55e" stroke-width="1.5"/>
+        <line x1="212" y1="142" x2="212" y2="150" stroke="#22c55e" stroke-width="1.5"/>
+        <rect x="203" y="120" width="18" height="22" rx="2" fill="#22c55e"/>
+
+        <!-- Candle 7 (green, stronger) x=250 -->
+        <line x1="250" y1="88" x2="250" y2="100" stroke="#22c55e" stroke-width="1.5"/>
+        <line x1="250" y1="130" x2="250" y2="140" stroke="#22c55e" stroke-width="1.5"/>
+        <rect x="241" y="100" width="18" height="30" rx="2" fill="#22c55e"/>
+
+        <!-- Candle 8 (green) x=288 -->
+        <line x1="288" y1="70" x2="288" y2="82" stroke="#22c55e" stroke-width="1.5"/>
+        <line x1="288" y1="112" x2="288" y2="122" stroke="#22c55e" stroke-width="1.5"/>
+        <rect x="279" y="82" width="18" height="30" rx="2" fill="#22c55e"/>
+      </svg>
+
+      <div class="divider"></div>
+
+      <div class="card-stats">
+        <div>
+          <div class="stat-lbl">Current</div>
+          <div class="stat-val">24,861</div>
+        </div>
+        <div style="text-align:right">
+          <div class="stat-lbl">From ATH</div>
+          <div class="stat-val neg">−1.24%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span class="repo">github.com/Ausmin787/dip-alert-app</span>
+    <span class="stack">FastAPI · React · WhatsApp · CallMeBot · Python</span>
+  </div>
+</div>
+</body>
+</html>

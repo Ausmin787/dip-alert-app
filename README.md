@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/banner.svg" alt="dip-alert-app banner" width="100%"/>
+</p>
+
 # Dip Alert — Nifty ATH Tracker
 
 A personal web app that watches the **Nifty 50 index** during NSE market hours, detects every new **−1% level below its all-time high**, and sends a **WhatsApp alert** with a quick-buy link. Inspired by the r/IndianStreetBets strategy: *"Buy ₹1L of Nifty 50 ETF for every −1% fall from ATH."*

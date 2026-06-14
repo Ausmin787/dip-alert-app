@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>dip-alert-app — README Banner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 1280px; height: 380px;
+      overflow: hidden;
+      background: #08071a;
+      font-family: 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .banner {
+      position: relative;
+      width: 1280px; height: 380px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      padding: 0 80px;
+      background:
+        radial-gradient(ellipse 70% 90% at 20% 55%, rgba(80, 18, 230, 0.24) 0%, transparent 58%),
+        radial-gradient(ellipse 50% 65% at 75% 90%, rgba(14, 95, 235, 0.20) 0%, transparent 55%),
+        #08071a;
+    }
+    .bg-center {
+      position: absolute;
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, rgba(88, 22, 255, 0.28) 0%, transparent 60%);
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      pointer-events: none;
+    }
+    .bg-tr {
+      position: absolute;
+      width: 420px; height: 420px;
+      background: radial-gradient(circle, rgba(0, 210, 145, 0.20) 0%, transparent 62%);
+      top: -130px; right: -50px;
+      pointer-events: none;
+    }
+    .bg-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.026) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.026) 1px, transparent 1px);
+      background-size: 52px 52px;
+      pointer-events: none;
+    }
+    /* Thin top accent line */
+    .top-line {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(110, 60, 255, 0.7) 25%, rgba(0, 210, 145, 0.5) 60%, transparent);
+    }
+
+    /* Icon mark */
+    .icon-mark {
+      position: relative; z-index: 2;
+      flex-shrink: 0;
+      width: 84px; height: 84px;
+      background: rgba(7, 5, 28, 0.62);
+      border-top: 1.5px solid rgba(100, 140, 255, 0.55);
+      border-right: 1px solid rgba(79,140,255,0.18);
+      border-bottom: 1px solid rgba(79,140,255,0.08);
+      border-left: 1px solid rgba(79,140,255,0.18);
+      border-radius: 22px;
+      display: flex; align-items: center; justify-content: center;
+      margin-right: 40px;
+      backdrop-filter: blur(32px) saturate(160%);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(130,170,255,0.20);
+    }
+
+    /* Text block */
+    .text-block {
+      position: relative; z-index: 2;
+      flex: 1;
+    }
+    .eyebrow-row {
+      font-size: 11px; font-weight: 600;
+      color: rgba(79,140,255,0.75);
+      letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: 54px; font-weight: 800;
+      letter-spacing: -0.026em; line-height: 1.04;
+      color: #fff;
+      margin-bottom: 14px;
+    }
+    h1 em { font-style: normal; color: #4f8cff; }
+    .sub {
+      font-size: 16px; font-weight: 400;
+      color: rgba(255,255,255,0.38);
+      line-height: 1.5;
+      max-width: 460px;
+    }
+
+    /* Right pill grid */
+    .pill-grid {
+      position: relative; z-index: 2;
+      flex-shrink: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      width: 326px;
+      margin-left: 56px;
+    }
+    .pill {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(8, 6, 28, 0.62);
+      border-top: 1px solid rgba(255,255,255,0.28);
+      border-right: 1px solid rgba(255,255,255,0.12);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      border-left: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 11px 14px;
+      backdrop-filter: blur(32px) saturate(160%);
+      -webkit-backdrop-filter: blur(32px) saturate(160%);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.18);
+    }
+    .pill span {
+      font-size: 12px; font-weight: 500;
+      color: rgba(255,255,255,0.90);
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+<div class="banner">
+  <div class="bg-center"></div>
+  <div class="bg-tr"></div>
+  <div class="bg-grid"></div>
+  <div class="top-line"></div>
+
+  <!-- Icon mark with mini chart -->
+  <div class="icon-mark">
+    <svg width="42" height="42" viewBox="0 0 42 42" fill="none">
+      <!-- Green candles -->
+      <rect x="4" y="20" width="5" height="13" rx="1" fill="#22c55e" opacity="0.85"/>
+      <line x1="6.5" y1="16" x2="6.5" y2="20" stroke="#22c55e" stroke-width="1.2" opacity="0.85"/>
+      <line x1="6.5" y1="33" x2="6.5" y2="36" stroke="#22c55e" stroke-width="1.2" opacity="0.85"/>
+
+      <rect x="13" y="14" width="5" height="15" rx="1" fill="#22c55e" opacity="0.9"/>
+      <line x1="15.5" y1="10" x2="15.5" y2="14" stroke="#22c55e" stroke-width="1.2" opacity="0.9"/>
+      <line x1="15.5" y1="29" x2="15.5" y2="33" stroke="#22c55e" stroke-width="1.2" opacity="0.9"/>
+
+      <!-- Red dip candle -->
+      <rect x="19" y="11" width="5" height="22" rx="1" fill="#ef4444"/>
+      <line x1="21.5" y1="7" x2="21.5" y2="11" stroke="#ef4444" stroke-width="1.2"/>
+      <line x1="21.5" y1="33" x2="21.5" y2="37" stroke="#ef4444" stroke-width="1.2"/>
+
+      <!-- Bell (top-right of icon) -->
+      <path d="M35 13.5A4 4 0 0 0 27 13.5C27 17.5 25.5 18.5 25.5 18.5h11S35 17.5 35 13.5z" stroke="#4f8cff" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M29 18.5a1.5 1.5 0 0 0 2.9.2" stroke="#4f8cff" stroke-width="1.3" stroke-linecap="round"/>
+      <!-- alert dot -->
+      <circle cx="35.5" cy="9.5" r="2.5" fill="#ef4444"/>
+    </svg>
+  </div>
+
+  <!-- Text block -->
+  <div class="text-block">
+    <div class="eyebrow-row">Ausmin787 / dip-alert-app</div>
+    <h1>Never Miss a <em>Nifty 50</em> Dip</h1>
+    <p class="sub">Automated WhatsApp alerts for every −1% fall from all-time high. FastAPI backend · React glassmorphism dashboard.</p>
+  </div>
+
+  <!-- Pill grid -->
+  <div class="pill-grid">
+    <div class="pill">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+        <path d="M6.5 2v9M3 7.5l3.5 4L10 7.5" stroke="#ef4444" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Every −1% Dip</span>
+    </div>
+    <div class="pill">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+        <polyline points="1,10 4,6.5 7,8.5 10,4.5 12,6.5" stroke="#22c55e" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <span>Nifty 50</span>
+    </div>
+    <div class="pill">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+        <path d="M12 6.5A5.5 5.5 0 1 1 3.5 2.2L3 1h2.5l.4 2a5.5 5.5 0 0 1 5.6 3.5z" stroke="#22c55e" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <span>WhatsApp</span>
+    </div>
+    <div class="pill">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+        <path d="M3 2L1 6.5 3 11M10 2l2 4.5L10 11M8 1l-3 11" stroke="#4f8cff" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>FastAPI + React</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>
