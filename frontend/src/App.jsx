@@ -1,170 +1,130 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
-import { AnimatePresence, MotionConfig, motion } from 'motion/react'
-import Dashboard from './pages/Dashboard.jsx'
-import Watchlist from './pages/Watchlist.jsx'
-import Alerts from './pages/Alerts.jsx'
-import Settings from './pages/Settings.jsx'
-import { Page } from './components/motion.jsx'
-import { IconBell, IconDip, IconGear, IconGrid, IconLayers } from './components/icons.jsx'
-import { isMarketOpenIST, istClock } from './lib.js'
+import { AssetProvider } from './AssetContext.jsx'
+import { isMarketOpenIST } from './lib.js'
+import WatchTab from './tabs/WatchTab.jsx'
+import AlertsTab from './tabs/AlertsTab.jsx'
+import HistoryTab from './tabs/HistoryTab.jsx'
+import ManageTab from './tabs/ManageTab.jsx'
 
-const navItems = [
-  { to: '/', label: 'Overview', icon: IconGrid },
-  { to: '/watchlist', label: 'Watchlist', icon: IconLayers },
-  { to: '/alerts', label: 'Alerts', icon: IconBell },
-  { to: '/settings', label: 'Settings', icon: IconGear },
+const TABS = [
+  { id: 'watch', label: 'Watch', icon: IconWatch },
+  { id: 'alerts', label: 'Alerts', icon: IconBell },
+  { id: 'history', label: 'History', icon: IconHistory },
+  { id: 'manage', label: 'Manage', icon: IconSliders },
 ]
 
-function MarketChip() {
-  const [now, setNow] = useState(() => new Date())
+function IconWatch(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  )
+}
+function IconBell(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  )
+}
+function IconHistory(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+    </svg>
+  )
+}
+function IconSliders(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" />
+      <line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" />
+      <line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" />
+    </svg>
+  )
+}
+
+function StatusBar() {
+  const [clock, setClock] = useState(() => fmtClock())
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000)
+    const id = setInterval(() => setClock(fmtClock()), 10000)
     return () => clearInterval(id)
   }, [])
-  const open = isMarketOpenIST(now)
   return (
-    <div className="flex items-center gap-3 sm:gap-4">
-      <span
-        className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-[0.65rem] font-semibold tracking-[0.14em] uppercase ring-1 ${
-          open ? 'bg-mint/10 text-mint ring-mint/25' : 'bg-white/4 text-mist ring-white/10'
-        }`}
-      >
-        <span className={`h-1.5 w-1.5 rounded-full ${open ? 'live-dot bg-mint' : 'bg-mist/60'}`} />
-        {open ? 'NSE live' : 'NSE closed'}
-      </span>
-      <span className="num hidden text-xs text-mist sm:inline">{istClock(now)} IST</span>
+    <div className="sbar">
+      <span>{clock}</span>
+      <div className="sbar-r">
+        <div className="sig"><i /><i /><i /><i /></div>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+          <path d="M8 2.5c1.9 0 3.6.8 4.8 2.1l1.4-1.4A8.5 8.5 0 0 0 8 .5 8.5 8.5 0 0 0 1.8 3.2l1.4 1.4A6 6 0 0 1 8 2.5z" fill="rgba(255,255,255,.68)" />
+          <path d="M8 5.5c1.1 0 2.1.5 2.8 1.2l1.4-1.4A5 5 0 0 0 8 3.5a5 5 0 0 0-4.2 1.8l1.4 1.4A3 3 0 0 1 8 5.5z" fill="rgba(255,255,255,.68)" />
+          <circle cx="8" cy="10" r="1.5" fill="rgba(255,255,255,.68)" />
+        </svg>
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,.62)' }}>97%</span>
+      </div>
     </div>
   )
 }
 
-function Brand({ compact = false }) {
+function fmtClock() {
+  const d = new Date()
+  let h = d.getHours()
+  const m = d.getMinutes()
+  const ap = h >= 12 ? 'PM' : 'AM'
+  h = h % 12 || 12
+  return `${h}:${String(m).padStart(2, '0')} ${ap}`
+}
+
+function AppHeader() {
+  const [open, setOpen] = useState(() => isMarketOpenIST())
+  useEffect(() => {
+    const id = setInterval(() => setOpen(isMarketOpenIST()), 30000)
+    return () => clearInterval(id)
+  }, [])
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-pulse to-flux text-abyss shadow-[0_6px_20px_-6px_rgba(110,107,255,0.8)]">
-        <IconDip className="h-5 w-5" strokeWidth={2} />
-      </span>
-      {!compact && (
-        <span className="font-display text-lg leading-none font-semibold tracking-tight text-frost">
-          Dip Alert
-          <span className="tag mt-1 block text-[0.55rem] tracking-[0.28em] text-mist">
-            ATH terminal
-          </span>
-        </span>
-      )}
+    <div className="aheader">
+      <div className="aname">Dip Alert</div>
+      <div className={`live-chip ${open ? '' : 'closed'}`}>
+        <div className="live-dot" />
+        {open ? 'Live' : 'Closed'}
+      </div>
     </div>
   )
 }
 
-function SideNav() {
+function AppShell() {
+  const [tab, setTab] = useState('watch')
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-white/6 bg-abyss/70 backdrop-blur-xl lg:flex">
-      <div className="px-6 pt-7 pb-8">
-        <Brand />
+    <div className="wrap" id="phone-shell">
+      <div className="atmo" />
+      <div className="app">
+        <StatusBar />
+        <AppHeader />
+        <div className="panels">
+          {tab === 'watch' && <WatchTab />}
+          {tab === 'alerts' && <AlertsTab onManage={() => setTab('manage')} />}
+          {tab === 'history' && <HistoryTab />}
+          {tab === 'manage' && <ManageTab />}
+        </div>
+        <nav className="bnav">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button key={id} className={`bni ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
+              <Icon />
+              {label}
+            </button>
+          ))}
+        </nav>
       </div>
-      <nav className="flex flex-1 flex-col gap-1 px-3">
-        {navItems.map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={to} end={to === '/'}>
-            {({ isActive }) => (
-              <span
-                className={`relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors duration-200 ${
-                  isActive ? 'text-frost' : 'text-mist hover:bg-white/4 hover:text-frost'
-                }`}
-              >
-                {isActive && (
-                  <motion.span
-                    layoutId="side-active"
-                    className="absolute inset-0 rounded-xl border border-pulse/30 bg-pulse/10 shadow-[0_0_24px_-8px_rgba(110,107,255,0.6)]"
-                    transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                  />
-                )}
-                <Icon className={`relative h-[1.1rem] w-[1.1rem] ${isActive ? 'text-pulse' : ''}`} />
-                <span className="relative">{label}</span>
-              </span>
-            )}
-          </NavLink>
-        ))}
-      </nav>
-      <div className="px-6 pb-7">
-        <p className="tag text-[0.55rem] leading-relaxed">
-          single-user terminal
-          <br />
-          buy the dip · ₹1L per −1%
-        </p>
-      </div>
-    </aside>
-  )
-}
-
-function TabBar() {
-  return (
-    <nav
-      className="fixed left-1/2 z-50 -translate-x-1/2 lg:hidden"
-      style={{ bottom: 'calc(0.9rem + env(safe-area-inset-bottom))' }}
-    >
-      <div className="flex items-center gap-1 rounded-2xl border border-white/8 bg-pane-2/85 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_16px_40px_-12px_rgba(0,0,0,0.9)] backdrop-blur-xl">
-        {navItems.map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={to} end={to === '/'} aria-label={label}>
-            {({ isActive }) => (
-              <span
-                className={`relative flex h-11 w-14 items-center justify-center rounded-xl transition-colors duration-200 ${
-                  isActive ? 'text-abyss' : 'text-mist'
-                }`}
-              >
-                {isActive && (
-                  <motion.span
-                    layoutId="tab-active"
-                    className="absolute inset-0 rounded-xl bg-gradient-to-br from-pulse to-flux shadow-[0_6px_18px_-4px_rgba(110,107,255,0.7)]"
-                    transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                  />
-                )}
-                <Icon className="relative h-[1.2rem] w-[1.2rem]" strokeWidth={isActive ? 2 : 1.6} />
-              </span>
-            )}
-          </NavLink>
-        ))}
-      </div>
-    </nav>
+    </div>
   )
 }
 
 export default function App() {
-  const location = useLocation()
   return (
-    <MotionConfig reducedMotion="user">
-      <div className="backdrop-grid" />
-      <div className="backdrop-glow" />
-
-      <SideNav />
-
-      <div className="lg:pl-60">
-        <header
-          className="sticky top-0 z-30 bg-abyss/70 backdrop-blur-xl"
-          style={{ paddingTop: 'env(safe-area-inset-top)' }}
-        >
-          <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
-            <div className="lg:hidden">
-              <Brand />
-            </div>
-            <p className="tag hidden lg:block">NSE · Nifty drawdown monitor</p>
-            <MarketChip />
-          </div>
-          <div className="horizon" />
-        </header>
-
-        <main className="mx-auto max-w-6xl px-5 pt-8 pb-32 sm:px-8 lg:pb-16">
-          <AnimatePresence mode="wait" initial={false}>
-            <Routes location={location} key={location.pathname}>
-              <Route path="/" element={<Page><Dashboard /></Page>} />
-              <Route path="/watchlist" element={<Page><Watchlist /></Page>} />
-              <Route path="/alerts" element={<Page><Alerts /></Page>} />
-              <Route path="/settings" element={<Page><Settings /></Page>} />
-            </Routes>
-          </AnimatePresence>
-        </main>
-      </div>
-
-      <TabBar />
-    </MotionConfig>
+    <AssetProvider>
+      <AppShell />
+    </AssetProvider>
   )
 }
