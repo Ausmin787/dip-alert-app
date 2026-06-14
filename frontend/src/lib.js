@@ -73,3 +73,65 @@ export const istClock = (now = new Date()) =>
 
 export const todayLine = () =>
   new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
+
+// Backend timestamps are naive UTC (datetime.utcnow); add 'Z' so the browser
+// converts to local/IST instead of treating them as local.
+const asUTC = (iso) => new Date(iso + (iso.endsWith('Z') ? '' : 'Z'))
+
+// Split a price into integer + 2-decimal fraction for the hero display
+// e.g. 23890.15 → { whole: '23,890', frac: '.15' }
+export const splitPrice = (n) => {
+  if (n == null) return { whole: '—', frac: '' }
+  const [int, dec] = n.toFixed(2).split('.')
+  return { whole: Number(int).toLocaleString('en-IN'), frac: `.${dec}` }
+}
+
+// Best-effort exchange + instrument type label from a Yahoo Finance ticker
+export const tickerMeta = (ticker = '') => {
+  const isIndex = ticker.startsWith('^')
+  let exchange = 'NSE'
+  if (ticker.endsWith('.BO') || ticker.startsWith('^BSE')) exchange = 'BSE'
+  return { exchange, type: isIndex ? 'Index' : 'ETF' }
+}
+
+// Compact rupee deployment: ₹1L, ₹1.5L, ₹2L (≥1 lakh), else full ₹ amount
+export const fmtLakh = (n) => {
+  if (n == null) return '—'
+  if (n < 100000) return `₹${n.toLocaleString('en-IN')}`
+  const l = n / 100000
+  return `₹${l % 1 === 0 ? l : l.toFixed(1)}L`
+}
+
+const istParts = (iso) =>
+  asUTC(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) // YYYY-MM-DD
+
+export const isTodayIST = (iso) =>
+  iso && istParts(iso) === new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+
+export const fmtTimeIST = (iso) =>
+  iso
+    ? asUTC(iso).toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      })
+    : '—'
+
+// "14 Jun" day label in IST
+export const fmtDayIST = (iso) =>
+  iso
+    ? asUTC(iso).toLocaleDateString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: 'numeric',
+        month: 'short',
+      })
+    : '—'
+
+// "June 2025" month bucket key/label in IST
+export const monthLabelIST = (iso) =>
+  asUTC(iso).toLocaleDateString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    month: 'long',
+    year: 'numeric',
+  })

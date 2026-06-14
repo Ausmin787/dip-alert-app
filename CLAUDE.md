@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This App Is
 
-A single-user web app (built for a friend — no auth) that watches the Nifty 50 index during NSE market hours, fires a WhatsApp alert (via CallMeBot) each time price crosses a new −1% level below its all-time high, and shows a viewport-locked, three-pane "market terminal" dashboard (sidebar dock · 320px live asset feed · workspace) with a three.js hero and GSAP/Motion animation. Strategy: "buy ₹1L of Nifty 50 ETF for every −1% fall from ATH."
+A single-user web app (built for a friend — no auth) that watches the Nifty 50 index during NSE market hours, fires a WhatsApp alert (via CallMeBot) each time price crosses a new −1% level below its all-time high, and shows a **mobile-first phone-shell dashboard** with four bottom-nav tabs (Watch · Alerts · History · Manage). Strategy: "buy ₹1L of Nifty 50 ETF for every −1% fall from ATH."
 
 GitHub: https://github.com/Ausmin787/dip-alert-app (branch: `master`)
 
@@ -70,7 +70,7 @@ State rules that must not be broken (all in `backend/app/ath_logic.py`, verified
   - Default seed broker URL for SBI Nifty 50 ETF: `https://groww.in/etfs/sbietf-nifty` (Groww's actual slug — not `sbi-nifty-50-etf`, that 404s)
 - WhatsApp credentials live in the `settings` DB row (entered via the UI), **never** in env vars or code
 - **Settings API is redacted**: GET/PUT `/api/settings` return only `whatsapp_phone_masked` + `apikey_set` + `check_interval_min` + `write_protected` — raw credentials never leave the server. Blank phone/key in a PUT means "keep the stored value" (the UI can't echo secrets back, so don't break this)
-- **Optional write protection**: if the `APP_TOKEN` env var is set, all write endpoints (`write_protected` dependency in `routes.py`) require a matching `X-App-Token` header; the frontend stores the token in localStorage (`api.js` interceptor) and Settings shows the token field only when the backend reports `write_protected: true`. Unset = open API (local dev default). Reads stay public by design.
+- **Optional write protection**: if the `APP_TOKEN` env var is set, all write endpoints (`write_protected` dependency in `routes.py`) require a matching `X-App-Token` header; the frontend stores the token in localStorage (`api.js` interceptor) and the Manage tab's WhatsApp card shows the token field only when the backend reports `write_protected: true`. Unset = open API (local dev default). Reads stay public by design.
 - Input validation lives on the Pydantic models in `routes.py`: `threshold_pct` >0 and ≤50 (guards a ZeroDivisionError in status + scheduler), `check_interval_min` 1–60, ticker changes via PUT /watchlist are rejected (would orphan the `ath_tracker` row)
 - Changing `check_interval_min` via PUT /api/settings reschedules the running APScheduler job
 - Tickers are Yahoo Finance format: `^NSEI`, `SETFNIF50.NS` (NSE), `.BO` (BSE)
@@ -78,33 +78,23 @@ State rules that must not be broken (all in `backend/app/ath_logic.py`, verified
 
 ### Frontend layout (`frontend/src/`)
 
-- `api.js` — all backend calls; baseURL is `VITE_API_URL` in production, relative (proxied) in dev
-- `pages/` — Dashboard, Watchlist, Alerts, Settings (routed in `App.jsx`)
-- `App.jsx` — implements the **Stripe-Style Split Pane** layout:
-  - Collapsible Icon Left Sidebar Dock (`SidebarDock`, expands 64px ➔ 200px on hover) containing page routing links and live market chip.
-  - Middle Live Asset Feed Pane (`middle-feed-pane`, hidden on mobile) displaying watchlist asset cards with inline SVG sparklines, live prices, severity badges, and an IST clock header.
-  - Right Workspace Main Panel (`workspace-pane`) showing page routes.
-  - Fallback bottom navigation (`BottomNav`, visible on mobile `sm:hidden`).
-- `AssetContext.jsx` — the `AssetProvider` component: unified data loading from `/api/status`, parallel 30-day history pre-fetching for all assets, active selection memory (`localStorage`), and a `refresh()` the Watchlist CRUD calls. The `useAssets` hook + context object live in **`useAssets.js`** (split out so the provider file exports only a component — fast-refresh rule). The 60s poll reads selection via a ref, so it never resets a selection the user just made.
-- `pages/Dashboard.jsx` — active page view showing hero selected asset metrics, standard `DipLadder`, `RecentAlerts`, and `DipChart` (price history vs. ATH).
-  - Refactored to consume `useAssets()` context directly for zero-lag chart loading.
-  - **Mobile switcher:** Includes `MobileAssetSwitcher` (rendered `<md` viewports) containing a horizontally scrollable row of asset pill-chips (since the middle pane is hidden on mobile) so users can browse and select assets.
-- `pages/Watchlist.jsx` — watchlist CRUD (add/edit/delete/pause). Triggers context `refresh()` on CRUD operations to synchronize the middle feed pane instantly.
-- `components/three/IndexOrb.jsx` — the three.js hero (React-Three-Fiber point-cloud sphere); recolors mint→amber→rose with `drop_pct`, ripples a shockwave on each new dip level, slow auto-rotate + pointer parallax. **Lazy-loaded** (own bundle chunk) and `frameloop="never"` under reduced motion.
-- `components/anim.jsx` — GSAP helpers: `Reveal` (ScrollTrigger entrance), `CountUp`, `SplitReveal` (headline word stagger), `Magnetic` (cursor-pull buttons). **Gotcha:** `Reveal` blocks start at opacity 0 until scrolled into view, so a *full-page* Playwright screenshot shows below-fold content blank — screenshot per-viewport and scroll to verify.
-- `components/useReducedMotion.js` — matchMedia hook gating GSAP + the orb (split into its own file so `anim.jsx` stays component-only for the fast-refresh lint rule).
-- `components/motion.jsx` — now just `Page` (route transition). `components/DipLadder.jsx` — signature segmented −1%…−N% ladder (GSAP-staggered fill, gradient by severity, ✓ delivered, pulsing dashed next). `components/Sparkline.jsx` — self-drawing SVG sparkline.
-- `lib.js` — formatters, `severity()` (mint <1%, amber 1–3%, rose 3%+ below ATH), `fmtLevel`, and client-side `isMarketOpenIST()`/`istClock()` so the nav chip stays live without polling the backend
+The frontend is a **mobile-first single-page app** built on an "Open Design" phone-shell mockup (the user designs the base in the Open Design desktop app; Claude wires it to the backend — implement the design faithfully, don't reinvent it). **No router** — tab switching is React `useState` in `App.jsx`. **No three.js / GSAP / motion / recharts** — those were removed in this redesign; deps are just `axios` + `react` + `react-dom`.
 
-### Design system: "Market Terminal" (don't regress these)
+- `api.js` — all backend calls; baseURL is `VITE_API_URL` in production, relative (proxied) in dev. Axios `X-App-Token` interceptor (localStorage) for the optional write-protection path.
+- `App.jsx` — the phone shell + 4-tab bottom nav. `StatusBar` (fake 97% battery + real local clock), `AppHeader` (live/closed chip reflects `isMarketOpenIST()`), `AppShell` (the `tab` useState, conditionally renders one tab; `AlertsTab` gets `onManage={() => setTab('manage')}`). The shell `.wrap` carries `id="phone-shell"` — the Manage add/edit bottom sheet **portals** there (see ManageTab below). Default export wraps everything in `<AssetProvider>`.
+- `AssetContext.jsx` — the `AssetProvider` component: unified data loading from `/api/status`, parallel 30-day history pre-fetching for all assets, active selection memory (`localStorage`), and a `refresh()` the Manage CRUD calls. The `useAssets` hook + context object live in **`useAssets.js`** (split out so the provider file exports only a component — fast-refresh rule). The 60s poll reads selection via a ref, so it never resets a selection the user just made.
+- `tabs/WatchTab.jsx` — hero price card (big split price), the segmented dip **Tracker** (`dipLevels()` windows 5 pills so the next level is always visible — done/next/upcoming states), **NextAlert** (computes `nextPrice = ath × (1 − nextPct/100)` and distance to it), today's alerts, and a mini watchlist for selecting the active asset.
+- `tabs/AlertsTab.jsx` — read-only config summary rows (WhatsApp on/off from `settings`, per-asset Dip Interval + Deploy Amount, global Check Interval) that are **tappable → jump to Manage** via `onManage`; recent alerts list; market-hours card. Fetches `getSettings()` + `getAlerts()`.
+- `tabs/HistoryTab.jsx` — deployment history. Groups alerts by IST month, sums deployed capital client-side (invest_amount isn't stored on `AlertLog`, so it joins each alert's ticker to the current watchlist item, ₹1L fallback). Stat grid: alerts fired this month, per-trigger amount, max dip today, next target.
+- `tabs/ManageTab.jsx` — the management tab (the mockup is display-only; this 4th tab holds all the write actions). `WatchlistManager` (add/edit/delete/pause via `addAsset`/`updateAsset`/`deleteAsset`, `refresh()` after each); `AssetSheet` (a bottom sheet — **rendered through `createPortal` into `#phone-shell`** so the `position:absolute` overlay anchors to the phone shell, not the watchlist card; ticker locked on edit); `WhatsAppCard` (phone/apikey/check_interval/app_token form — same redacted-settings contract as the old Settings page: blank field = keep stored secret); `SetupCard` (CallMeBot onboarding steps).
+- `lib.js` — formatters incl. `splitPrice` (whole/frac for the big hero number), `tickerMeta` (exchange + Index/ETF), `fmtLakh` (₹1L style), `severity()` (kept — `lib.test.js` depends on it), `fmtLevel`, IST helpers `isMarketOpenIST` / `isTodayIST` / `fmtTimeIST` / `fmtDayIST` / `monthLabelIST`. **Backend timestamps are naive UTC** (`datetime.utcnow`) — the `asUTC` helper appends `Z` before parsing, so don't strip it.
 
-Dark, motion-first "market terminal" aesthetic (a blue/teal palette evolved from a Framer DESIGN.md base), in `frontend/src/index.css` + GSAP + `motion`. The viewport-locked split-pane shell uses `.app-container` / `.sidebar-dock` / `.middle-feed-pane` (320px) / `.workspace-pane` (each `100dvh`, panes scroll internally):
-- Tokens (`@theme`): Palette 1 / Market Terminal — canvas `#070a0e`, `surface-1 #10161d`, `surface-2 #18212b`, `hairline #263241`, text `ink #f4f7fa` / `ink-muted #8a97a6`, `accent #2d7dff` for links/focus ONLY (**never a generic fill**), gradient palette `violet #2d7dff` / `magenta #20c7b5` / `orange #f6c65b` / `coral #ff5e6c`, severity `mint #2fe6a3` / amber / rose. Font: **Inter** everywhere; display via `.display` (weight 700, hard negative tracking `-0.045em`); numerals via `.num` (tabular-nums) — no separate mono font.
-- `.backdrop-grid` (dot grid, z −3) + `.backdrop-glow` (blue→mint bloom, z −2) are fixed layers; **`body` background must stay `transparent`** — an opaque body paints over negative z-index layers (CSS painting order)
-- Recipes: `.panel` (surface-1 card, hairline border, `.panel-hover` lift); `.spotlight` (the signature gradient tile — **one per page**, blue→teal default, override the gradient via inline `style`); `.btn-primary` = **white pill**, `.btn-ghost` = charcoal pill (never bordered/squared CTAs)
-- Two animation libs, by design: **GSAP** (content reveals + micro-interactions via `anim.jsx`, plus the orb shockwave) and **`motion`** (route transitions, the SidebarDock hover spring, the Watchlist modal). Both honor reduced motion (`useReducedMotion` + `MotionConfig reducedMotion="user"`); route changes go through `AnimatePresence mode="wait"`
-- **three.js**: keep the orb lazy-loaded and capped (`dpr={[1, 2]}`); no postprocessing/bloom dep (bundle weight) — emissive + additive blending instead
-- Recharts: keep `isAnimationActive={false}` on series — the draw animation renders blank under React StrictMode. The chart lives in `components/DipChart.jsx` and is **lazy-loaded** (recharts is ~330 kB; keep it out of the main bundle)
+### Design system: Open Design phone shell (don't regress these)
+
+Dark, glassmorphic **mobile** aesthetic, all in `frontend/src/index.css` (plain CSS variables under `:root`, no Tailwind `@theme` block — `@import 'tailwindcss'` stays at the top for utility classes but the design is hand-rolled CSS). Phone-shell layout: `.wrap` is a 375px centered "device" on desktop and **fullscreen under `@media (max-width:430px)`**; inside it `.app` (absolute, flex column) holds `.sbar` status bar → `.aheader` → scrolling `.panels` → `.bnav` bottom nav.
+- Tokens (`:root`): `--bg #040916`, `--accent #00e4ff` (mono-cyan — the single accent, used for highlights/CTAs), `--glass` (translucent card fill), `--green #22c55e`, `--rose #ff5e6c`, radii `--r 20px` / `--rs 14px`. Font: **system / SF stack** (`-apple-system, …`), tabular-nums on numerals. The mono-cyan accent is deliberate — do **not** reintroduce the old mint/amber/rose severity coloring in the UI (the `severity()` helper survives only for the test).
+- `.atmo` is the fixed atmospheric background (layered radial gradients + an SVG `feTurbulence` noise overlay) inside the shell.
+- Recipes: `.g` = the glass card (`backdrop-filter: blur`); `.panel` = a tab's scroll container; `.btn-primary` = cyan pill, `.btn-ghost` = charcoal pill, `.btn-danger` for destructive; `.field` = form input; `.sheet-overlay` / `.sheet` = the bottom sheet (overlay is `position:absolute; inset:0` and **must be portaled to `#phone-shell`** to cover the phone rather than a nested card); `.bnav` / `.bni` = bottom-nav tabs.
 
 ## Gotchas
 
@@ -117,4 +107,4 @@ Dark, motion-first "market terminal" aesthetic (a blue/teal palette evolved from
 
 ## Ownership Model
 
-The friend deploys on **their own** Railway (backend, root dir `backend`) + Vercel (frontend, root dir `frontend`, `VITE_API_URL` env var) accounts and enters their own CallMeBot phone/key via the Settings page. No developer credentials, phone numbers, or data anywhere in the repo — keep it that way. Full deploy steps are in README.md.
+The friend deploys on **their own** Railway (backend, root dir `backend`) + Vercel (frontend, root dir `frontend`, `VITE_API_URL` env var) accounts and enters their own CallMeBot phone/key via the Manage tab. No developer credentials, phone numbers, or data anywhere in the repo — keep it that way. Full deploy steps are in README.md.
