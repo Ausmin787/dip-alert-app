@@ -96,13 +96,25 @@ Dark, glassmorphic **mobile** aesthetic, all in `frontend/src/index.css` (plain 
 - `.atmo` is the fixed atmospheric background (layered radial gradients + an SVG `feTurbulence` noise overlay) inside the shell.
 - Recipes: `.g` = the glass card (`backdrop-filter: blur`); `.panel` = a tab's scroll container; `.btn-primary` = cyan pill, `.btn-ghost` = charcoal pill, `.btn-danger` for destructive; `.field` = form input; `.sheet-overlay` / `.sheet` = the bottom sheet (overlay is `position:absolute; inset:0` and **must be portaled to `#phone-shell`** to cover the phone rather than a nested card); `.bnav` / `.bni` = bottom-nav tabs.
 
+### Bottom nav (`.nav`) — design rules locked in
+
+The nav is **floating**: `position:absolute; bottom: calc(10px + env(safe-area-inset-bottom)); left/right: 15px; border-radius: 31px`. It must not span full width.
+
+**Single-layer glass only**: `backdrop-filter` must stay on `.nav` itself — NOT on a child element. Chrome creates a 1–2px compositing seam ring when `backdrop-filter` is on a child inside `overflow:hidden`. Tested and confirmed; the two-layer approach (`.nav-bg` child) was tried and abandoned for this reason.
+
+**Sliding indicator** (`.nav-indicator`): animates via `transform: translateX(...)` + `width` change. `overflow: hidden` on `.nav` clips it. Use `cubic-bezier(0.16, 1, 0.3, 1)` — any y-value > 1.0 in the easing causes visible overshoot past the nav boundary.
+
+**Tab switch flash fix**: panels must use `opacity: 0; pointer-events: none` when inactive (NOT `display: none`). `display:none → block` forces Chrome to recompute `backdrop-filter` from scratch on frame 1, producing a visible flash. Keeping elements in the DOM lets Chrome pre-compute the backdrop. Active tab uses `animation: enter 200ms 80ms ease-out both` (80ms delay + `fill-mode: both` = stays hidden while Chrome pre-computes the full panel backdrop, eliminating bottom-of-card flash on first render).
+
+**Liquid Glass refraction**: the correct approach uses `feImage` with a pre-computed gradient displacement map (red = X, green = Y, 128 = neutral). `feTurbulence` is WRONG — it produces shaky random noise, not smooth lens bending. The effect is inherently subtle on dark navy backgrounds; most visible when card content scrolls under the nav. Nav SVG filter needs `y="-28%" height="156%"` to accommodate displacement at the edges.
+
 ## Gotchas
 
 - Market-hours check uses `Asia/Kolkata` via `zoneinfo` — never compare against UTC or server-local time
 - **Known limitation**: NSE holidays are not modeled (weekday + hours only). Harmless — prices don't move on holidays so no level can be crossed — but polls run idle. A holiday calendar would need yearly maintenance; deliberately skipped.
 - yfinance is unauthenticated and rate-limited; don't poll faster than every few minutes
 - SQLite on Railway needs a volume: `DATABASE_URL=sqlite:////data/dip_alert.db`, else data resets every deploy
-- `git add -A` traps: `.playwright-mcp/`, `*.db` are gitignored — keep it that way
+- `git add -A` traps: `.playwright-mcp/`, `*.db` are gitignored — keep it that way. Playwright diagnostic screenshots (`nav-*.png`, `kube-*.png`, `specy-demo.png`, `dashboard-screenshot.png`) accumulate in the repo root during investigation sessions — they are untracked and safe to delete, but never commit them.
 - Groww ETF URLs use their internal slug, not the fund name — verify at groww.in before hardcoding any broker URL
 
 ## Ownership Model
