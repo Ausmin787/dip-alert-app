@@ -1,115 +1,106 @@
 <svg width="1280" height="380" viewBox="0 0 1280 380" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <radialGradient id="g1" cx="358" cy="220" r="520" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#9b5812" stop-opacity="0.92"/>
-      <stop offset="58%" stop-color="#9b5812" stop-opacity="0"/>
+    <!-- Background atmosphere -->
+    <radialGradient id="g1" cx="256" cy="209" r="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5012e6" stop-opacity="0.24"/>
+      <stop offset="58%" stop-color="#5012e6" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="g2" cx="0" cy="190" r="350" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#0c3416" stop-opacity="0.95"/>
-      <stop offset="54%" stop-color="#0c3416" stop-opacity="0"/>
+    <radialGradient id="g2" cx="960" cy="342" r="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0e5feb" stop-opacity="0.20"/>
+      <stop offset="55%" stop-color="#0e5feb" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="g3" cx="1280" cy="190" r="360" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#0a3026" stop-opacity="0.90"/>
-      <stop offset="54%" stop-color="#0a3026" stop-opacity="0"/>
+    <radialGradient id="g3" cx="640" cy="190" r="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5816ff" stop-opacity="0.28"/>
+      <stop offset="60%" stop-color="#5816ff" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="g4" cx="640" cy="0" r="500" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#340c44" stop-opacity="0.88"/>
-      <stop offset="60%" stop-color="#340c44" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="g5" cx="590" cy="168" r="210" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#d28a1c" stop-opacity="0.60"/>
-      <stop offset="50%" stop-color="#d28a1c" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="g6" cx="1178" cy="342" r="320" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#0a204b" stop-opacity="0.80"/>
-      <stop offset="55%" stop-color="#0a204b" stop-opacity="0"/>
+    <radialGradient id="g4" cx="1020" cy="80" r="220" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00d291" stop-opacity="0.20"/>
+      <stop offset="62%" stop-color="#00d291" stop-opacity="0"/>
     </radialGradient>
     <linearGradient id="topLine" x1="0" y1="0" x2="1280" y2="0" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="white" stop-opacity="0"/>
-      <stop offset="30%" stop-color="#d28a1c" stop-opacity="0.65"/>
-      <stop offset="65%" stop-color="#22c55e" stop-opacity="0.45"/>
-      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+      <stop offset="0%"   stop-color="white"   stop-opacity="0"/>
+      <stop offset="25%"  stop-color="#6e3cff" stop-opacity="0.7"/>
+      <stop offset="60%"  stop-color="#00d291" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="white"   stop-opacity="0"/>
     </linearGradient>
-    <pattern id="grid" width="52" height="52" patternUnits="userSpaceOnUse">
-      <path d="M52 0H0V52" fill="none" stroke="white" stroke-opacity="0.03" stroke-width="1"/>
-    </pattern>
   </defs>
 
-  <rect width="1280" height="380" fill="#0d0905"/>
+  <!-- Background -->
+  <rect width="1280" height="380" fill="#08071a"/>
   <rect width="1280" height="380" fill="url(#g1)"/>
   <rect width="1280" height="380" fill="url(#g2)"/>
   <rect width="1280" height="380" fill="url(#g3)"/>
   <rect width="1280" height="380" fill="url(#g4)"/>
-  <rect width="1280" height="380" fill="url(#g5)"/>
-  <rect width="1280" height="380" fill="url(#g6)"/>
-  <rect width="1280" height="380" fill="url(#grid)"/>
+
+  <!-- Top accent line -->
   <rect x="0" y="0" width="1280" height="1" fill="url(#topLine)"/>
 
-  <!-- Light frosted glass icon mark. -->
-  <rect x="80" y="148" width="84" height="84" rx="22" fill="white" fill-opacity="0.12" stroke="white" stroke-opacity="0.22" stroke-width="1"/>
-  <path d="M102 148h40a22 22 0 0 1 22 22" fill="none" stroke="white" stroke-opacity="0.52" stroke-width="1.5"/>
-  <path d="M164 210a22 22 0 0 1-22 22H102a22 22 0 0 1-22-22" fill="none" stroke="white" stroke-opacity="0.10" stroke-width="1"/>
+  <!-- Icon mark (84×84 centered at y=148) -->
+  <rect x="80" y="148" width="84" height="84" rx="22" fill="#07051c" fill-opacity="0.88" stroke="#648cff" stroke-opacity="0.55" stroke-width="1.5"/>
 
-  <!-- Candlesticks stay centered inside the box. -->
-  <g>
-    <line x1="111" y1="181" x2="111" y2="214" stroke="#4ade80" stroke-width="1.35" stroke-linecap="round" opacity="0.88"/>
-    <rect x="107.5" y="190" width="7" height="17" rx="1.2" fill="#4ade80" opacity="0.90"/>
-    <line x1="122" y1="174" x2="122" y2="214" stroke="#4ade80" stroke-width="1.35" stroke-linecap="round"/>
-    <rect x="118.5" y="184" width="7" height="22" rx="1.2" fill="#4ade80"/>
-    <line x1="133" y1="184" x2="133" y2="218" stroke="#f87171" stroke-width="1.35" stroke-linecap="round"/>
-    <rect x="129.5" y="192" width="7" height="20" rx="1.2" fill="#f87171"/>
-    <polyline points="105,205 113,197 121,199 129,188 137,195" fill="none" stroke="#fbbf24" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" opacity="0.72"/>
+  <!-- Candle + bell icon (42×42), centered inside mark: translate(101, 169) -->
+  <g transform="translate(101,169)">
+    <!-- Green candle 1 -->
+    <rect x="4" y="20" width="5" height="13" rx="1" fill="#22c55e" opacity="0.85"/>
+    <line x1="6.5" y1="16" x2="6.5" y2="20" stroke="#22c55e" stroke-width="1.2" opacity="0.85"/>
+    <line x1="6.5" y1="33" x2="6.5" y2="36" stroke="#22c55e" stroke-width="1.2" opacity="0.85"/>
+    <!-- Green candle 2 -->
+    <rect x="13" y="14" width="5" height="15" rx="1" fill="#22c55e" opacity="0.9"/>
+    <line x1="15.5" y1="10" x2="15.5" y2="14" stroke="#22c55e" stroke-width="1.2" opacity="0.9"/>
+    <line x1="15.5" y1="29" x2="15.5" y2="33" stroke="#22c55e" stroke-width="1.2" opacity="0.9"/>
+    <!-- Red dip candle (x shifted left: 22→19, width 6→5, clears bell leftmost x 25.5) -->
+    <rect x="19" y="11" width="5" height="22" rx="1" fill="#ef4444"/>
+    <line x1="21.5" y1="7"  x2="21.5" y2="11" stroke="#ef4444" stroke-width="1.2"/>
+    <line x1="21.5" y1="33" x2="21.5" y2="37" stroke="#ef4444" stroke-width="1.2"/>
+    <!-- Bell (top-right) -->
+    <path d="M35 13.5A4 4 0 0 0 27 13.5C27 17.5 25.5 18.5 25.5 18.5h11S35 17.5 35 13.5z" stroke="#4f8cff" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M29 18.5a1.5 1.5 0 0 0 2.9.2" stroke="#4f8cff" stroke-width="1.3" stroke-linecap="round"/>
+    <!-- Alert dot -->
+    <circle cx="35.5" cy="9.5" r="2.5" fill="#ef4444"/>
   </g>
 
-  <!-- Bell badge sits on the top-right edge, separate from the candles. -->
-  <g>
-    <circle cx="156" cy="152" r="22" fill="#120b04" fill-opacity="0.88" stroke="white" stroke-opacity="0.14" stroke-width="1"/>
-    <path d="M162 150c0-5.2-2.7-8.3-6.5-8.3S149 144.8 149 150c0 4.5-2.3 6.2-2.3 6.2h17.6S162 154.5 162 150z" fill="none" stroke="white" stroke-opacity="0.85" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M153 158.5c0.5 1.5 1.4 2.2 2.7 2.2 1.2 0 2.1-0.7 2.6-2.2" fill="none" stroke="white" stroke-opacity="0.85" stroke-width="1.8" stroke-linecap="round"/>
-    <circle cx="166" cy="140" r="5" fill="#f87171"/>
-  </g>
-
+  <!-- Eyebrow -->
   <text x="204" y="158"
         font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-        font-size="11" font-weight="600" fill="white" fill-opacity="0.60" letter-spacing="1.1">AUSMIN787 / DIP-ALERT-APP</text>
+        font-size="11" font-weight="600" fill="#4f8cff" fill-opacity="0.75" letter-spacing="1.1">AUSMIN787 / DIP-ALERT-APP</text>
 
+  <!-- H1 line 1 -->
   <text x="204" y="194"
         font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-        font-size="54" font-weight="800" fill="white" letter-spacing="-1.4">Never Miss a</text>
-  <text x="548" y="194"
-        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-        font-size="54" font-weight="800" fill="#fbbf24" letter-spacing="-1.4">Nifty 50</text>
+        font-size="52" font-weight="800" fill="white" letter-spacing="-1.4">Never Miss a</text>
+
+  <!-- H1 line 2 (colour split) -->
   <text x="204" y="250"
         font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-        font-size="54" font-weight="800" fill="white" letter-spacing="-1.4">Dip</text>
+        font-size="52" font-weight="800" letter-spacing="-1.4">
+    <tspan fill="#4f8cff">Nifty 50</tspan><tspan fill="white"> Dip</tspan>
+  </text>
 
+  <!-- Sub -->
   <text x="204" y="290"
         font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-        font-size="16" font-weight="400" fill="white" fill-opacity="0.50">Automated WhatsApp alerts for every &#8722;1% fall from all-time</text>
-  <text x="204" y="314"
-        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-        font-size="16" font-weight="400" fill="white" fill-opacity="0.50">high. FastAPI backend.</text>
+        font-size="15" font-weight="400" fill="white" fill-opacity="0.40">Automated WhatsApp alerts every −1% fall from ATH · FastAPI · React glassmorphism dashboard</text>
 
-  <!-- Pill grid. -->
-  <rect x="874" y="148" width="159" height="42" rx="14" fill="white" fill-opacity="0.12" stroke="white" stroke-opacity="0.20" stroke-width="1"/>
-  <path d="M1033 149H888a14 14 0 0 0-14 14" fill="none" stroke="white" stroke-opacity="0.50" stroke-width="1"/>
-  <line x1="895" y1="160" x2="895" y2="172" stroke="#f87171" stroke-width="1.3" stroke-linecap="round"/>
-  <polyline points="891.5,168 895,173 898.5,168" stroke="#f87171" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <text x="910" y="173" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="white" fill-opacity="0.95">Every &#8722;1% Dip</text>
+  <!-- ── Pill grid (x=874, 2×2, col=159px, gap=8px) ── -->
 
-  <rect x="1041" y="148" width="159" height="42" rx="14" fill="white" fill-opacity="0.12" stroke="white" stroke-opacity="0.20" stroke-width="1"/>
-  <path d="M1200 149h-145a14 14 0 0 0-14 14" fill="none" stroke="white" stroke-opacity="0.50" stroke-width="1"/>
-  <polyline points="1058,173 1061,168 1065,170 1069,164 1073,167" stroke="#4ade80" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <text x="1083" y="173" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="white" fill-opacity="0.95">Nifty 50</text>
+  <!-- Pill 1: Every −1% Dip (row1, col1) -->
+  <rect x="874" y="144" width="159" height="42" rx="14" fill="#08061c" fill-opacity="0.88" stroke="white" stroke-opacity="0.28" stroke-width="1"/>
+  <line x1="893" y1="158" x2="893" y2="169" stroke="#ef4444" stroke-width="1.3" stroke-linecap="round"/>
+  <polyline points="890,166 893,170 896,166" stroke="#ef4444" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <text x="908" y="170" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="white" fill-opacity="0.90">Every −1% Dip</text>
 
-  <rect x="874" y="198" width="159" height="42" rx="14" fill="white" fill-opacity="0.12" stroke="white" stroke-opacity="0.20" stroke-width="1"/>
-  <path d="M1033 199H888a14 14 0 0 0-14 14" fill="none" stroke="white" stroke-opacity="0.50" stroke-width="1"/>
-  <path d="M898.2 219.4a6.5 6.5 0 0 1-6.6 1l-3.4 0.9 0.9-3.4a6.5 6.5 0 1 1 9.1 1.5z" fill="none" stroke="#4ade80" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M893.1 211.4c0.2 2.4 1.8 4.3 4.6 5.4" fill="none" stroke="#4ade80" stroke-width="1.25" stroke-linecap="round"/>
-  <text x="910" y="223" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="white" fill-opacity="0.95">WhatsApp</text>
+  <!-- Pill 2: Nifty 50 (row1, col2) -->
+  <rect x="1041" y="144" width="159" height="42" rx="14" fill="#08061c" fill-opacity="0.88" stroke="white" stroke-opacity="0.28" stroke-width="1"/>
+  <polyline points="1058,170 1061,165 1065,168 1069,162 1073,165" stroke="#22c55e" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <text x="1081" y="170" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="white" fill-opacity="0.90">Nifty 50</text>
 
-  <rect x="1041" y="198" width="159" height="42" rx="14" fill="white" fill-opacity="0.12" stroke="white" stroke-opacity="0.20" stroke-width="1"/>
-  <path d="M1200 199h-145a14 14 0 0 0-14 14" fill="none" stroke="white" stroke-opacity="0.50" stroke-width="1"/>
-  <path d="M1059 213l-2.5 5.5 2.5 5.5M1065 213l2.5 5.5-2.5 5.5M1063 211l-2 10" stroke="#93c5fd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="1075" y="223" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="white" fill-opacity="0.95">FastAPI + React</text>
+  <!-- Pill 3: WhatsApp (row2, col1) -->
+  <rect x="874" y="194" width="159" height="42" rx="14" fill="#08061c" fill-opacity="0.88" stroke="white" stroke-opacity="0.28" stroke-width="1"/>
+  <circle cx="893" cy="215" r="6" stroke="#22c55e" stroke-width="1.3" fill="none"/>
+  <text x="908" y="220" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="white" fill-opacity="0.90">WhatsApp</text>
+
+  <!-- Pill 4: FastAPI + React (row2, col2) -->
+  <rect x="1041" y="194" width="159" height="42" rx="14" fill="#08061c" fill-opacity="0.88" stroke="white" stroke-opacity="0.28" stroke-width="1"/>
+  <path d="M1059 209l-2.5 5.5 2.5 5.5M1065 209l2.5 5.5-2.5 5.5M1063 207l-2 10" stroke="#4f8cff" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1075" y="220" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="white" fill-opacity="0.90">FastAPI + React</text>
 </svg>
