@@ -37,6 +37,21 @@ def get_historical_max(ticker: str) -> Optional[tuple[float, date]]:
         return None
 
 
+def get_prev_close(ticker: str) -> Optional[float]:
+    """Previous trading day's closing price, for daily % change in momentum mode."""
+    try:
+        t = yf.Ticker(ticker)
+        price = t.fast_info.get("previous_close")
+        if price:
+            return float(price)
+        hist = t.history(period="5d")
+        if len(hist) >= 2:
+            return float(hist["Close"].iloc[-2])
+    except Exception:
+        logger.exception("Failed to fetch previous close for %s", ticker)
+    return None
+
+
 def get_recent_history(ticker: str, days: int = 30) -> list[dict]:
     """Daily closes for the last `days` days, for the dashboard chart."""
     try:

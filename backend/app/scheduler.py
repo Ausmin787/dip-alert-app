@@ -28,9 +28,11 @@ def is_market_open(now: datetime | None = None) -> bool:
 
 
 def market_hours_check() -> None:
-    if not is_market_open():
+    now = datetime.now(IST)
+    if now.weekday() >= 5:  # weekend: nothing trades
         return
-    check_all_assets()
+    # Dip-mode assets only run during NSE hours; momentum assets run any weekday hour.
+    check_all_assets(market_open=is_market_open(now))
 
 
 def get_check_interval() -> int:

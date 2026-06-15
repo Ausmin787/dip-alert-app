@@ -31,6 +31,22 @@ def format_alert_message(
     return msg
 
 
+def format_momentum_message(
+    display_name: str,
+    change_pct: float,
+    current_price: float,
+    threshold_pct: float,
+) -> str:
+    arrow = "\U0001f4c8" if change_pct > 0 else "\U0001f4c9"
+    direction = "UP" if change_pct > 0 else "DOWN"
+    sign = "+" if change_pct > 0 else ""
+    return (
+        f"{arrow} {display_name} {direction} {sign}{change_pct:.2f}%\n"
+        f"Current: {current_price:,.2f}\n"
+        f"Daily move: {sign}{change_pct:.2f}% (threshold: ±{threshold_pct:g}%)"
+    )
+
+
 def send_whatsapp(phone: str, apikey: str, message: str) -> bool:
     if not phone or not apikey:
         logger.warning("WhatsApp not configured; skipping send")

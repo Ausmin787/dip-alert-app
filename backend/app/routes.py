@@ -11,7 +11,7 @@ from sqlmodel import Session, desc, select
 from .ath_logic import refresh_ath
 from .db import get_session
 from .models import AlertLog, AthTracker, Settings, Watchlist
-from .price_service import get_current_price, get_recent_history
+from .price_service import get_current_price, get_prev_close, get_recent_history
 from .scheduler import is_market_open, reschedule_price_check
 from .whatsapp import format_alert_message, send_whatsapp
 
@@ -40,21 +40,49 @@ def get_status(session: Session = Depends(get_session)):
             select(AthTracker).where(AthTracker.ticker == item.ticker)
         ).first()
         price = get_current_price(item.ticker) if item.active else None
-        ath = tracker.ath_price if tracker else None
-        drop_pct = None
-        next_level = None
-        if price is not None and ath:
-            drop_pct = round((ath - price) / ath * 100, 2)
-            last = tracker.last_alerted_level if tracker else 0
-            crossed = math.floor(drop_pct / item.threshold_pct) if drop_pct > 0 else 0
-            next_level = (max(last, crossed) + 1) * item.threshold_pct
-        result.append(
-            {
+
+        if item.alert_mode == "momentum":
+            prev_close = get_prev_close(item.ticker) if item.active and price else None
+            daily_change = (
+                round((price - prev_close) / prev_close * 100, 2)
+                if price and prev_close and prev_close > 0
+                else None
+            )
+            result.append({
                 "id": item.id,
                 "ticker": item.ticker,
                 "display_name": item.display_name,
                 "active": item.active,
+                "alert_mode": "momentum",
                 "current_price": price,
+                "daily_change_pct": daily_change,
+                "threshold_pct": item.threshold_pct,
+                "invest_amount": item.invest_amount,
+                "broker_url": item.broker_url,
+                # dip-specific fields absent
+                "ath_price": None,
+                "ath_date": None,
+                "drop_pct": None,
+                "last_alerted_level": 0,
+                "next_alert_level": None,
+            })
+        else:
+            ath = tracker.ath_price if tracker else None
+            drop_pct = None
+            next_level = None
+            if price is not None and ath:
+                drop_pct = round((ath - price) / ath * 100, 2)
+                last = tracker.last_alerted_level if tracker else 0
+                crossed = math.floor(drop_pct / item.threshold_pct) if drop_pct > 0 else 0
+                next_level = (max(last, crossed) + 1) * item.threshold_pct
+            result.append({
+                "id": item.id,
+                "ticker": item.ticker,
+                "display_name": item.display_name,
+                "active": item.active,
+                "alert_mode": "dip",
+                "current_price": price,
+                "daily_change_pct": None,
                 "ath_price": ath,
                 "ath_date": tracker.ath_date.isoformat() if tracker and tracker.ath_date else None,
                 "drop_pct": drop_pct,
@@ -63,8 +91,7 @@ def get_status(session: Session = Depends(get_session)):
                 "threshold_pct": item.threshold_pct,
                 "invest_amount": item.invest_amount,
                 "broker_url": item.broker_url,
-            }
-        )
+            })
     return {"market_open": is_market_open(), "items": result}
 
 
@@ -82,6 +109,7 @@ class WatchlistIn(BaseModel):
     invest_amount: int = Field(100000, ge=0)
     broker_url: str = ""
     active: bool = True
+    alert_mode: str = "dip"
 
 
 @router.get("/watchlist")

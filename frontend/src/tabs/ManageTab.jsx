@@ -30,6 +30,7 @@ const emptyForm = {
   invest_amount: 100000,
   broker_url: '',
   active: true,
+  alert_mode: 'dip',
 }
 
 function AssetSheet({ initial, onClose, onSave }) {
@@ -49,6 +50,7 @@ function AssetSheet({ initial, onClose, onSave }) {
         display_name: form.display_name,
         broker_url: form.broker_url,
         active: form.active,
+        alert_mode: form.alert_mode,
         threshold_pct: parseFloat(form.threshold_pct),
         invest_amount: parseInt(form.invest_amount, 10),
       })
@@ -67,7 +69,7 @@ function AssetSheet({ initial, onClose, onSave }) {
         <div className="sheet-sub">
           {isEdit
             ? 'Ticker is locked — delete and re-add to change it.'
-            : 'Yahoo Finance tickers: ^NSEI, SETFNIF50.NS, RELIANCE.NS…'}
+            : 'Tickers: ^NSEI, SETFNIF50.NS · Global: GC=F, SI=F, ^GSPC, ^NDX'}
         </div>
         <form onSubmit={submit}>
           <div className="field-group">
@@ -78,9 +80,18 @@ function AssetSheet({ initial, onClose, onSave }) {
             <div className="field-row"><span className="flabel">Display name</span></div>
             <input className="field" placeholder="Nifty 50" value={form.display_name} onChange={set('display_name')} required />
           </div>
+          <div className="field-group">
+            <div className="field-row"><span className="flabel">Alert type</span></div>
+            <select className="field" value={form.alert_mode} onChange={set('alert_mode')}>
+              <option value="dip">Dip Alert — buy on ATH dip levels</option>
+              <option value="momentum">Momentum — ±% daily move notification</option>
+            </select>
+          </div>
           <div className="grid-2">
             <div className="field-group">
-              <div className="field-row"><span className="flabel">Alert every (%)</span></div>
+              <div className="field-row">
+                <span className="flabel">{form.alert_mode === 'momentum' ? 'Threshold (%)' : 'Alert every (%)'}</span>
+              </div>
               <input className="field" type="number" step="0.1" min="0.1" max="50" value={form.threshold_pct} onChange={set('threshold_pct')} required />
             </div>
             <div className="field-group">
@@ -152,7 +163,10 @@ function WatchlistManager() {
               <div className="mrow-body">
                 <div className="mrow-name">{item.display_name}</div>
                 <div className="mrow-meta">
-                  {item.ticker} · {exchange} {type} · −{fmtLevel(item.threshold_pct)}% · {fmtLakh(item.invest_amount)}
+                  {item.ticker} · {exchange} {type} ·{' '}
+                  {item.alert_mode === 'momentum'
+                    ? `±${fmtLevel(item.threshold_pct)}% momentum`
+                    : `−${fmtLevel(item.threshold_pct)}% · ${fmtLakh(item.invest_amount)}`}
                 </div>
               </div>
               <div className="mrow-actions">

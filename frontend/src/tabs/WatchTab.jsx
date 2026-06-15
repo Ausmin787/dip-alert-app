@@ -28,8 +28,13 @@ function dipLevels(item) {
 
 function Hero({ item }) {
   const { whole, frac } = splitPrice(item.current_price)
-  const { exchange } = tickerMeta(item.ticker)
+  const { exchange, currency } = tickerMeta(item.ticker)
   const open = isMarketOpenIST()
+  const isMomentum = item.alert_mode === 'momentum'
+  const change = item.daily_change_pct
+  const changeUp = change != null && change > 0
+  const changeDown = change != null && change < 0
+
   return (
     <div className="g hero">
       <div className="hero-asset">
@@ -37,16 +42,30 @@ function Hero({ item }) {
         {item.display_name} · {exchange}
       </div>
       <div className="hero-price-row">
-        <span className="hcur">₹</span>
+        {currency !== 'pts' && <span className="hcur">{currency}</span>}
         <span className="hnum">{whole}</span>
         <span className="hdec">{frac}</span>
       </div>
       <div className="hero-dip-row">
-        <span className="hdip">{item.drop_pct != null ? `−${item.drop_pct.toFixed(2)}%` : '—'}</span>
-        <div className="hath-block">
-          <div className="hath-lbl">from all-time high</div>
-          <div className="hath-val">ATH {fmtPrice(item.ath_price)}</div>
-        </div>
+        {isMomentum ? (
+          <>
+            <span className={`hdip ${changeUp ? 'chg-up' : changeDown ? 'chg-dn' : ''}`}>
+              {change != null ? `${change > 0 ? '+' : ''}${change.toFixed(2)}%` : '—'}
+            </span>
+            <div className="hath-block">
+              <div className="hath-lbl">vs yesterday's close</div>
+              <div className="hath-val">Daily change</div>
+            </div>
+          </>
+        ) : (
+          <>
+            <span className="hdip">{item.drop_pct != null ? `−${item.drop_pct.toFixed(2)}%` : '—'}</span>
+            <div className="hath-block">
+              <div className="hath-lbl">from all-time high</div>
+              <div className="hath-val">ATH {fmtPrice(item.ath_price)}</div>
+            </div>
+          </>
+        )}
       </div>
       <div className="hero-divider" />
       <div className="hero-meta">
@@ -77,6 +96,30 @@ function Tracker({ item }) {
             <div className="lv-st">{state === 'done' ? '✓' : state === 'next' ? '→' : '—'}</div>
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+function MomentumCard({ item }) {
+  const change = item.daily_change_pct
+  const crossed = change != null && Math.abs(change) >= item.threshold_pct
+  const dir = change > 0 ? 'up' : change < 0 ? 'down' : null
+  return (
+    <div className="g tracker">
+      <div className="row-hd">
+        <span className="sec-lbl">Daily Move</span>
+        <span className="dep-note">Alert at ±{fmtLevel(item.threshold_pct)}%</span>
+      </div>
+      <div className="momentum-row">
+        <div className={`momentum-val ${dir === 'up' ? 'chg-up' : dir === 'down' ? 'chg-dn' : ''}`}>
+          {change != null ? `${change > 0 ? '+' : ''}${change.toFixed(2)}%` : '—'}
+        </div>
+        <div className="momentum-sub">
+          {crossed
+            ? `⚡ Crossed ±${fmtLevel(item.threshold_pct)}% — alert sent`
+            : `±${fmtLevel(item.threshold_pct)}% triggers WhatsApp`}
+        </div>
       </div>
     </div>
   )
@@ -123,18 +166,28 @@ function TodaysAlerts({ alerts, items }) {
       {today.length === 0 ? (
         <div className="empty">No alerts fired today.</div>
       ) : (
-        today.map((a, idx) => (
-          <div className="ai" key={a.id}>
-            <div className={`badge ${idx === 0 ? '' : 'old'}`}>−{fmtLevel(a.level_pct ?? a.alert_level)}%</div>
-            <div className="ai-body">
-              <div className="ai-price">₹{fmtPrice(a.current_price)}</div>
-              <div className="ai-sub">
-                Buy ₹{investFor(a.ticker).toLocaleString('en-IN')} · {a.ticker}
+        today.map((a, idx) => {
+          const isMomentum = a.alert_direction != null
+          const sign = isMomentum ? (a.alert_direction === 'up' ? '+' : '−') : '−'
+          const badgeClass = isMomentum
+            ? (a.alert_direction === 'up' ? 'badge-up' : 'badge-dn')
+            : (idx === 0 ? '' : 'old')
+          const { currency } = tickerMeta(a.ticker)
+          return (
+            <div className="ai" key={a.id}>
+              <div className={`badge ${badgeClass}`}>{sign}{fmtLevel(a.level_pct ?? a.alert_level)}%</div>
+              <div className="ai-body">
+                <div className="ai-price">{currency !== 'pts' ? currency : ''}{fmtPrice(a.current_price)}</div>
+                <div className="ai-sub">
+                  {isMomentum
+                    ? `Daily move · ${a.ticker}`
+                    : `Buy ₹${investFor(a.ticker).toLocaleString('en-IN')} · ${a.ticker}`}
+                </div>
               </div>
+              <div className="ai-time">{fmtTimeIST(a.alerted_at)}</div>
             </div>
-            <div className="ai-time">{fmtTimeIST(a.alerted_at)}</div>
-          </div>
-        ))
+          )
+        })
       )}
     </div>
   )
@@ -146,7 +199,9 @@ function WatchlistMini({ items, selectedAsset, setSelectedAsset }) {
       <span className="sec-lbl">Watchlist</span>
       <div className="wit">
         {items.map((item) => {
-          const { exchange, type } = tickerMeta(item.ticker)
+          const { exchange, type, currency } = tickerMeta(item.ticker)
+          const isMomentum = item.alert_mode === 'momentum'
+          const change = item.daily_change_pct
           return (
             <button
               key={item.id}
@@ -159,9 +214,11 @@ function WatchlistMini({ items, selectedAsset, setSelectedAsset }) {
                 <div className="wf">{exchange} · {type}</div>
               </div>
               <div className="wp">
-                <div className="wp-val">₹{fmtPrice(item.current_price)}</div>
-                <div className={`wp-dip ${item.active ? '' : 'off'}`}>
-                  {item.drop_pct != null ? `−${item.drop_pct.toFixed(2)}%` : '—'}
+                <div className="wp-val">{currency !== 'pts' ? currency : ''}{fmtPrice(item.current_price)}</div>
+                <div className={`wp-dip ${item.active ? '' : 'off'} ${isMomentum && change > 0 ? 'chg-up' : isMomentum && change < 0 ? 'chg-dn' : ''}`}>
+                  {isMomentum
+                    ? (change != null ? `${change > 0 ? '+' : ''}${change.toFixed(2)}%` : '—')
+                    : (item.drop_pct != null ? `−${item.drop_pct.toFixed(2)}%` : '—')}
                 </div>
               </div>
             </button>
@@ -191,11 +248,18 @@ export default function WatchTab() {
       </div>
     )
 
+  const isMomentum = selectedItem.alert_mode === 'momentum'
   return (
     <div className="panel">
       <Hero item={selectedItem} />
-      <Tracker item={selectedItem} />
-      <NextAlert item={selectedItem} />
+      {isMomentum ? (
+        <MomentumCard item={selectedItem} />
+      ) : (
+        <>
+          <Tracker item={selectedItem} />
+          <NextAlert item={selectedItem} />
+        </>
+      )}
       <TodaysAlerts alerts={alerts} items={items} />
       <WatchlistMini items={items} selectedAsset={selectedAsset} setSelectedAsset={setSelectedAsset} />
     </div>

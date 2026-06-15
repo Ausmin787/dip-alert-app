@@ -7,8 +7,8 @@ from sqlmodel import Session, select
 
 from .db import engine
 from .models import AlertLog, AthTracker, Settings, Watchlist
-from .price_service import get_current_price, get_historical_max
-from .whatsapp import format_alert_message, send_whatsapp
+from .price_service import get_current_price, get_historical_max, get_prev_close
+from .whatsapp import format_alert_message, format_momentum_message, send_whatsapp
 
 logger = logging.getLogger(__name__)
 
@@ -116,14 +116,85 @@ def check_asset(session: Session, item: Watchlist) -> AlertLog | None:
     return alert
 
 
-def check_all_assets() -> None:
-    """Scheduler entrypoint: check every active watchlist asset."""
+def check_momentum_asset(session: Session, item: Watchlist) -> AlertLog | None:
+    """Momentum mode: fire once per day per direction when |daily change| > threshold."""
+    prev_close = get_prev_close(item.ticker)
+    price = get_current_price(item.ticker)
+    if prev_close is None or price is None or prev_close <= 0:
+        logger.warning("No price data for momentum check on %s; skipping", item.ticker)
+        return None
+
+    daily_change_pct = (price - prev_close) / prev_close * 100
+    if abs(daily_change_pct) < item.threshold_pct:
+        return None
+
+    direction = "up" if daily_change_pct > 0 else "down"
+
+    # De-duplicate: at most one alert per day per direction (UTC day boundary)
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    already = session.exec(
+        select(AlertLog).where(
+            AlertLog.ticker == item.ticker,
+            AlertLog.alert_direction == direction,
+            AlertLog.alerted_at >= today_start,
+        )
+    ).first()
+    if already:
+        return None
+
+    settings = session.exec(select(Settings)).first()
+    configured = bool(settings and settings.whatsapp_phone and settings.callmebot_apikey)
+    change_rounded = round(daily_change_pct, 2)
+    message = format_momentum_message(
+        display_name=item.display_name,
+        change_pct=change_rounded,
+        current_price=price,
+        threshold_pct=item.threshold_pct,
+    )
+    sent = False
+    if configured:
+        sent = send_whatsapp(settings.whatsapp_phone, settings.callmebot_apikey, message)
+        if not sent:
+            logger.warning(
+                "WhatsApp send failed for %s momentum alert (%s); will retry next check",
+                item.ticker, direction,
+            )
+            return None
+
+    alert = AlertLog(
+        ticker=item.ticker,
+        alert_level=1,
+        level_pct=round(abs(daily_change_pct), 2),
+        current_price=price,
+        ath_price=prev_close,
+        drop_pct=change_rounded,
+        whatsapp_sent=sent,
+        alert_direction=direction,
+    )
+    session.add(alert)
+    session.commit()
+    session.refresh(alert)
+    logger.info(
+        "Momentum alert fired for %s: %+.2f%% (%s)", item.ticker, daily_change_pct, direction
+    )
+    return alert
+
+
+def check_all_assets(market_open: bool = True) -> None:
+    """Scheduler entrypoint: check every active watchlist asset.
+
+    `market_open` gates dip-mode assets (NSE hours only). Momentum-mode assets
+    run on any weekday regardless of IST market hours.
+    """
     with Session(engine) as session:
         items = session.exec(select(Watchlist).where(Watchlist.active == True)).all()  # noqa: E712
         for item in items:
             ticker = item.ticker  # read while the session is healthy
             try:
-                check_asset(session, item)
+                if item.alert_mode == "momentum":
+                    check_momentum_asset(session, item)
+                elif market_open:
+                    check_asset(session, item)
             except Exception:
                 # Roll back so one bad asset can't poison the shared session
                 # (PendingRollbackError) for the rest of the pass.

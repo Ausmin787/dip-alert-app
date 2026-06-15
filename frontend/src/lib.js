@@ -86,12 +86,16 @@ export const splitPrice = (n) => {
   return { whole: Number(int).toLocaleString('en-IN'), frac: `.${dec}` }
 }
 
-// Best-effort exchange + instrument type label from a Yahoo Finance ticker
+// Exchange + instrument type label from a Yahoo Finance ticker
 export const tickerMeta = (ticker = '') => {
+  if (ticker.endsWith('=F')) return { exchange: 'COMEX', type: 'Futures', currency: '$' }
+  if (ticker === '^GSPC') return { exchange: 'NYSE', type: 'Index', currency: 'pts' }
+  if (ticker === '^NDX') return { exchange: 'NASDAQ', type: 'Index', currency: 'pts' }
+  if (ticker === '^DJI') return { exchange: 'NYSE', type: 'Index', currency: 'pts' }
   const isIndex = ticker.startsWith('^')
   let exchange = 'NSE'
   if (ticker.endsWith('.BO') || ticker.startsWith('^BSE')) exchange = 'BSE'
-  return { exchange, type: isIndex ? 'Index' : 'ETF' }
+  return { exchange, type: isIndex ? 'Index' : 'ETF', currency: '₹' }
 }
 
 // Compact rupee deployment: ₹1L, ₹1.5L, ₹2L (≥1 lakh), else full ₹ amount

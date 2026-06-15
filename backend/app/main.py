@@ -22,7 +22,12 @@ DEFAULT_ASSETS = [
         threshold_pct=1.0,
         invest_amount=100000,
         broker_url="https://groww.in/etfs/sbietf-nifty",
+        alert_mode="dip",
     ),
+    Watchlist(ticker="GC=F", display_name="Gold (COMEX)", threshold_pct=2.0, invest_amount=0, broker_url="", alert_mode="momentum"),
+    Watchlist(ticker="SI=F", display_name="Silver (COMEX)", threshold_pct=2.0, invest_amount=0, broker_url="", alert_mode="momentum"),
+    Watchlist(ticker="^GSPC", display_name="S&P 500", threshold_pct=2.0, invest_amount=0, broker_url="", alert_mode="momentum"),
+    Watchlist(ticker="^NDX", display_name="Nasdaq 100", threshold_pct=2.0, invest_amount=0, broker_url="", alert_mode="momentum"),
 ]
 
 
@@ -30,8 +35,10 @@ def seed_defaults() -> None:
     with Session(engine) as session:
         if not session.exec(select(Settings)).first():
             session.add(Settings())
-        if not session.exec(select(Watchlist)).first():
-            for asset in DEFAULT_ASSETS:
+        # Add any DEFAULT_ASSETS not yet in the DB (safe to run on existing installs)
+        existing = {item.ticker for item in session.exec(select(Watchlist)).all()}
+        for asset in DEFAULT_ASSETS:
+            if asset.ticker not in existing:
                 session.add(asset)
         session.commit()
 
@@ -60,9 +67,14 @@ def migrate_db() -> None:
                 ("invest_amount", "INTEGER NOT NULL DEFAULT 100000"),
                 ("broker_url", "VARCHAR NOT NULL DEFAULT ''"),
                 ("active", "BOOLEAN NOT NULL DEFAULT 1"),
+                ("alert_mode", "VARCHAR NOT NULL DEFAULT 'dip'"),
             ):
                 if col not in wl_cols:
                     conn.exec_driver_sql(f"ALTER TABLE watchlist ADD COLUMN {col} {ddl}")
+
+        al_cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(alert_log)")]
+        if al_cols and "alert_direction" not in al_cols:
+            conn.exec_driver_sql("ALTER TABLE alert_log ADD COLUMN alert_direction VARCHAR")
 
         conn.commit()
 

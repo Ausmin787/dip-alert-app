@@ -14,6 +14,8 @@ class Watchlist(SQLModel, table=True):
     invest_amount: int = 100000
     broker_url: str = ""
     active: bool = True
+    # "dip" = ATH-drop levels (existing logic); "momentum" = |daily % change| > threshold
+    alert_mode: str = "dip"
 
 
 class AthTracker(SQLModel, table=True):
@@ -35,10 +37,11 @@ class AlertLog(SQLModel, table=True):
     alert_level: int
     level_pct: float = 0.0  # alert_level × threshold_pct at fire time (what the user sees)
     current_price: float
-    ath_price: float
-    drop_pct: float
+    ath_price: float  # for momentum alerts: stores prev_close instead
+    drop_pct: float   # for momentum alerts: signed daily change (positive = up, negative = down)
     alerted_at: datetime = Field(default_factory=datetime.utcnow)
     whatsapp_sent: bool = False
+    alert_direction: Optional[str] = None  # "up" | "down" for momentum; None for dip
 
 
 class Settings(SQLModel, table=True):
