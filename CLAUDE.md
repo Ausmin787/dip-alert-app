@@ -103,7 +103,7 @@ State rules for **momentum mode**:
 - `whatsapp.py` — `format_alert_message` (dip), **`format_momentum_message`** (momentum: "📈 Gold UP +2.5%"), `send_whatsapp`
 - `scheduler.py` — `market_hours_check()` skips weekends; on weekdays passes `market_open=is_market_open()` to `check_all_assets()`. Dip assets skip when `market_open=False`; momentum assets always run.
 - `routes.py` — all endpoints under `/api` (status, history, watchlist CRUD, alerts, settings, test-alert)
-  - `WatchlistIn` Pydantic model includes `alert_mode: str = "dip"`
+  - `WatchlistIn` Pydantic model includes `alert_mode: Literal["dip", "momentum"] = "dip"`
   - `/api/status` returns `alert_mode` and `daily_change_pct` for each asset; momentum items have `ath_price/drop_pct/next_alert_level = None`, dip items have `daily_change_pct = None`
   - `next_alert_level` in dip status is `(max(last_alerted_level, current_crossed_level) + 1) × threshold_pct`
 - `main.py` — lifespan: create tables → migrate → seed defaults → refresh ATHs in background thread → start scheduler
