@@ -111,7 +111,8 @@ State rules for **momentum mode**:
   - `migrate_db()` adds `watchlist.alert_mode` (VARCHAR DEFAULT 'dip') and `alert_log.alert_direction` (VARCHAR, nullable)
 - WhatsApp credentials live in the `settings` DB row (entered via the UI), **never** in env vars or code
 - **Settings API is redacted**: GET/PUT `/api/settings` return only `whatsapp_phone_masked` + `apikey_set` + `check_interval_min` + `write_protected`
-- **Optional write protection**: `APP_TOKEN` env var gates all write endpoints; frontend stores token in localStorage
+- **Optional write protection**: `APP_TOKEN` env var gates all write endpoints; frontend stores token in localStorage. If unset, `warn_if_unprotected()` (`main.py`, called from `lifespan`) logs a loud startup warning since writes are then fully open to anyone with the URL.
+- `/api/test-alert` enforces a 60s in-memory cooldown (`TEST_ALERT_COOLDOWN_SECONDS` in `routes.py`) to stop CallMeBot quota burn/spam from repeated calls.
 - Input validation: `threshold_pct` >0 and ≤50, `check_interval_min` 1–60, ticker changes via PUT rejected
 - Tickers are Yahoo Finance format: `^NSEI`, `SETFNIF50.NS` (NSE), `.BO` (BSE), `GC=F` / `SI=F` (COMEX), `^GSPC` / `^NDX` (US indices)
 - `migrate_db()` in `main.py` holds all additive SQLite migrations — `create_all` only creates missing tables, never alters columns, so every new column needs a guard here.

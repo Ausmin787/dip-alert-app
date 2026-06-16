@@ -1,11 +1,14 @@
 """All API endpoints."""
 import math
 import os
+import re
 import secrets
 from datetime import datetime
+from typing import Literal
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlmodel import Session, desc, select
 
 from .ath_logic import refresh_ath
@@ -102,14 +105,40 @@ def get_history(ticker: str, days: int = Query(30, ge=1, le=365)):
 
 # ---------- watchlist ----------
 
+TICKER_RE = re.compile(r"^[A-Z0-9.^=-]{1,24}$")
+
+
 class WatchlistIn(BaseModel):
-    ticker: str = Field(min_length=1)
-    display_name: str = Field(min_length=1)
+    ticker: str = Field(min_length=1, max_length=24)
+    display_name: str = Field(min_length=1, max_length=80)
     threshold_pct: float = Field(1.0, gt=0, le=50)
     invest_amount: int = Field(100000, ge=0)
-    broker_url: str = ""
+    broker_url: str = Field("", max_length=300)
     active: bool = True
-    alert_mode: str = "dip"
+    alert_mode: Literal["dip", "momentum"] = "dip"
+
+    @field_validator("ticker")
+    @classmethod
+    def validate_ticker(cls, value: str) -> str:
+        value = value.strip().upper()
+        if not TICKER_RE.fullmatch(value):
+            raise ValueError("Ticker must be a Yahoo-style symbol using letters, digits, ., ^, =, or -")
+        return value
+
+    @field_validator("display_name", "broker_url")
+    @classmethod
+    def trim_string(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("broker_url")
+    @classmethod
+    def validate_broker_url(cls, value: str) -> str:
+        if not value:
+            return value
+        parsed = urlparse(value)
+        if parsed.scheme != "https" or not parsed.netloc:
+            raise ValueError("Broker URL must be blank or an https:// URL")
+        return value
 
 
 @router.get("/watchlist")
@@ -180,9 +209,14 @@ def list_alerts(
 class SettingsIn(BaseModel):
     # Blank phone/apikey mean "keep the stored value" — the UI never sees the
     # real secrets, so it can't echo them back.
-    whatsapp_phone: str = ""
-    callmebot_apikey: str = ""
+    whatsapp_phone: str = Field("", max_length=32)
+    callmebot_apikey: str = Field("", max_length=128)
     check_interval_min: int = Field(5, ge=1, le=60)
+
+    @field_validator("whatsapp_phone", "callmebot_apikey")
+    @classmethod
+    def trim_secret(cls, value: str) -> str:
+        return value.strip()
 
 
 def _mask_phone(phone: str) -> str:
