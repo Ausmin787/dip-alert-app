@@ -29,10 +29,11 @@ GitHub: https://github.com/Ausmin787/dip-alert-app (branch: `master`)
 cd backend
 .venv\Scripts\python -m uvicorn app.main:app --port 8000   # run API
 .venv\Scripts\python test_logic.py                          # run core-logic tests
+.venv\Scripts\python test_security.py                       # run security regression tests
 .venv\Scripts\pip install -r requirements.txt               # (re)install deps
 ```
 
-There is no pytest — `test_logic.py` is a plain script that monkeypatches the price functions and exits non-zero on failure. It writes/deletes `test_dip_alert.db` in `backend/`.
+There is no pytest — `test_logic.py` is a plain script that monkeypatches the price functions and exits non-zero on failure. It writes/deletes `test_dip_alert.db` in `backend/`. `test_security.py` spins up a `TestClient` against a temp SQLite DB to check token enforcement, input validation, and response headers.
 
 Set `DISABLE_SCHEDULER=1` to run the API without APScheduler (useful in dev/tests).
 
@@ -113,6 +114,8 @@ State rules for **momentum mode**:
 - **Settings API is redacted**: GET/PUT `/api/settings` return only `whatsapp_phone_masked` + `apikey_set` + `check_interval_min` + `write_protected`
 - **Optional write protection**: `APP_TOKEN` env var gates all write endpoints; frontend stores token in localStorage. If unset, `warn_if_unprotected()` (`main.py`, called from `lifespan`) logs a loud startup warning since writes are then fully open to anyone with the URL.
 - `/api/test-alert` enforces a 60s in-memory cooldown (`TEST_ALERT_COOLDOWN_SECONDS` in `routes.py`) to stop CallMeBot quota burn/spam from repeated calls.
+- **Strict input validation** (`WatchlistIn`/`SettingsIn` in `routes.py`): `ticker` capped at 24 chars and regex-restricted to Yahoo-style symbols (`TICKER_RE`); `display_name` capped at 80 chars; `alert_mode` is a `Literal["dip", "momentum"]`; `broker_url` must be blank or `https://`; WhatsApp phone/apikey are length-capped to prevent oversized settings payloads.
+- **HTTP security headers**: backend sets `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Strict-Transport-Security` via middleware in `main.py`; frontend sets the equivalent (plus CSP) via `frontend/vercel.json` `headers` block.
 - Input validation: `threshold_pct` >0 and ≤50, `check_interval_min` 1–60, ticker changes via PUT rejected
 - Tickers are Yahoo Finance format: `^NSEI`, `SETFNIF50.NS` (NSE), `.BO` (BSE), `GC=F` / `SI=F` (COMEX), `^GSPC` / `^NDX` (US indices)
 - `migrate_db()` in `main.py` holds all additive SQLite migrations — `create_all` only creates missing tables, never alters columns, so every new column needs a guard here.
