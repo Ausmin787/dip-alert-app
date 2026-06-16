@@ -79,11 +79,21 @@ def migrate_db() -> None:
         conn.commit()
 
 
+def warn_if_unprotected() -> None:
+    if not os.environ.get("APP_TOKEN"):
+        logging.warning(
+            "!!! APP_TOKEN is not set — all write endpoints (watchlist, settings, "
+            "test-alert) are open to anyone with the deployed URL. Set APP_TOKEN "
+            "in your environment to require an X-App-Token header for writes. !!!"
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
     migrate_db()
     seed_defaults()
+    warn_if_unprotected()
     # Populate ATH in the background so the dashboard has data immediately
     threading.Thread(target=refresh_all_aths, daemon=True).start()
     if os.environ.get("DISABLE_SCHEDULER") != "1":

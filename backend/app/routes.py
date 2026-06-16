@@ -239,8 +239,20 @@ def update_settings(body: SettingsIn, session: Session = Depends(get_session)):
 
 # ---------- test alert ----------
 
+TEST_ALERT_COOLDOWN_SECONDS = 60
+_last_test_alert_at: datetime | None = None
+
+
 @router.post("/test-alert", dependencies=write_protected)
 def test_alert(session: Session = Depends(get_session)):
+    global _last_test_alert_at
+    if _last_test_alert_at is not None:
+        elapsed = (datetime.utcnow() - _last_test_alert_at).total_seconds()
+        if elapsed < TEST_ALERT_COOLDOWN_SECONDS:
+            raise HTTPException(
+                429, f"Please wait {int(TEST_ALERT_COOLDOWN_SECONDS - elapsed)}s before testing again"
+            )
+
     settings = session.exec(select(Settings)).first()
     if not settings or not settings.whatsapp_phone or not settings.callmebot_apikey:
         raise HTTPException(400, "WhatsApp phone and API key must be configured first")
@@ -257,4 +269,5 @@ def test_alert(session: Session = Depends(get_session)):
     sent = send_whatsapp(settings.whatsapp_phone, settings.callmebot_apikey, message)
     if not sent:
         raise HTTPException(502, "CallMeBot request failed — check phone/apikey")
+    _last_test_alert_at = datetime.utcnow()
     return {"sent": True, "sent_at": datetime.utcnow().isoformat()}
