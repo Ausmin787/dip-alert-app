@@ -176,6 +176,9 @@ The nav is **floating**: `position:absolute; bottom: calc(10px + env(safe-area-i
 - `git add -A` traps: `.playwright-mcp/`, `*.db` are gitignored. Playwright screenshots (`nav-*.png`, `dashboard-screenshot.png`, etc.) accumulate in repo root — untracked, safe to delete, never commit.
 - Groww ETF URLs use their internal slug — verify at groww.in before hardcoding
 - `alert_direction` in AlertLog is `None` for all legacy dip alerts; only set for momentum rows. Frontend checks `a.alert_direction != null` to detect momentum vs dip in the alerts list.
+- **Stale docs screenshot**: `docs/screenshots/dashboard-desktop.png` shows a chevron arrow on the Next Alert card that no longer exists in the live UI — it's a static mockup from an earlier design pass. The live `.next-card` renders only a bell icon + text with no `onClick`. Regenerate the screenshot before sharing/updating the README.
+- **Alerts tab ConfigRows are navigation shortcuts, not toggle switches**: the "WhatsApp Alerts" row (and Dip Interval / Deploy Amount / Check Interval) in `AlertsTab.jsx` are `<button>` elements that navigate to the Manage tab on click — the `.toggle` inside is a pure visual status indicator, not a real switch. This is intentional design.
+- **WhatsApp Delivery "Save"**: submitting the form with blank phone/apikey fields does NOT overwrite the stored secrets — only `check_interval_min` changes. The UI never echoes back the real values (masked display only), so this blank-means-preserve pattern is load-bearing.
 
 ## Ownership Model
 
