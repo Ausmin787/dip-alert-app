@@ -122,18 +122,20 @@ State rules for **momentum mode**:
 
 ### Frontend layout (`frontend/src/`)
 
-The frontend is a **mobile-first single-page app** built on an "Open Design" phone-shell mockup. **No router** — tab switching is React `useState` in `App.jsx`. **No three.js / GSAP / motion / recharts** — deps are just `axios` + `react` + `react-dom`.
+The frontend is a **mobile-first single-page app** on the **Liquid Glass** design (replaced the earlier dark "Open Design" mono-cyan pass — see Design system below). **No router** — tab switching is React `useState` in `App.jsx`. Deps: `axios` + `react` + `react-dom` + **`gsap` + `@gsap/react`** (added for entrance/feedback animations — see GSAP usage below). No three.js / motion / recharts.
 
 - `api.js` — all backend calls; baseURL is `VITE_API_URL` in production, relative (proxied) in dev. Axios `X-App-Token` interceptor.
-- `App.jsx` — phone shell + 4-tab bottom nav. `StatusBar`, `AppHeader` (live/closed chip), `AppShell` (tab useState). Shell `.wrap` carries `id="phone-shell"`. Default export wraps in `<AssetProvider>`.
+- `gsap.js` — tiny shared module: registers the `useGSAP` plugin once, exports `gsap`/`useGSAP`/`prefersReducedMotion()`. Every component doing GSAP work imports from here instead of `gsap` directly.
+- `App.jsx` — phone shell + 4-tab bottom nav. `Wallpaper` (sky/ribbon/grain/glow decorative layers), `StatusBar`, `AppHeader` (live/closed chip), `BottomNav` (floating pill nav with a measured sliding indicator), `NavLensFilter` (dormant lens-displacement SVG filter, see Bottom nav below), `AppShell` (tab useState). Shell `.wrap` carries `id="phone-shell"`. Default export wraps in `<AssetProvider>`.
 - `AssetContext.jsx` — `AssetProvider`: data loading from `/api/status`, 30-day history pre-fetching, active selection memory (localStorage), `refresh()`. `useAssets` hook lives in `useAssets.js` (fast-refresh rule). 60s poll.
 - `tabs/WatchTab.jsx` — hero price card, **mode-aware display**:
   - **Dip mode**: `Tracker` (5 dip-level pills, windowed) + `NextAlert` (next trigger price + distance)
   - **Momentum mode**: `MomentumCard` (daily change % in green/rose, threshold reminder) — replaces Tracker+NextAlert
   - `Hero` shows `daily_change_pct` (signed, colored) for momentum assets; ATH drop for dip assets. Currency prefix is `$` for futures, blank for index points, `₹` for Indian.
-  - `TodaysAlerts` shows directional badge (`.badge-up` green / `.badge-dn` rose) for momentum alerts vs `.badge` cyan for dip alerts
+  - `TodaysAlerts` shows directional badge (`.badge-up` green / `.badge-dn` rose) for momentum alerts vs `.badge` gold for dip alerts
   - `WatchlistMini` shows signed daily % for momentum assets, drop % for dip assets
-- `tabs/AlertsTab.jsx` — read-only config summary rows → jump to Manage; recent alerts; market-hours card.
+  - **GSAP**: the four cards share a `.dash-card` class; on mount/asset-switch a `useGSAP` timeline staggers them in (`autoAlpha` + `y`). `Tracker` pulses the pill that just flipped to "done". `TodaysAlerts` slides a new alert in when the top alert id changes (not on initial load).
+- `tabs/AlertsTab.jsx` — read-only config summary rows → jump to Manage; recent alerts (same new-alert slide-in as Watch); market-hours card.
 - `tabs/HistoryTab.jsx` — deployment history by IST month (primarily useful for dip-mode assets that have invest_amount).
 - `tabs/ManageTab.jsx` — `WatchlistManager` (CRUD); `AssetSheet` now has **Alert type selector** (Dip Alert / Momentum), threshold label adapts to mode, hint text shows global ticker examples; `WhatsAppCard`; `SetupCard`.
 - `lib.js` — `tickerMeta(ticker)` now returns `{ exchange, type, currency }`:
@@ -144,27 +146,32 @@ The frontend is a **mobile-first single-page app** built on an "Open Design" pho
   - `severity()` kept — `lib.test.js` depends on it. **Do not use severity colors in the UI.**
   - **Backend timestamps are naive UTC** (`datetime.utcnow`) — `asUTC` helper appends `Z`, don't strip it.
 
-### Design system: Open Design phone shell (don't regress these)
+### Design system: Liquid Glass phone shell (don't regress these)
 
-Dark, glassmorphic **mobile** aesthetic, all in `frontend/src/index.css` (plain CSS variables under `:root`, no Tailwind `@theme` block). Phone-shell layout: `.wrap` is 375px centered on desktop, fullscreen under `@media (max-width:430px)`.
-- Tokens: `--bg #040916`, `--accent #00e4ff` (mono-cyan), `--green #22c55e`, `--rose #ff5e6c`, `--r 20px`, `--rs 14px`. System/SF font, tabular-nums.
+Bright sky/ribbon wallpaper behind **transparent, refractive** glass cards, all in `frontend/src/index.css` (plain CSS variables under `:root`, no Tailwind `@theme` block). Phone-shell layout: `.wrap` is 375px centered on desktop, fullscreen under `@media (max-width:430px)`. Replaces the earlier dark mono-cyan "Open Design" pass — if you see `--accent: #00e4ff` or a near-black `--glass` fill anywhere, that's stale.
+- Tokens: `--bg #03176f`, `--accent #ffcf73` (warm gold), `--green #22c55e`, `--rose #ff5e6c`, `--r 26px`, `--rs 18px`. System/SF font, tabular-nums.
+- **`.wrap` needs an explicit `z-index` (currently `0`), not just `position: relative`.** Without it, `position:relative` + `z-index:auto` does not establish a real stacking context, so the wallpaper's negative-z-index layers escape it and get compared against `body`'s own background instead — renders as flat navy with no gradient visible. Found and fixed by testing in isolation; don't remove the explicit z-index.
+- **Glass cards (`.g`) need real opacity in their scrim**, not just blur — `background: linear-gradient(150deg, rgba(0,8,36,0.56)…, rgba(2,14,60,0.68)…)`. Earlier passes at ~30% opacity looked good empty but made every secondary-text color (`--dim`/`--muted`) unreadable once real content/wallpaper showed through. `--dim`/`--muted`/`--faint` are tuned to that scrim — don't lower the scrim opacity without re-checking text contrast on every tab.
+- The `.g::before` corner highlight (refraction sheen) is intentionally subdued (~0.20 not ~0.42) so it doesn't wash out section labels that sit in that same top-left corner.
 - **Directional colors**: `.chg-up { color: var(--green) }` / `.chg-dn { color: var(--rose) }` — used for momentum daily change display. These are financial up/down colors, not the old severity coloring.
-- `.badge-up` / `.badge-dn` — momentum alert badge variants (green/rose), distinct from cyan `.badge` for dip alerts.
+- `.badge-up` / `.badge-dn` — momentum alert badge variants (green/rose), distinct from gold `.badge` for dip alerts.
 - `.momentum-row` / `.momentum-val` / `.momentum-sub` — the `MomentumCard` layout inside `.tracker` glass card.
-- `.atmo` — fixed atmospheric background (radial gradients + SVG noise overlay).
-- Recipes: `.g` (glass card), `.panel`, `.btn-primary`, `.btn-ghost`, `.btn-danger`, `.field`, `.sheet-overlay`/`.sheet` (portaled to `#phone-shell`), `.bnav`/`.bni`.
+- `Wallpaper` (in `App.jsx`) — four decorative layers (`.wallpaper`/`.ribbons`/`.grain`/`.glow`), not a single `.atmo` div like the old design.
+- Recipes: `.g` (glass card), `.panel`, `.btn-primary`, `.btn-ghost`, `.btn-danger`, `.field`, `.sheet-overlay`/`.sheet` (portaled to `#phone-shell`), `.nav`/`.nav-indicator` (see Bottom nav below).
 
 ### Bottom nav (`.nav`) — design rules locked in
 
-The nav is **floating**: `position:absolute; bottom: calc(10px + env(safe-area-inset-bottom)); left/right: 15px; border-radius: 31px`. Must not span full width.
+Implemented in `App.jsx`'s `BottomNav` component (measures button positions with `useLayoutEffect` + refs, not a vanilla-JS DOM query like the original design source). The nav is **floating**: `position:absolute; bottom: calc(10px + env(safe-area-inset-bottom)); left/right: 15px; border-radius: 31px`. Must not span full width.
 
 **Single-layer glass only**: `backdrop-filter` on `.nav` itself — NOT a child. Chrome seam bug on child inside `overflow:hidden`.
 
-**Sliding indicator** (`.nav-indicator`): `transform: translateX(...)` + `width`. Use `cubic-bezier(0.16, 1, 0.3, 1)` — y > 1.0 causes overshoot.
+**Sliding indicator** (`.nav-indicator`): `transform: translateX(...)` + `width`, computed from `getBoundingClientRect()` of the active button. Use `cubic-bezier(0.16, 1, 0.3, 1)` — y > 1.0 causes overshoot.
 
 **Tab switch flash fix**: inactive panels use `opacity: 0; pointer-events: none` (NOT `display: none`). Active tab uses `animation: enter 200ms 80ms ease-out both`.
 
-**Liquid Glass refraction**: use `feImage` with pre-computed cubic gradient displacement map (red=X, green=Y, 128=neutral). `feTurbulence` = WRONG (shaky noise). SVG filter needs `y="-28%" height="156%"`.
+**Liquid Glass refraction**: `NavLensFilter` in `App.jsx` generates a cubic-power displacement map into a canvas → SVG `feImage` once on mount. `feTurbulence` = WRONG (shaky noise). SVG filter needs `y="-28%" height="156%"`. **This filter is intentionally dormant** — nothing's `.nav` rule actually applies `filter: url(#nav-lq)` yet (the original design source it was ported from doesn't wire it up either). Don't "fix" this without checking with the user first; it may be intentional staging for later.
+
+**`.nav-scrim`**: a separate absolutely-positioned fade layer (`z-index: 5`, between panel content and the nav's `z-index: 10`) sitting behind the nav. Needed because the floating nav leaves a small gap between its own bottom edge and the phone's edge that isn't covered by the nav or clipped by the panel — without the scrim, scrollable content (e.g. the watchlist's first row) shows through as "ghost text" right at the bottom of the Watch tab. The scrim uses **`mask-image`** (not just a `background` gradient) so the `backdrop-filter` blur itself fades in gradually — a plain gradient background only fades the *tint*, not the blur, which left a visible hard seam where the blur snapped on. This is the standard progressive-blur trick (how iOS does it too).
 
 ## Gotchas
 
@@ -173,12 +180,14 @@ The nav is **floating**: `position:absolute; bottom: calc(10px + env(safe-area-i
 - **Known limitation**: NSE holidays not modeled (dip mode). Harmless — prices don't move on holidays.
 - yfinance is unauthenticated and rate-limited; don't poll faster than every few minutes. Momentum mode adds `get_prev_close()` per asset per tick — the `fast_info` call is cached by yfinance so it's fast.
 - SQLite on Railway needs a volume: `DATABASE_URL=sqlite:////data/dip_alert.db`, else data resets every deploy
-- `git add -A` traps: `.playwright-mcp/`, `*.db` are gitignored. Playwright screenshots (`nav-*.png`, `dashboard-screenshot.png`, etc.) accumulate in repo root — untracked, safe to delete, never commit.
+- `git add -A` traps: `.playwright-mcp/`, `*.db` are gitignored. Playwright/screenshot debug PNGs accumulate in repo root during design work (e.g. `nav-*.png`, `dashboard-screenshot.png`, `tab-*.png`, `zoom-*.png`, `debug-*.png`) — untracked, safe to delete, never commit. Clean these up at the end of a design session.
 - Groww ETF URLs use their internal slug — verify at groww.in before hardcoding
 - `alert_direction` in AlertLog is `None` for all legacy dip alerts; only set for momentum rows. Frontend checks `a.alert_direction != null` to detect momentum vs dip in the alerts list.
-- **Stale docs screenshot**: `docs/screenshots/dashboard-desktop.png` shows a chevron arrow on the Next Alert card that no longer exists in the live UI — it's a static mockup from an earlier design pass. The live `.next-card` renders only a bell icon + text with no `onClick`. Regenerate the screenshot before sharing/updating the README.
+- **`docs/screenshots/dashboard-desktop.png` is a real screenshot of the live app**, not a mockup — regenerate it (live dev server + Playwright, not the static design source) whenever the dashboard's visual design changes meaningfully, so README stays accurate.
 - **Alerts tab ConfigRows are navigation shortcuts, not toggle switches**: the "WhatsApp Alerts" row (and Dip Interval / Deploy Amount / Check Interval) in `AlertsTab.jsx` are `<button>` elements that navigate to the Manage tab on click — the `.toggle` inside is a pure visual status indicator, not a real switch. This is intentional design.
 - **WhatsApp Delivery "Save"**: submitting the form with blank phone/apikey fields does NOT overwrite the stored secrets — only `check_interval_min` changes. The UI never echoes back the real values (masked display only), so this blank-means-preserve pattern is load-bearing.
+- **A design source file (e.g. dropped into `frontend/index.html` directly) can silently replace the Vite entry point** — it'll still render in the browser (looks like progress) but with zero React, zero live data, and zero of the app's actual logic. If a "redesign" suddenly shows hardcoded/fake numbers instead of real backend data, check `git diff frontend/index.html` first before debugging anything else.
+- **`gsap.matchMedia()` isn't used for reduced-motion checks here** — deliberately. It creates its own listener separate from `useGSAP`'s context; in an effect that re-runs often (e.g. on every tab/asset switch), wrapping it without manually tracking/reverting the old instance leaks a media-query listener per run. A plain `prefersReducedMotion()` boolean check (in `gsap.js`) does the same query without that footgun.
 
 ## Ownership Model
 

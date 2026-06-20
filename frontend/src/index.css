@@ -1,28 +1,28 @@
 @import 'tailwindcss';
 
-/* ─────────────────────────────── Dip Alert — Open Design ───────────────────────
-   Mobile-first phone shell. Deep-navy canvas with atmospheric blooms + glass
-   cards, a single electric-cyan accent, SF/system font, big tabular numerals.
-   Source of truth: the Open Design export (replaces the old Market Terminal
-   split-pane). Four tabs: Watch · Alerts · History · Manage.
+/* ─────────────────────────────── Dip Alert — Liquid Glass ───────────────────────
+   Mobile-first phone shell. Sky/ribbon wallpaper behind transparent refractive
+   glass cards, a single warm-gold accent, SF/system font, big tabular numerals.
+   Source of truth: the Liquid Glass design (replaces the earlier Open Design
+   dark mono-cyan pass). Four tabs: Watch · Alerts · History · Manage.
 ──────────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --accent: #00e4ff;
-  --accent-dim: rgba(0, 228, 255, 0.12);
-  --accent-glow: rgba(0, 228, 255, 0.24);
-  --bg: #040916;
-  --glass: rgba(255, 255, 255, 0.054);
-  --gb: rgba(255, 255, 255, 0.09);
-  --gt: rgba(255, 255, 255, 0.24);
+  --accent: #ffcf73;
+  --accent-dim: rgba(255, 207, 115, 0.16);
+  --accent-glow: rgba(255, 207, 115, 0.32);
+  --bg: #03176f;
+  --glass: rgba(255, 255, 255, 0.10);
+  --gb: rgba(255, 255, 255, 0.30);
+  --gt: rgba(255, 255, 255, 0.55);
   --fg: #ffffff;
-  --muted: rgba(255, 255, 255, 0.44);
-  --dim: rgba(255, 255, 255, 0.24);
-  --faint: rgba(255, 255, 255, 0.07);
+  --muted: rgba(255, 255, 255, 0.70);
+  --dim: rgba(255, 255, 255, 0.52);
+  --faint: rgba(255, 255, 255, 0.16);
   --green: #22c55e;
   --rose: #ff5e6c;
-  --r: 20px;
-  --rs: 14px;
+  --r: 26px;
+  --rs: 18px;
 }
 
 *,
@@ -36,7 +36,7 @@
 html,
 body {
   height: 100%;
-  background: #080c1c;
+  background: var(--bg);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -53,6 +53,7 @@ body {
   width: 375px;
   height: min(812px, calc(100vh - 24px));
   position: relative;
+  z-index: 0;
   border-radius: 50px;
   overflow: hidden;
   box-shadow:
@@ -77,27 +78,45 @@ body {
   }
 }
 
-/* ── Atmospheric background ── */
-.atmo {
+/* ── Atmospheric background (Liquid Glass: sky wallpaper + ribbons + grain + glow) ── */
+.wallpaper,
+.ribbons,
+.grain,
+.glow {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(ellipse 80% 65% at 8% 92%, rgba(30, 18, 115, 0.9) 0%, transparent 100%),
-    radial-gradient(ellipse 65% 55% at 88% 8%, rgba(10, 52, 138, 0.8) 0%, transparent 100%),
-    radial-gradient(ellipse 95% 80% at 50% 55%, rgba(6, 12, 55, 0.65) 0%, transparent 100%),
-    radial-gradient(ellipse 45% 38% at 92% 75%, rgba(4, 28, 90, 0.5) 0%, transparent 100%),
-    radial-gradient(ellipse 32% 28% at 28% 20%, rgba(18, 40, 100, 0.38) 0%, transparent 100%),
-    var(--bg);
 }
-.atmo::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: 0.042;
-  mix-blend-mode: screen;
+.wallpaper {
+  z-index: -4;
+  background:
+    radial-gradient(ellipse 140% 78% at 52% -12%, rgba(94, 177, 232, 0.95), transparent 44%),
+    radial-gradient(ellipse 108% 88% at 20% 58%, rgba(205, 218, 199, 0.58), transparent 48%),
+    radial-gradient(ellipse 86% 74% at 88% 32%, rgba(198, 221, 188, 0.72), transparent 47%),
+    radial-gradient(ellipse 82% 78% at 76% 86%, rgba(2, 34, 169, 0.94), transparent 57%),
+    linear-gradient(180deg, #3b98d6 0%, #bfd0c1 42%, #0635b9 72%, #03176f 100%);
+}
+.ribbons {
+  z-index: -3;
+  width: 150%;
+  height: 118%;
+  left: -26%;
+  top: -8%;
+  opacity: 0.97;
+  filter: saturate(1.14) contrast(1.04);
+}
+.grain {
+  z-index: -2;
+  opacity: 0.05;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E");
+}
+.glow {
+  z-index: -1;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(247, 252, 255, 0.32), transparent 30%),
+    radial-gradient(ellipse 92% 34% at 54% 73%, rgba(7, 61, 219, 0.56), transparent 63%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 20%, rgba(0, 8, 48, 0.18) 100%);
 }
 
 /* ── App chrome ── */
@@ -201,7 +220,7 @@ body {
   inset: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 15px 16px;
+  padding: 0 15px 110px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -215,13 +234,19 @@ body {
   to { opacity: 1; transform: none; }
 }
 
-/* ── Glass card ── */
+/* ── Glass card (Liquid Glass: transparent glass + dark scrim + edge refraction) ── */
 .g {
-  background: var(--glass);
-  backdrop-filter: blur(32px) saturate(200%);
-  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  background: linear-gradient(150deg, rgba(0, 8, 36, 0.56) 0%, rgba(2, 14, 60, 0.68) 100%);
+  backdrop-filter: blur(28px) saturate(180%) contrast(1.05);
+  -webkit-backdrop-filter: blur(28px) saturate(180%) contrast(1.05);
   border: 1px solid var(--gb);
   border-radius: var(--r);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -2px 8px rgba(255, 255, 255, 0.10),
+    inset 2px 0 8px rgba(255, 255, 255, 0.06),
+    inset -2px 0 6px rgba(0, 10, 60, 0.12),
+    0 8px 28px rgba(0, 4, 50, 0.30);
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
@@ -229,13 +254,17 @@ body {
 .g::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 14%;
-  right: 14%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--gt), transparent);
+  inset: 0;
+  border-radius: inherit;
   pointer-events: none;
   z-index: 1;
+  background:
+    radial-gradient(ellipse 55% 42% at 8% 4%, rgba(255, 255, 255, 0.20), transparent 65%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, transparent 18%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0%, transparent 16%),
+    linear-gradient(0deg, rgba(0, 10, 60, 0.14) 0%, transparent 14%),
+    linear-gradient(270deg, rgba(0, 10, 60, 0.10) 0%, transparent 12%);
+  mix-blend-mode: screen;
 }
 button.g {
   display: block;
@@ -246,8 +275,17 @@ button.g {
   color: inherit;
 }
 
-/* ── HERO ── */
-.hero { padding: 22px 22px 20px; }
+/* ── HERO (deepest scrim — sits on the brightest part of the wallpaper) ── */
+.hero {
+  padding: 22px 22px 20px;
+  background: linear-gradient(158deg, rgba(0, 6, 32, 0.66) 0%, rgba(0, 4, 24, 0.80) 100%);
+}
+.hero::before {
+  background:
+    radial-gradient(ellipse 50% 35% at 10% 3%, rgba(255, 255, 255, 0.12), transparent 65%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 18%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, transparent 14%);
+}
 .hero-asset {
   display: flex;
   align-items: center;
@@ -787,36 +825,94 @@ button.g {
 .sheet-sub { font-size: 11px; color: var(--dim); margin: 4px 0 16px; line-height: 1.5; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-/* ── Bottom nav ── */
-.bnav {
-  display: flex;
-  padding: 10px 0 env(safe-area-inset-bottom, 22px);
-  flex-shrink: 0;
-  background: rgba(4, 9, 22, 0.72);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-top: 1px solid var(--faint);
+/* ── Fade scrim behind the floating nav — keeps scrollable content from
+   peeking through the gap between the nav's bottom edge and the phone edge ── */
+.nav-scrim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 170px;
+  z-index: 5;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent 0%, rgba(2, 6, 20, 0.45) 45%, rgba(2, 6, 20, 0.88) 76%, rgba(2, 6, 20, 0.99) 100%);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.4) 30%, black 60%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.4) 30%, black 60%);
 }
-.bni {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+
+/* ── Bottom nav (Liquid Glass: floating pill + sliding indicator) ── */
+.nav {
+  position: absolute;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  left: 15px;
+  right: 15px;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  padding: 8px;
+  border-radius: 31px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0.08)),
+    rgba(8, 14, 36, 0.62);
+  backdrop-filter: blur(26px) saturate(1.8) contrast(1.04);
+  -webkit-backdrop-filter: blur(26px) saturate(1.8) contrast(1.04);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.50),
+    0 16px 40px rgba(0, 4, 20, 0.40);
+}
+.nav button {
+  position: relative;
+  z-index: 2;
+  min-height: 58px;
+  border: 0;
+  border-radius: 25px;
+  background: transparent;
+  display: grid;
+  place-items: center;
   gap: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--dim);
   cursor: pointer;
-  background: none;
-  border: none;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   -webkit-tap-highlight-color: transparent;
-  transition: color 0.14s;
   user-select: none;
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.bni.active { color: var(--accent); }
-.bni svg { width: 22px; height: 22px; }
+.nav button.active {
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.nav-indicator {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 8px;
+  border-radius: 25px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.31), rgba(255, 255, 255, 0.13)),
+    rgba(255, 255, 255, 0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.18),
+    0 10px 26px rgba(4, 22, 72, 0.22);
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    transform 340ms cubic-bezier(0.16, 1, 0.3, 1),
+    width 340ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 180ms ease;
+  z-index: 1;
+}
+.nav-indicator.ready { opacity: 1; }
+.nav svg { width: 21px; height: 21px; stroke: currentColor; }
 
 @media (prefers-reduced-motion: reduce) {
   *,

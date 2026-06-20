@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getAlerts, getSettings } from '../api.js'
 import { useAssets } from '../useAssets.js'
+import { gsap, useGSAP, prefersReducedMotion } from '../gsap.js'
 import { fmtLakh, fmtLevel, fmtPrice, fmtTimeIST, isMarketOpenIST } from '../lib.js'
 
 function ConfigRow({ label, sub, value, toggle, onManage }) {
@@ -31,6 +32,17 @@ export default function AlertsTab({ onManage }) {
   }, [])
 
   const configured = Boolean(settings?.apikey_set && settings?.whatsapp_phone_masked)
+  const listRef = useRef(null)
+  const topId = alerts[0]?.id
+  const prevTopId = useRef(topId)
+
+  useGSAP(() => {
+    if (topId != null && topId !== prevTopId.current && !prefersReducedMotion()) {
+      const first = listRef.current?.querySelector('.ai')
+      if (first) gsap.fromTo(first, { autoAlpha: 0, x: -12 }, { autoAlpha: 1, x: 0, duration: 0.4, ease: 'power2.out' })
+    }
+    prevTopId.current = topId
+  }, [topId])
 
   return (
     <div className="panel">
@@ -63,7 +75,7 @@ export default function AlertsTab({ onManage }) {
         />
       </div>
 
-      <div className="g alist">
+      <div className="g alist" ref={listRef}>
         <div className="alist-hd">
           <span className="sec-lbl">Recent Alerts</span>
         </div>

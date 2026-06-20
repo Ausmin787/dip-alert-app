@@ -1,11 +1,11 @@
 {
-  "name": "Dip Alert — Nifty ATH Tracker",
+  "name": "Dip Alert — Market Watch & WhatsApp Alerts",
   "short_name": "Dip Alert",
-  "description": "WhatsApp alerts for every -1% Nifty dip from its all-time high",
+  "description": "WhatsApp alerts for Nifty dips from its all-time high, plus daily momentum moves on Gold, Silver, S&P 500, and Nasdaq",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#070a08",
-  "theme_color": "#070a08",
+  "background_color": "#03176f",
+  "theme_color": "#03176f",
   "icons": [
     {
       "src": "/favicon.svg",

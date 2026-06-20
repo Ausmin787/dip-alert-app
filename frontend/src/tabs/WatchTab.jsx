@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getAlerts } from '../api.js'
 import { useAssets } from '../useAssets.js'
+import { gsap, useGSAP, prefersReducedMotion } from '../gsap.js'
 import {
   fmtLakh,
   fmtLevel,
@@ -36,7 +37,7 @@ function Hero({ item }) {
   const changeDown = change != null && change < 0
 
   return (
-    <div className="g hero">
+    <div className="g hero dash-card">
       <div className="hero-asset">
         <div className={`green-dot ${item.active ? '' : 'off'}`} />
         {item.display_name} · {exchange}
@@ -81,8 +82,21 @@ function Tracker({ item }) {
   const levels = dipLevels(item)
   const fired = item.last_alerted_level || 0
   const deployed = fired * (item.invest_amount || 0)
+  const pillRefs = useRef({})
+  const prevFired = useRef(fired)
+
+  useGSAP(() => {
+    if (fired > prevFired.current) {
+      const el = pillRefs.current[fired]
+      if (el && !prefersReducedMotion()) {
+        gsap.fromTo(el, { scale: 1 }, { scale: 1.14, duration: 0.2, ease: 'power2.out', yoyo: true, repeat: 1 })
+      }
+    }
+    prevFired.current = fired
+  }, [fired])
+
   return (
-    <div className="g tracker">
+    <div className="g tracker dash-card">
       <div className="row-hd">
         <span className="sec-lbl">Dip Levels</span>
         <span className="dep-note">
@@ -91,7 +105,7 @@ function Tracker({ item }) {
       </div>
       <div className="levels">
         {levels.map(({ i, pct, state }) => (
-          <div key={i} className={`lv ${state}`}>
+          <div key={i} ref={(el) => { pillRefs.current[i] = el }} className={`lv ${state}`}>
             <div className="lv-pct">−{fmtLevel(pct)}%</div>
             <div className="lv-st">{state === 'done' ? '✓' : state === 'next' ? '→' : '—'}</div>
           </div>
@@ -106,7 +120,7 @@ function MomentumCard({ item }) {
   const crossed = change != null && Math.abs(change) >= item.threshold_pct
   const dir = change > 0 ? 'up' : change < 0 ? 'down' : null
   return (
-    <div className="g tracker">
+    <div className="g tracker dash-card">
       <div className="row-hd">
         <span className="sec-lbl">Daily Move</span>
         <span className="dep-note">Alert at ±{fmtLevel(item.threshold_pct)}%</span>
@@ -130,7 +144,7 @@ function NextAlert({ item }) {
   const nextPrice = item.ath_price != null && nextPct != null ? item.ath_price * (1 - nextPct / 100) : null
   const distance = nextPrice != null && item.current_price != null ? item.current_price - nextPrice : null
   return (
-    <div className="g next-card">
+    <div className="g next-card dash-card">
       <div className="next-bell">
         <svg viewBox="0 0 24 24" fill="none" stroke="#00e4ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -155,8 +169,20 @@ function NextAlert({ item }) {
 function TodaysAlerts({ alerts, items }) {
   const today = alerts.filter((a) => isTodayIST(a.alerted_at))
   const investFor = (ticker) => items.find((i) => i.ticker === ticker)?.invest_amount ?? 100000
+  const listRef = useRef(null)
+  const topId = today[0]?.id
+  const prevTopId = useRef(topId)
+
+  useGSAP(() => {
+    if (topId != null && topId !== prevTopId.current && !prefersReducedMotion()) {
+      const first = listRef.current?.querySelector('.ai')
+      if (first) gsap.fromTo(first, { autoAlpha: 0, x: -12 }, { autoAlpha: 1, x: 0, duration: 0.4, ease: 'power2.out' })
+    }
+    prevTopId.current = topId
+  }, [topId])
+
   return (
-    <div className="g alist">
+    <div className="g alist dash-card" ref={listRef}>
       <div className="alist-hd">
         <span className="sec-lbl">Today's Alerts</span>
         <span style={{ fontSize: 11, color: 'var(--dim)' }}>
@@ -195,7 +221,7 @@ function TodaysAlerts({ alerts, items }) {
 
 function WatchlistMini({ items, selectedAsset, setSelectedAsset }) {
   return (
-    <div className="g wlist">
+    <div className="g wlist dash-card">
       <span className="sec-lbl">Watchlist</span>
       <div className="wit">
         {items.map((item) => {
@@ -232,12 +258,21 @@ function WatchlistMini({ items, selectedAsset, setSelectedAsset }) {
 export default function WatchTab() {
   const { items, selectedItem, selectedAsset, setSelectedAsset, loading, error } = useAssets()
   const [alerts, setAlerts] = useState([])
+  const panelRef = useRef(null)
 
   useEffect(() => {
     getAlerts(1, 20)
       .then((d) => setAlerts(d.alerts))
       .catch(() => {})
   }, [])
+
+  // Stagger the dashboard cards in whenever the selected asset changes (incl.
+  // first mount) — not on every 60s poll, since selectedAsset is a stable string.
+  useGSAP(() => {
+    if (prefersReducedMotion()) return
+    gsap.timeline({ defaults: { duration: 0.45, ease: 'power2.out' } })
+      .from('.dash-card', { autoAlpha: 0, y: 16, stagger: 0.08 })
+  }, { scope: panelRef, dependencies: [selectedAsset] })
 
   if (loading) return <div className="panel"><div className="empty">Loading market…</div></div>
   if (error) return <div className="panel"><div className="empty">{error}</div></div>
@@ -250,7 +285,7 @@ export default function WatchTab() {
 
   const isMomentum = selectedItem.alert_mode === 'momentum'
   return (
-    <div className="panel">
+    <div className="panel" ref={panelRef}>
       <Hero item={selectedItem} />
       {isMomentum ? (
         <MomentumCard item={selectedItem} />
