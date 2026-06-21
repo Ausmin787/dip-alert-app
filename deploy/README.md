@@ -131,6 +131,19 @@ journalctl -u dip-alert.service -f             # live app logs
 > run `sudo systemctl daemon-reload`, validate sudoers when applicable, and
 > restart the affected unit during an authorized maintenance session.
 
+**Deploy-failure alerts (optional — to you, not the friend):** set
+`DEPLOY_ALERT_PHONE` and `DEPLOY_ALERT_APIKEY` (your *own* CallMeBot phone + key,
+from the same one-time CallMeBot handshake described in the main `README.md`) in
+`/etc/dip-alert/dip-alert.env`. When a release fails its test/health gate and is
+rolled back, `deploy.sh` sends you one WhatsApp message naming the rejected
+commit — fired **once per bad commit** (it's quarantined immediately after, so no
+repeat spam). Leave both blank to disable. The deploy unit reads them via
+`EnvironmentFile=-/etc/dip-alert/dip-alert.env`, so if you add them *after* first
+setup, re-copy `dip-alert-deploy.service` and `sudo systemctl daemon-reload`.
+**Not** alerted: pre-update refusals (dirty checkout, non-fast-forward, or a
+failed `git fetch`) — those simply don't deploy and show up as your push not
+landing plus a line in `journalctl`.
+
 **Change the poll interval:** edit `OnUnitActiveSec=` in
 `/etc/systemd/system/dip-alert-deploy.timer`, then
 `sudo systemctl daemon-reload && sudo systemctl restart dip-alert-deploy.timer`.

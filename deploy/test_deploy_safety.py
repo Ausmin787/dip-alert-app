@@ -55,6 +55,25 @@ class DeploySafetyTests(unittest.TestCase):
         self.assertIn("REQS_CHANGED", script)
         self.assertNotIn('cp "$DB_PATH" "$dest"', script)
 
+    def test_deploy_failure_alert_is_wired(self) -> None:
+        script = (DEPLOY_DIR / "deploy.sh").read_text(encoding="utf-8")
+        service = (DEPLOY_DIR / "dip-alert-deploy.service").read_text(
+            encoding="utf-8"
+        )
+        env_example = (DEPLOY_DIR / "dip-alert.env.example").read_text(
+            encoding="utf-8"
+        )
+
+        # helper exists and is invoked from both rollback branches
+        self.assertIn("notify_failure()", script)
+        self.assertGreaterEqual(script.count("notify_failure"), 3)
+        # credentials are optional and come from the optional env file
+        self.assertIn("DEPLOY_ALERT_PHONE", env_example)
+        self.assertIn("DEPLOY_ALERT_APIKEY", env_example)
+        self.assertIn(
+            "EnvironmentFile=-/etc/dip-alert/dip-alert.env", service
+        )
+
     def test_system_user_setup_is_portable_and_creates_expected_home(self) -> None:
         readme = (DEPLOY_DIR / "README.md").read_text(encoding="utf-8")
 

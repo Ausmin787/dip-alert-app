@@ -31,6 +31,7 @@ KEEP_BACKUPS=10
 HEALTH_RETRIES=10
 LOCK_FILE="/tmp/dip-alert-deploy.lock"
 BLOCKED_COMMIT_FILE="$BACKUP_DIR/blocked-commit"
+DEPLOY_HOST="$(hostname 2>/dev/null || echo dip-alert-vm)"
 
 UPDATED=0
 REQS_CHANGED=0
@@ -63,6 +64,28 @@ health_check() {
   return 1
 }
 
+notify_failure() {
+  # Best-effort WhatsApp ping to the DEVELOPER (not the friend) when a deploy
+  # is rejected. Uses CallMeBot creds from the systemd EnvironmentFile and is
+  # silently skipped if DEPLOY_ALERT_PHONE / DEPLOY_ALERT_APIKEY are unset.
+  # Never fatal — a failed alert must not affect rollback. Fires at most once
+  # per bad commit (the commit is quarantined right after, so later ticks skip
+  # before reaching here).
+  local message="$1"
+  if [[ -z "${DEPLOY_ALERT_PHONE:-}" || -z "${DEPLOY_ALERT_APIKEY:-}" ]]; then
+    log "deploy-failure alert not configured (DEPLOY_ALERT_* unset); skipping"
+    return 0
+  fi
+  if curl -fsS --max-time 10 -G "https://api.callmebot.com/whatsapp.php" \
+       --data-urlencode "phone=${DEPLOY_ALERT_PHONE}" \
+       --data-urlencode "apikey=${DEPLOY_ALERT_APIKEY}" \
+       --data-urlencode "text=${message}" >/dev/null 2>&1; then
+    log "deploy-failure alert sent"
+  else
+    log "deploy-failure alert failed to send (non-fatal)"
+  fi
+}
+
 rollback() {
   local original_rc="$1"
   local rollback_ok=1
@@ -82,8 +105,10 @@ rollback() {
 
   if ((rollback_ok)); then
     log "ROLLBACK complete; service healthy on $PREV"
+    notify_failure "⚠️ dip-alert deploy failed on ${DEPLOY_HOST}: commit ${REMOTE:0:8} was rejected, rolled back to ${PREV:0:8}, and quarantined until master advances. Logs: journalctl -u dip-alert-deploy.service"
   else
     log "ROLLBACK INCOMPLETE; manual recovery is required"
+    notify_failure "🚨 dip-alert deploy FAILED and ROLLBACK INCOMPLETE on ${DEPLOY_HOST}: manual recovery needed (commit ${REMOTE:0:8}). The backend may be DOWN — check the VM now."
   fi
   log "commit ${REMOTE:0:8} quarantined until origin/$BRANCH advances"
   exit "$original_rc"

@@ -8,6 +8,11 @@ Type=oneshot
 User=dipalert
 Group=dipalert
 WorkingDirectory=/home/dipalert/dip-alert-app
+# Optional: supplies DEPLOY_ALERT_PHONE / DEPLOY_ALERT_APIKEY for the
+# deploy-failure WhatsApp ping. Leading '-' = don't fail if the file is absent.
+# The test gate overrides DATABASE_URL/APP_TOKEN itself, so inheriting them here
+# is harmless and never touches the production DB.
+EnvironmentFile=-/etc/dip-alert/dip-alert.env
 ExecStart=/home/dipalert/dip-alert-app/deploy/deploy.sh
 UMask=0077
 # Leave enough time for a cold dependency install plus the regression gate.
