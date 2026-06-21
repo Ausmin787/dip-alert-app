@@ -25,7 +25,7 @@ Before auditing:
 |---|---|
 | Baseline date | 2026-06-21 |
 | Local branch | `master` |
-| Local and public GitHub commit | `d0e60dd0d8fc2b56a3aea1936b5e9bcf489ebaa2` |
+| Local and public GitHub commit | `4e6de75` (deploy automation; original audit baseline was `d0e60dd`) |
 | Application model | Single-user dashboard; no user accounts or password authentication |
 | Frontend | React/Vite SPA hosted on Vercel |
 | Backend | FastAPI/SQLModel/SQLite/APScheduler on an Oracle Cloud Always Free VM |
@@ -408,11 +408,11 @@ Add one section per confirmed finding using this template:
 
 ### SEC-001 — Auto-deploy rollback did not cover every post-pull failure
 
-- Status: Fixed locally, pending VM retest
+- Status: Fixed and committed (`4e6de75`, pushed to public master), pending VM install/retest
 - Severity: Medium
 - First observed: 2026-06-21
 - Last verified: 2026-06-21
-- Affected version/commit: Uncommitted deployment automation based on `d0e60dd`
+- Affected version/commit: Deployment automation committed in `4e6de75` (was uncommitted, based on `d0e60dd`)
 - Affected component/endpoint: `deploy/deploy.sh`
 - Environment: Source/local review; not yet installed on a VM
 - Evidence: The original script rolled back explicit test/health failures only. A failed dependency installation, service restart, or other command after `git pull` could leave the checkout on the new commit while the old process continued running. Its dependency-change check was also performed after `reset --hard`, making the comparison empty.
@@ -424,11 +424,11 @@ Add one section per confirmed finding using this template:
 
 ### SEC-002 — Live SQLite backup used a raw file copy
 
-- Status: Fixed locally, pending VM retest
+- Status: Fixed and committed (`4e6de75`, pushed to public master), pending VM install/retest
 - Severity: Medium
 - First observed: 2026-06-21
 - Last verified: 2026-06-21
-- Affected version/commit: Uncommitted deployment automation based on `d0e60dd`
+- Affected version/commit: Deployment automation committed in `4e6de75` (was uncommitted, based on `d0e60dd`)
 - Affected component/endpoint: `deploy/deploy.sh`
 - Environment: Source/local review; not yet installed on a VM
 - Evidence: The original `cp "$DB_PATH" "$dest"` could race with a live SQLite write and did not verify backup integrity.
@@ -440,7 +440,7 @@ Add one section per confirmed finding using this template:
 
 ### SEC-003 — Failed releases could be retried indefinitely
 
-- Status: Fixed locally, pending VM retest
+- Status: Fixed and committed (`4e6de75`, pushed to public master), pending VM install/retest
 - Severity: Medium
 - First observed: 2026-06-21
 - Last verified: 2026-06-21
@@ -455,7 +455,7 @@ Add one section per confirmed finding using this template:
 
 ### SEC-004 — Initial service-account setup did not create the documented home
 
-- Status: Fixed locally, pending VM setup verification
+- Status: Fixed and committed (`4e6de75`, pushed to public master), pending VM setup verification
 - Severity: Low
 - First observed: 2026-06-21
 - Last verified: 2026-06-21
@@ -474,6 +474,7 @@ Append, do not overwrite:
 |---|---|---|---|---|---|
 | 2026-06-21 | `d0e60dd` source baseline | Created audit plan and ledger; no security tests executed as part of document creation | Local and public GitHub baseline were matched before writing | None | Begin Phase 1 in a future authorized audit session |
 | 2026-06-21 | Local uncommitted deployment automation on `d0e60dd` | Reviewed all deploy assets, compared public GitHub, ran application/build/dependency checks, added deployment safety regressions, and fixed rollback/backup/retry/setup gaps | Local GitHub remained `d0e60dd`; deploy tests and Bash syntax passed after fixes; npm and Python audits reported zero known vulnerabilities | Added SEC-001 through SEC-004 | Commit/push only after review; then perform the documented real-VM installation and rollback drill |
+| 2026-06-21 | `4e6de75` (pushed to public master) | Committed and pushed the deploy automation (`deploy/`, `.gitattributes`, README/CLAUDE/audit-ledger updates) after re-verifying the full local gate: deploy regression 4/4, `compileall`, `pip check`, `test_logic`, `test_security`, `bash -n`, LF endings | Public master advanced `d0e60dd` → `4e6de75`; all local checks green | SEC-001..004 → committed, pending VM install/retest | Items 2–7 of the completion list are VM/infra-only: install on the Oracle VM, `visudo -c`/unit validation, live timer deploy, rollback/quarantine drill, backup restore drill, and reverse-proxy/TLS/firewall/Vercel/failure-monitoring verification |
 
 ## Completion Gate Before Friend Handoff
 
