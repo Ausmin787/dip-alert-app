@@ -179,7 +179,8 @@ Implemented in `App.jsx`'s `BottomNav` component (measures button positions with
 - **Momentum assets run on weekdays, no IST hours gate** — checked every N minutes all day. This is safe because when a global market is closed, the price barely moves, so `|daily_change| < threshold` and no alert fires.
 - **Known limitation**: NSE holidays not modeled (dip mode). Harmless — prices don't move on holidays.
 - yfinance is unauthenticated and rate-limited; don't poll faster than every few minutes. Momentum mode adds `get_prev_close()` per asset per tick — the `fast_info` call is cached by yfinance so it's fast.
-- SQLite on Railway needs a volume: `DATABASE_URL=sqlite:////data/dip_alert.db`, else data resets every deploy
+- Backend runs on an Oracle Cloud "Always Free" VM (not a container platform), so the default `DATABASE_URL` (a local SQLite file) persists fine across restarts on the VM's own disk — no separate volume needed
+- The VM has no TLS by default — a reverse proxy (Caddy or nginx + Let's Encrypt) must sit in front of uvicorn, since the frontend's CSP (`connect-src https:`) and browser mixed-content rules both block a bare `http://` backend
 - `git add -A` traps: `.playwright-mcp/`, `*.db` are gitignored. Playwright/screenshot debug PNGs accumulate in repo root during design work (e.g. `nav-*.png`, `dashboard-screenshot.png`, `tab-*.png`, `zoom-*.png`, `debug-*.png`) — untracked, safe to delete, never commit. Clean these up at the end of a design session.
 - Groww ETF URLs use their internal slug — verify at groww.in before hardcoding
 - `alert_direction` in AlertLog is `None` for all legacy dip alerts; only set for momentum rows. Frontend checks `a.alert_direction != null` to detect momentum vs dip in the alerts list.
@@ -191,4 +192,6 @@ Implemented in `App.jsx`'s `BottomNav` component (measures button positions with
 
 ## Ownership Model
 
-The friend deploys on **their own** Railway (backend, root dir `backend`) + Vercel (frontend, root dir `frontend`, `VITE_API_URL` env var) accounts and enters their own CallMeBot phone/key via the Manage tab. No developer credentials, phone numbers, or data anywhere in the repo — keep it that way. Full deploy steps are in README.md.
+The friend deploys on **their own** Oracle Cloud Always Free VM (backend, SSH + systemd service, no platform auto-deploy) + Vercel (frontend, root dir `frontend`, `VITE_API_URL` env var) accounts and enters their own CallMeBot phone/key via the Manage tab. No developer credentials, phone numbers, or data anywhere in the repo — keep it that way. Full deploy steps are in README.md.
+
+Switched from Railway to Oracle Cloud Always Free (2026-06-21): Railway's $5 one-time trial credit isn't a recurring free tier — past it, the only ongoing free allowance is $1/month, far short of what an always-on backend with a persistent SQLite file + in-process APScheduler needs. Render's free tier has no persistent disk and spins down after 15 min idle (kills both the DB and the scheduler); Fly.io dropped its free tier entirely (Oct 2024). Oracle's Always Free tier is the one host that's genuinely free forever **and** matches this app's existing architecture (real VM, persistent disk, always-on process) with zero code changes — the tradeoff is manual VM/systemd setup instead of a one-click GitHub deploy, plus the backend now needs its own reverse-proxy TLS (see Gotchas) since there's no platform-provided HTTPS.

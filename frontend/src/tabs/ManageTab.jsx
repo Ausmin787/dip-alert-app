@@ -303,7 +303,7 @@ function WhatsAppCard() {
           <input
             className="field"
             type="password"
-            placeholder="The APP_TOKEN value set on Railway"
+            placeholder="The APP_TOKEN value set on the backend server"
             value={form.app_token}
             onChange={set('app_token')}
             disabled={!ready}

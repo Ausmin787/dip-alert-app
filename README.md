@@ -33,7 +33,7 @@ Alert fires when floor(drop% / threshold) > last_alerted_level
 | Backend | Python 3.11+, FastAPI, SQLModel (SQLite), APScheduler, yfinance |
 | Alerts | CallMeBot WhatsApp API (free, personal use) |
 | Frontend | React + Vite, Tailwind CSS v4, Motion, Recharts, Axios (requires Node 20.19+ — Vite 8 floor) |
-| Hosting | Railway (backend + SQLite volume), Vercel (frontend) |
+| Hosting | Oracle Cloud Always Free VM (backend, systemd service), Vercel (frontend) |
 
 ## Run locally
 
@@ -72,18 +72,28 @@ Credentials live in the app's database — never in code, git, or env vars.
 
 ## Deploy (owner's own accounts — zero developer involvement)
 
-**Backend → Railway:**
-1. Create a Railway account, deploy from this GitHub repo with root directory `backend`
-2. Add a **volume** mounted at `/data` and set env var `DATABASE_URL=sqlite:////data/dip_alert.db` (otherwise the DB resets on each redeploy)
-3. Set `FRONTEND_ORIGIN=https://<your-vercel-app>.vercel.app` for CORS
-4. **Recommended:** set `APP_TOKEN=<any-long-random-string>` — with it set, every write
+**Backend → Oracle Cloud Always Free VM:**
+1. Create an Oracle Cloud account and provision an Always Free VM instance (AMD micro or Arm A1 shape)
+2. SSH in, install Python 3.11+, clone this repo, create a venv, and `pip install -r backend/requirements.txt`
+3. The default `DATABASE_URL` (a local SQLite file) is fine as-is — the VM's disk is persistent, unlike a container platform, so there's no separate volume to configure
+4. Set `FRONTEND_ORIGIN=https://<your-vercel-app>.vercel.app` for CORS
+5. **Recommended:** set `APP_TOKEN=<any-long-random-string>` — with it set, every write
    (settings, watchlist changes, test alerts) requires that token, so strangers who find
    your URL can't touch anything. Leave it unset and the API is open (fine for local dev).
-5. Note your Railway public URL
+   It also auto-disables `/docs` and `/openapi.json` once set.
+6. Run the app as a `systemd` service (so it restarts on reboot/crash) running
+   `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+7. Point a domain (even a free one) at the VM's public IP and put a reverse proxy with
+   TLS in front of uvicorn — e.g. Caddy or nginx + Let's Encrypt (Caddy auto-provisions
+   the certificate with one line of config). **This step isn't optional**: the frontend's
+   CSP only allows `connect-src https:`, and browsers block "mixed content" (an HTTPS
+   page calling an HTTP API) outright — a bare `http://<ip>:8000` backend will not work
+   from the deployed Vercel frontend.
+8. That HTTPS domain is your backend URL
 
 **Frontend → Vercel:**
 1. Create a Vercel account, import this repo with root directory `frontend`
-2. Set env var `VITE_API_URL=https://<your-railway-app>.up.railway.app`
+2. Set env var `VITE_API_URL=https://<your-backend-domain>`
 3. Deploy — then open `/settings`, paste your `APP_TOKEN` value into the *Access token*
    field (it appears only when the backend has one set, and is stored only in your browser),
    and configure WhatsApp

@@ -103,7 +103,13 @@ async def lifespan(app: FastAPI):
         scheduler.shutdown(wait=False)
 
 
-app = FastAPI(title="Dip Alert", lifespan=lifespan)
+_is_protected = bool(os.environ.get("APP_TOKEN"))
+app = FastAPI(
+    title="Dip Alert",
+    lifespan=lifespan,
+    docs_url=None if _is_protected else "/docs",
+    openapi_url=None if _is_protected else "/openapi.json",
+)
 
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
