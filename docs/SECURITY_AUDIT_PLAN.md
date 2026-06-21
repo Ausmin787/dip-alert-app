@@ -466,6 +466,22 @@ Add one section per confirmed finding using this template:
 - Remediation: Setup now uses cross-family `useradd --system --user-group --create-home`, idempotently enforces the home ownership/mode, uses a non-login shell, restricts database directories, and documents privileged installation of the executable script.
 - Retest evidence: Regression assertions reject the incompatible Debian `adduser --group` form and require the portable home-creation commands; real Oracle setup remains required.
 
+### SEC-005 — Developer deploy-alert creds shared the app's environment file
+
+- Status: Fixed and committed (`904122e`, pushed to public master), pending VM verification
+- Severity: Low
+- First observed: 2026-06-21
+- Last verified: 2026-06-21
+- Affected version/commit: Introduced in `9924108`, fixed in `904122e`
+- Affected component/endpoint: `deploy/dip-alert.service`, `deploy/dip-alert-deploy.service`, `deploy/dip-alert.env.example`
+- Environment: Source/local review; not yet installed on a VM
+- Evidence: The opt-in deploy-failure alert creds (`DEPLOY_ALERT_PHONE`/`DEPLOY_ALERT_APIKEY`) were placed in `/etc/dip-alert/dip-alert.env`, which the internet-facing app service (`dip-alert.service`) also loads via `EnvironmentFile`. A compromised backend process would therefore have the developer's CallMeBot credentials in its environment.
+- Security impact: Unnecessary exposure of developer messaging credentials (least-privilege violation); a backend compromise could send WhatsApp messages as the developer.
+- Root cause: Reusing one environment file for two different trust audiences (app vs deploy).
+- Remediation: Moved the alert creds to a deploy-only `/etc/dip-alert/deploy-alert.env` (`deploy-alert.env.example`), loaded only by `dip-alert-deploy.service`; removed them from the app env file. Added a regression assertion that the deploy file holds them, the deploy unit references it, the app env assigns neither, and the app service does not load the deploy-only file.
+- Retest evidence: Deploy regression 5/5; credential split independently confirmed (app service loads only `dip-alert.env`, deploy service loads only `deploy-alert.env`, app environment assigns zero `DEPLOY_ALERT_*`).
+- Residual risk: On the running VM, confirm the live app process environment contains no `DEPLOY_ALERT_*`.
+
 ## Audit Session Log
 
 Append, do not overwrite:
@@ -475,6 +491,7 @@ Append, do not overwrite:
 | 2026-06-21 | `d0e60dd` source baseline | Created audit plan and ledger; no security tests executed as part of document creation | Local and public GitHub baseline were matched before writing | None | Begin Phase 1 in a future authorized audit session |
 | 2026-06-21 | Local uncommitted deployment automation on `d0e60dd` | Reviewed all deploy assets, compared public GitHub, ran application/build/dependency checks, added deployment safety regressions, and fixed rollback/backup/retry/setup gaps | Local GitHub remained `d0e60dd`; deploy tests and Bash syntax passed after fixes; npm and Python audits reported zero known vulnerabilities | Added SEC-001 through SEC-004 | Commit/push only after review; then perform the documented real-VM installation and rollback drill |
 | 2026-06-21 | `4e6de75` (pushed to public master) | Committed and pushed the deploy automation (`deploy/`, `.gitattributes`, README/CLAUDE/audit-ledger updates) after re-verifying the full local gate: deploy regression 4/4, `compileall`, `pip check`, `test_logic`, `test_security`, `bash -n`, LF endings | Public master advanced `d0e60dd` → `4e6de75`; all local checks green | SEC-001..004 → committed, pending VM install/retest | Items 2–7 of the completion list are VM/infra-only: install on the Oracle VM, `visudo -c`/unit validation, live timer deploy, rollback/quarantine drill, backup restore drill, and reverse-proxy/TLS/firewall/Vercel/failure-monitoring verification |
+| 2026-06-21 | `52697a5` → `9924108` → `904122e` (pushed) | Doc-status reconciliation; added opt-in deploy-failure WhatsApp alert (`notify_failure()`) + fixed stale README stack line; then **SEC-005** least-privilege fix moving alert creds to a deploy-only `deploy-alert.env`; corrected an `EnvironmentFile`/`daemon-reload` doc error; de-hard-coded the CLAUDE.md status hash and added regression asserting the app service never loads the deploy-only creds | Public master `4e6de75` → `904122e`; deploy regression 5/5, `bash -n`, `compileall`, `pip check`, backend + frontend tests/lint/build all green; credential split independently confirmed (Codex sentinel-DB + env checks) | Logged **SEC-005**; SEC-001..004 unchanged (still pending VM retest) | Same VM-only remainder; additionally verify on the running VM that the app process env contains **no** `DEPLOY_ALERT_*` |
 
 ## Completion Gate Before Friend Handoff
 

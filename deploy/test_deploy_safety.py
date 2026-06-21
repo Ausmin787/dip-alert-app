@@ -79,6 +79,11 @@ class DeploySafetyTests(unittest.TestCase):
         # the app env file must NOT assign the developer alert creds
         self.assertNotIn("DEPLOY_ALERT_PHONE=", app_env)
         self.assertNotIn("DEPLOY_ALERT_APIKEY=", app_env)
+        # the internet-facing app service must NOT load the deploy-only creds
+        app_service = (DEPLOY_DIR / "dip-alert.service").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("deploy-alert.env", app_service)
 
     def test_system_user_setup_is_portable_and_creates_expected_home(self) -> None:
         readme = (DEPLOY_DIR / "README.md").read_text(encoding="utf-8")
