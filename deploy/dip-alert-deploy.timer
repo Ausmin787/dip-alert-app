@@ -1,0 +1,13 @@
+[Unit]
+Description=Poll GitHub and deploy Dip Alert backend updates
+
+[Timer]
+# First run 2 min after boot, then every 5 min. systemd will not start a new
+# run while the previous oneshot is still active, so runs never overlap.
+OnBootSec=2min
+OnUnitActiveSec=5min
+# OnBootSec already performs a fresh check after every boot. Persistent= only
+# affects calendar timers, not these monotonic OnBoot/OnUnitActive timers.
+
+[Install]
+WantedBy=timers.target

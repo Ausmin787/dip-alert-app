@@ -81,8 +81,10 @@ Credentials live in the app's database — never in code, git, or env vars.
    (settings, watchlist changes, test alerts) requires that token, so strangers who find
    your URL can't touch anything. Leave it unset and the API is open (fine for local dev).
    It also auto-disables `/docs` and `/openapi.json` once set.
-6. Run the app as a `systemd` service (so it restarts on reboot/crash) running
-   `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+6. Run the app as a `systemd` service (so it restarts on reboot/crash) and set up
+   **auto-deploy** so backend fixes pushed to `master` roll out on their own — the
+   ready-made units, deploy script, and one-time setup steps are in
+   [`deploy/README.md`](deploy/README.md). uvicorn binds to `127.0.0.1:8000` there.
 7. Point a domain (even a free one) at the VM's public IP and put a reverse proxy with
    TLS in front of uvicorn — e.g. Caddy or nginx + Let's Encrypt (Caddy auto-provisions
    the certificate with one line of config). **This step isn't optional**: the frontend's

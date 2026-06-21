@@ -1,0 +1,27 @@
+[Unit]
+Description=Dip Alert backend (FastAPI + APScheduler)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dipalert
+Group=dipalert
+WorkingDirectory=/home/dipalert/dip-alert-app/backend
+EnvironmentFile=/etc/dip-alert/dip-alert.env
+# No --reload in production. Bound to 127.0.0.1 so uvicorn is never exposed
+# directly: Caddy/nginx terminates TLS and reverse-proxies to this port.
+ExecStart=/home/dipalert/dip-alert-app/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

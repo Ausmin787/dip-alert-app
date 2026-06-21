@@ -1,0 +1,14 @@
+[Unit]
+Description=Dip Alert pull-based deploy (runs deploy.sh once)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=dipalert
+Group=dipalert
+WorkingDirectory=/home/dipalert/dip-alert-app
+ExecStart=/home/dipalert/dip-alert-app/deploy/deploy.sh
+UMask=0077
+# Leave enough time for a cold dependency install plus the regression gate.
+TimeoutStartSec=30min

@@ -1,0 +1,12 @@
+# Install to /etc/sudoers.d/10-dipalert-deploy  (owner root:root, mode 0440),
+# then validate with: sudo visudo -c
+#
+# The ONLY privilege the unprivileged dipalert account gets: restart and check
+# this one service, with no password (so the deploy timer can run unattended).
+# It cannot install packages, edit other units, or touch the rest of the system.
+#
+# NOTE: the path must match where systemd lives on your distro. Verify with
+#   command -v systemctl
+# On most modern distros it is /usr/bin/systemctl (used below). If yours differs,
+# edit the two paths accordingly before running visudo -c.
+dipalert ALL=(root) NOPASSWD: /usr/bin/systemctl restart dip-alert.service, /usr/bin/systemctl is-active dip-alert.service
