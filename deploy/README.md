@@ -27,7 +27,8 @@ itself within the poll interval. The frontend keeps auto-deploying on Vercel.
 | `deploy.sh` | stays in repo (`deploy/`) | The deploy logic |
 | `backup_sqlite.py` | stays in repo (`deploy/`) | Consistent live SQLite backup helper |
 | `test_deploy_safety.py` | stays in repo (`deploy/`) | Deployment regression checks |
-| `dip-alert.env.example` | copy to `/etc/dip-alert/dip-alert.env` | Secrets / config (NOT in git) |
+| `dip-alert.env.example` | copy to `/etc/dip-alert/dip-alert.env` | App secrets / config (NOT in git) |
+| `deploy-alert.env.example` | copy to `/etc/dip-alert/deploy-alert.env` | Optional deploy-failure alert creds (deploy-only, NOT in git) |
 | `10-dipalert-deploy.sudoers` | `/etc/sudoers.d/` | Lets `dipalert` restart only this service |
 
 ---
@@ -72,6 +73,12 @@ sudo cp /home/dipalert/dip-alert-app/deploy/dip-alert.env.example \
 sudo nano /etc/dip-alert/dip-alert.env       # set APP_TOKEN + FRONTEND_ORIGIN
 sudo chown root:root /etc/dip-alert/dip-alert.env
 sudo chmod 600 /etc/dip-alert/dip-alert.env
+#   Optional deploy-failure alert creds (deploy-only; skip to disable alerts):
+#   sudo cp /home/dipalert/dip-alert-app/deploy/deploy-alert.env.example \
+#     /etc/dip-alert/deploy-alert.env
+#   sudo nano /etc/dip-alert/deploy-alert.env  # set DEPLOY_ALERT_PHONE + _APIKEY
+#   sudo chown root:root /etc/dip-alert/deploy-alert.env
+#   sudo chmod 600 /etc/dip-alert/deploy-alert.env
 
 # 6. Install the systemd units + sudoers drop-in
 cd /home/dipalert/dip-alert-app/deploy
@@ -131,15 +138,19 @@ journalctl -u dip-alert.service -f             # live app logs
 > run `sudo systemctl daemon-reload`, validate sudoers when applicable, and
 > restart the affected unit during an authorized maintenance session.
 
-**Deploy-failure alerts (optional — to you, not the friend):** set
-`DEPLOY_ALERT_PHONE` and `DEPLOY_ALERT_APIKEY` (your *own* CallMeBot phone + key,
-from the same one-time CallMeBot handshake described in the main `README.md`) in
-`/etc/dip-alert/dip-alert.env`. When a release fails its test/health gate and is
-rolled back, `deploy.sh` sends you one WhatsApp message naming the rejected
-commit — fired **once per bad commit** (it's quarantined immediately after, so no
-repeat spam). Leave both blank to disable. The deploy unit reads them via
-`EnvironmentFile=-/etc/dip-alert/dip-alert.env`, so if you add them *after* first
-setup, re-copy `dip-alert-deploy.service` and `sudo systemctl daemon-reload`.
+**Deploy-failure alerts (optional — to you, not the friend):** create
+`/etc/dip-alert/deploy-alert.env` from `deploy-alert.env.example` (root:root,
+chmod 600) and set `DEPLOY_ALERT_PHONE` + `DEPLOY_ALERT_APIKEY` (your *own*
+CallMeBot phone + key, from the same one-time CallMeBot handshake in the main
+`README.md`). When a release fails its test/health gate and is rolled back,
+`deploy.sh` makes one best-effort WhatsApp attempt naming the rejected commit —
+fired **once per bad commit** (it's quarantined immediately after, so no repeat
+spam; delivery isn't guaranteed if CallMeBot/network is down). Leave both blank
+to disable. Kept in a separate file (not `dip-alert.env`) so the internet-facing
+app process never carries these creds. The deploy unit already references it via
+`EnvironmentFile=-/etc/dip-alert/deploy-alert.env` and re-reads it on every run,
+so **creating or editing the file needs no `daemon-reload`** — the next deploy
+tick picks it up (daemon-reload is only for changing the unit definition itself).
 **Not** alerted: pre-update refusals (dirty checkout, non-fast-forward, or a
 failed `git fetch`) — those simply don't deploy and show up as your push not
 landing plus a line in `journalctl`.

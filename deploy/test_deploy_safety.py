@@ -60,19 +60,25 @@ class DeploySafetyTests(unittest.TestCase):
         service = (DEPLOY_DIR / "dip-alert-deploy.service").read_text(
             encoding="utf-8"
         )
-        env_example = (DEPLOY_DIR / "dip-alert.env.example").read_text(
+        alert_env = (DEPLOY_DIR / "deploy-alert.env.example").read_text(
+            encoding="utf-8"
+        )
+        app_env = (DEPLOY_DIR / "dip-alert.env.example").read_text(
             encoding="utf-8"
         )
 
         # helper exists and is invoked from both rollback branches
         self.assertIn("notify_failure()", script)
         self.assertGreaterEqual(script.count("notify_failure"), 3)
-        # credentials are optional and come from the optional env file
-        self.assertIn("DEPLOY_ALERT_PHONE", env_example)
-        self.assertIn("DEPLOY_ALERT_APIKEY", env_example)
+        # creds live in a deploy-only file, loaded only by the deploy service
+        self.assertIn("DEPLOY_ALERT_PHONE", alert_env)
+        self.assertIn("DEPLOY_ALERT_APIKEY", alert_env)
         self.assertIn(
-            "EnvironmentFile=-/etc/dip-alert/dip-alert.env", service
+            "EnvironmentFile=-/etc/dip-alert/deploy-alert.env", service
         )
+        # the app env file must NOT assign the developer alert creds
+        self.assertNotIn("DEPLOY_ALERT_PHONE=", app_env)
+        self.assertNotIn("DEPLOY_ALERT_APIKEY=", app_env)
 
     def test_system_user_setup_is_portable_and_creates_expected_home(self) -> None:
         readme = (DEPLOY_DIR / "README.md").read_text(encoding="utf-8")
