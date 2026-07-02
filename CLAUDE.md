@@ -126,7 +126,7 @@ The frontend is a **mobile-first single-page app** on the **Liquid Glass** desig
 
 - `api.js` — all backend calls; baseURL is `VITE_API_URL` in production, relative (proxied) in dev. Axios `X-App-Token` interceptor.
 - `gsap.js` — tiny shared module: registers the `useGSAP` plugin once, exports `gsap`/`useGSAP`/`prefersReducedMotion()`. Every component doing GSAP work imports from here instead of `gsap` directly.
-- `App.jsx` — phone shell + 4-tab bottom nav. `Wallpaper` (sky/ribbon/grain/glow decorative layers), `StatusBar`, `AppHeader` (live/closed chip), `BottomNav` (floating pill nav with a measured sliding indicator), `NavLensFilter` (dormant lens-displacement SVG filter, see Bottom nav below), `AppShell` (tab useState). Shell `.wrap` carries `id="phone-shell"`. Default export wraps in `<AssetProvider>`.
+- `App.jsx` — phone shell + 4-tab bottom nav. `Wallpaper` (sky/ribbon/grain/glow decorative layers), `StatusBar`, `AppHeader` (live/closed chip), `BottomNav` (floating pill nav with a measured sliding indicator), `NavLensFilter` (dormant lens-displacement SVG filter, see Bottom nav below), `AppShell` (tab useState + `tabMotionKey` for active-state animation). Shell `.wrap` carries `id="phone-shell"`. Default export wraps in `<AssetProvider>`.
 - `AssetContext.jsx` — `AssetProvider`: data loading from `/api/status`, 30-day history pre-fetching, active selection memory (localStorage), `refresh()`. `useAssets` hook lives in `useAssets.js` (fast-refresh rule). 60s poll.
 - `tabs/WatchTab.jsx` — hero price card, **mode-aware display**:
   - **Dip mode**: `Tracker` (5 dip-level pills, windowed) + `NextAlert` (next trigger price + distance)
@@ -134,7 +134,7 @@ The frontend is a **mobile-first single-page app** on the **Liquid Glass** desig
   - `Hero` shows `daily_change_pct` (signed, colored) for momentum assets; ATH drop for dip assets. Currency prefix is `$` for futures, blank for index points, `₹` for Indian.
   - `TodaysAlerts` shows directional badge (`.badge-up` green / `.badge-dn` rose) for momentum alerts vs `.badge` gold for dip alerts
   - `WatchlistMini` shows signed daily % for momentum assets, drop % for dip assets
-  - **GSAP**: the four cards share a `.dash-card` class; on mount/asset-switch a `useGSAP` timeline staggers them in (`autoAlpha` + `y`). `Tracker` pulses the pill that just flipped to "done". `TodaysAlerts` slides a new alert in when the top alert id changes (not on initial load).
+  - **Animations**: the four cards share a `.dash-card` class. Tab switches stay mounted and use CSS `panel-enter` / `card-enter` animations through `.panel.active.animating`; asset switches still use a scoped `useGSAP` timeline (`autoAlpha` + `y`). `Tracker` pulses the pill that just flipped to "done". `TodaysAlerts` slides a new alert in when the top alert id changes (not on initial load).
 - `tabs/AlertsTab.jsx` — read-only config summary rows → jump to Manage; recent alerts (same new-alert slide-in as Watch); market-hours card.
 - `tabs/HistoryTab.jsx` — deployment history by IST month (primarily useful for dip-mode assets that have invest_amount).
 - `tabs/ManageTab.jsx` — `WatchlistManager` (CRUD); `AssetSheet` now has **Alert type selector** (Dip Alert / Momentum), threshold label adapts to mode, hint text shows global ticker examples; `WhatsAppCard`; `SetupCard`.
@@ -167,7 +167,7 @@ Implemented in `App.jsx`'s `BottomNav` component (measures button positions with
 
 **Sliding indicator** (`.nav-indicator`): `transform: translateX(...)` + `width`, computed from `getBoundingClientRect()` of the active button. Use `cubic-bezier(0.16, 1, 0.3, 1)` — y > 1.0 causes overshoot.
 
-**Tab switch flash fix**: inactive panels use `opacity: 0; pointer-events: none` (NOT `display: none`). Active tab uses `animation: enter 200ms 80ms ease-out both`.
+**Tab switch flash fix**: all four tab panels stay mounted in `App.jsx` (do NOT go back to conditional `{tab === ... && <Tab />}` rendering). Inactive panels use `opacity: 0; visibility: hidden; pointer-events: none` (NOT `display: none`). Active panels use `.panel.active.animating` with CSS `panel-enter`; direct child `.dash-card` cards use CSS `card-enter` with staggered delays. This preserves the original entrance feel without React remount flicker.
 
 **Liquid Glass refraction**: `NavLensFilter` in `App.jsx` generates a cubic-power displacement map into a canvas → SVG `feImage` once on mount. `feTurbulence` = WRONG (shaky noise). SVG filter needs `y="-28%" height="156%"`. **This filter is intentionally dormant** — nothing's `.nav` rule actually applies `filter: url(#nav-lq)` yet (the original design source it was ported from doesn't wire it up either). Don't "fix" this without checking with the user first; it may be intentional staging for later.
 

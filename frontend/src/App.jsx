@@ -214,6 +214,13 @@ function BottomNav({ tab, setTab }) {
 
 function AppShell() {
   const [tab, setTab] = useState('watch')
+  const [tabMotionKey, setTabMotionKey] = useState(0)
+  const switchTab = (nextTab) => {
+    setTab((currentTab) => {
+      if (currentTab !== nextTab) setTabMotionKey((key) => key + 1)
+      return nextTab
+    })
+  }
   return (
     <div className="wrap" id="phone-shell">
       <Wallpaper />
@@ -221,13 +228,13 @@ function AppShell() {
         <StatusBar />
         <AppHeader />
         <div className="panels">
-          {tab === 'watch' && <WatchTab />}
-          {tab === 'alerts' && <AlertsTab onManage={() => setTab('manage')} />}
-          {tab === 'history' && <HistoryTab />}
-          {tab === 'manage' && <ManageTab />}
+          <WatchTab active={tab === 'watch'} activeKey={tabMotionKey} />
+          <AlertsTab active={tab === 'alerts'} onManage={() => switchTab('manage')} />
+          <HistoryTab active={tab === 'history'} />
+          <ManageTab active={tab === 'manage'} />
         </div>
         <div className="nav-scrim" aria-hidden="true" />
-        <BottomNav tab={tab} setTab={setTab} />
+        <BottomNav tab={tab} setTab={switchTab} />
       </div>
       <NavLensFilter />
     </div>

@@ -3,9 +3,10 @@ import { getAlerts } from '../api.js'
 import { useAssets } from '../useAssets.js'
 import { fmtDayIST, fmtLakh, fmtLevel, fmtPrice, fmtTimeIST, isTodayIST, monthLabelIST } from '../lib.js'
 
-export default function HistoryTab() {
+export default function HistoryTab({ active }) {
   const { items, selectedItem } = useAssets()
   const [alerts, setAlerts] = useState(null)
+  const panelClass = `panel ${active ? 'active animating' : ''}`
 
   useEffect(() => {
     getAlerts(1, 100)
@@ -14,7 +15,7 @@ export default function HistoryTab() {
   }, [])
 
   if (alerts === null)
-    return <div className="panel"><div className="tab-title">History</div><div className="empty">Loading…</div></div>
+    return <div className={panelClass}><div className="tab-title">History</div><div className="empty">Loading…</div></div>
 
   const investFor = (ticker) => items.find((i) => i.ticker === ticker)?.invest_amount ?? 100000
   const thisMonth = monthLabelIST(new Date().toISOString())
@@ -45,7 +46,7 @@ export default function HistoryTab() {
   })()
 
   return (
-    <div className="panel">
+    <div className={panelClass}>
       <div className="tab-title">History</div>
 
       <div className="g" style={{ padding: 0 }}>

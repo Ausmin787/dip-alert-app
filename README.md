@@ -2,29 +2,47 @@
   <img src="docs/banner.png" alt="dip-alert-app banner" width="100%"/>
 </p>
 
-# Dip Alert — Nifty ATH Tracker
+# Dip Alert — Market Alert Dashboard
 
-A personal web app that watches the **Nifty 50 index** during NSE market hours, detects every new **−1% level below its all-time high**, and sends a **WhatsApp alert** with a quick-buy link. Inspired by the r/IndianStreetBets strategy: *"Buy ₹1L of Nifty 50 ETF for every −1% fall from ATH."*
+A personal web app that watches a small asset list and sends **WhatsApp alerts** for two modes:
+
+- **Dip alerts** for Indian assets such as Nifty 50: fire at each new configured % level below all-time high.
+- **Momentum alerts** for global assets such as Gold, Silver, S&P 500, and Nasdaq 100: fire once per UTC day per direction when the daily move crosses the configured threshold.
+
+The original dip strategy is still supported: *"Buy ₹1L of Nifty 50 ETF for every −1% fall from ATH."*
 
 <p align="center">
   <img
     src="docs/screenshots/dashboard-desktop.png"
-    alt="Dip Alert dashboard — Watch tab showing live Nifty 50 price, dip levels, and next alert"
+    alt="Dip Alert dashboard — Watch tab showing live asset price, dip levels, and next alert"
     width="360"
   />
 </p>
 
 ## How it works
 
+**Dip mode**
+
 ```
-drop% = (ATH − current) / ATH × 100
+drop% = (ATH - current) / ATH x 100
 Alert fires when floor(drop% / threshold) > last_alerted_level
 ```
 
-- No re-alerts at the same level within a dip cycle
-- Levels reset when price recovers to within 0.5% of ATH (or makes a new ATH)
-- Price checks every 5 min (configurable), 9:15 AM–3:30 PM IST, Mon–Fri only
-- Per-asset custom threshold %, investment reminder amount, and broker Buy link
+- No re-alerts at the same level within a dip cycle.
+- Levels reset when price recovers to within 0.5% of ATH or makes a new ATH.
+- Indian dip assets run during NSE market hours, 9:15 AM-3:30 PM IST, Mon-Fri.
+- Per-asset custom threshold %, investment reminder amount, and broker Buy link.
+
+**Momentum mode**
+
+```
+daily_change% = (current - previous_close) / previous_close x 100
+Alert fires once per UTC day per direction when abs(daily_change%) >= threshold
+```
+
+- Weekday monitoring for global assets without the NSE-hours gate.
+- Directional up/down WhatsApp alerts are de-duplicated separately.
+- Default seeded global assets use a +/-2% threshold.
 
 ## Stack
 
@@ -66,7 +84,7 @@ cd backend
 1. Save `+34 644 59 89 29` in your phone's contacts
 2. From WhatsApp, message it: `I allow callmebot to send me messages`
 3. You'll get your personal API key back on WhatsApp
-4. Open the app's **Settings** page → enter phone (with country code) + API key → **Send test alert**
+4. Open the app's **Manage** tab → enter phone (with country code) + API key → **Send test alert**
 
 Credentials live in the app's database — never in code, git, or env vars.
 
@@ -96,14 +114,14 @@ Credentials live in the app's database — never in code, git, or env vars.
 **Frontend → Vercel:**
 1. Create a Vercel account, import this repo with root directory `frontend`
 2. Set env var `VITE_API_URL=https://<your-backend-domain>`
-3. Deploy — then open `/settings`, paste your `APP_TOKEN` value into the *Access token*
+3. Deploy — then open the **Manage** tab, paste your `APP_TOKEN` value into the *Access token*
    field (it appears only when the backend has one set, and is stored only in your browser),
    and configure WhatsApp
 
 ## API
 
 ```
-GET  /api/status            current price, ATH, drop %, next level per asset
+GET  /api/status            current price, mode-aware status, ATH/drop or daily change per asset
 GET  /api/history/{ticker}  last N days of closes (chart data)
 GET  /api/watchlist         POST /api/watchlist        add asset
 PUT  /api/watchlist/{id}    DELETE /api/watchlist/{id}
@@ -112,4 +130,6 @@ GET  /api/settings          PUT /api/settings
 POST /api/test-alert        send a test WhatsApp message
 ```
 
-Tickers use Yahoo Finance format: `^NSEI` (Nifty 50 index), `SETFNIF50.NS` (SBI Nifty 50 ETF), `RELIANCE.NS` (NSE stocks), `.BO` suffix for BSE.
+Default seeded tickers: `^NSEI` (Nifty 50 dip alert), `GC=F` (Gold), `SI=F` (Silver), `^GSPC` (S&P 500), and `^NDX` (Nasdaq 100).
+
+Tickers use Yahoo Finance format: `^NSEI` (Nifty 50 index), `SETFNIF50.NS` (SBI Nifty 50 ETF), `.NS` for NSE stocks, `.BO` for BSE, `GC=F` / `SI=F` for COMEX futures, and `^GSPC` / `^NDX` for US indices.

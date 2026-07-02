@@ -20,7 +20,7 @@ function ConfigRow({ label, sub, value, toggle, onManage }) {
   )
 }
 
-export default function AlertsTab({ onManage }) {
+export default function AlertsTab({ active, onManage }) {
   const { selectedItem } = useAssets()
   const [settings, setSettings] = useState(null)
   const [alerts, setAlerts] = useState([])
@@ -45,7 +45,7 @@ export default function AlertsTab({ onManage }) {
   }, [topId])
 
   return (
-    <div className="panel">
+    <div className={`panel ${active ? 'active animating' : ''}`}>
       <div className="tab-title">Alerts</div>
 
       <div className="g">

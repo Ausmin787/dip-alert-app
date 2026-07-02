@@ -255,10 +255,12 @@ function WatchlistMini({ items, selectedAsset, setSelectedAsset }) {
   )
 }
 
-export default function WatchTab() {
+export default function WatchTab({ active, activeKey }) {
   const { items, selectedItem, selectedAsset, setSelectedAsset, loading, error } = useAssets()
   const [alerts, setAlerts] = useState([])
   const panelRef = useRef(null)
+  const panelClass = `panel ${active ? 'active animating' : ''}`
+  const selectedItemId = selectedItem?.id
 
   useEffect(() => {
     getAlerts(1, 20)
@@ -269,23 +271,23 @@ export default function WatchTab() {
   // Stagger the dashboard cards in whenever the selected asset changes (incl.
   // first mount) — not on every 60s poll, since selectedAsset is a stable string.
   useGSAP(() => {
-    if (prefersReducedMotion()) return
+    if (!active || loading || error || !selectedItemId || prefersReducedMotion()) return
     gsap.timeline({ defaults: { duration: 0.45, ease: 'power2.out' } })
-      .from('.dash-card', { autoAlpha: 0, y: 16, stagger: 0.08 })
-  }, { scope: panelRef, dependencies: [selectedAsset] })
+      .fromTo('.dash-card', { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, stagger: 0.08 })
+  }, { scope: panelRef, dependencies: [selectedAsset, loading, error, selectedItemId] })
 
-  if (loading) return <div className="panel"><div className="empty">Loading market…</div></div>
-  if (error) return <div className="panel"><div className="empty">{error}</div></div>
+  if (loading) return <div className={panelClass} data-active-key={activeKey}><div className="empty">Loading market…</div></div>
+  if (error) return <div className={panelClass} data-active-key={activeKey}><div className="empty">{error}</div></div>
   if (!selectedItem)
     return (
-      <div className="panel">
+      <div className={panelClass} data-active-key={activeKey}>
         <div className="empty">No assets under watch.<br />Add your first asset in the Manage tab.</div>
       </div>
     )
 
   const isMomentum = selectedItem.alert_mode === 'momentum'
   return (
-    <div className="panel" ref={panelRef}>
+    <div className={panelClass} ref={panelRef} data-active-key={activeKey}>
       <Hero item={selectedItem} />
       {isMomentum ? (
         <MomentumCard item={selectedItem} />

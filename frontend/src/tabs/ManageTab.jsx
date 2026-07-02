@@ -344,9 +344,9 @@ function SetupCard() {
   )
 }
 
-export default function ManageTab() {
+export default function ManageTab({ active }) {
   return (
-    <div className="panel">
+    <div className={`panel ${active ? 'active animating' : ''}`}>
       <div className="tab-title">Manage</div>
       <WatchlistManager />
       <WhatsAppCard />

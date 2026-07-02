@@ -218,6 +218,9 @@ body {
 .panel {
   position: absolute;
   inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0 15px 110px;
@@ -226,12 +229,35 @@ body {
   gap: 10px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  animation: fadein 0.18s ease;
 }
 .panel::-webkit-scrollbar { display: none; }
-@keyframes fadein {
+.panel.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+.panel.active.animating {
+  animation: panel-enter 0.18s ease both;
+}
+.panel.active.animating > .dash-card {
+  animation: card-enter 0.45s 0.02s ease-out both;
+}
+.panel.active.animating > .dash-card:nth-child(2) { animation-delay: 0.10s; }
+.panel.active.animating > .dash-card:nth-child(3) { animation-delay: 0.18s; }
+.panel.active.animating > .dash-card:nth-child(4) { animation-delay: 0.26s; }
+@keyframes panel-enter {
   from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ── Glass card (Liquid Glass: transparent glass + dark scrim + edge refraction) ── */
