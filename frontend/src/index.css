@@ -914,7 +914,6 @@ button.g {
 }
 .nav button.active {
   color: #ffffff;
-  transform: translateY(-1px);
 }
 .nav-indicator {
   position: absolute;
@@ -922,6 +921,7 @@ button.g {
   bottom: 8px;
   left: 8px;
   border-radius: 25px;
+  overflow: hidden; /* clips the refracted copy to the pill */
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.31), rgba(255, 255, 255, 0.13)),
     rgba(255, 255, 255, 0.10);
@@ -931,13 +931,42 @@ button.g {
     0 10px 26px rgba(4, 22, 72, 0.22);
   pointer-events: none;
   opacity: 0;
-  transition:
-    transform 340ms cubic-bezier(0.16, 1, 0.3, 1),
-    width 340ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 180ms ease;
-  z-index: 1;
+  /* transform/width are GSAP-driven (spring settle) — CSS only fades it in */
+  transition: opacity 180ms ease;
+  z-index: 3; /* above the buttons: the lens's refracted copy is what reads as "selected" */
 }
 .nav-indicator.ready { opacity: 1; }
+/* Liquid Glass lens: plain SVG filter (cross-browser, unlike backdrop-filter url())
+   bending the white tab-row copy. The copy's counter-translate shares the pill's
+   easing so the two transforms cancel out mid-flight and the copy stays glued
+   to the real buttons underneath. */
+.nav-lens {
+  position: absolute;
+  inset: 0;
+  filter: url(#nav-lq);
+  will-change: filter;
+  pointer-events: none;
+}
+.nav-lens-copy {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  color: #ffffff; /* matches the active label — the lens bends it without tinting */
+  /* transform is GSAP-driven in lockstep with the pill — no CSS transition */
+}
+.nav-lens-item {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .nav svg { width: 21px; height: 21px; stroke: currentColor; }
 
 @media (prefers-reduced-motion: reduce) {
