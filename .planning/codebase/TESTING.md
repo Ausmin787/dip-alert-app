@@ -1,49 +1,43 @@
-# Testing Patterns
+# Testing and Verification
 
-**Analysis Date:** 2026-06-14
+**Verified:** 2026-07-15 from live scripts and package commands.
 
-## Backend Testing
+## Backend
 
-**Framework:**
-- Standalone python scripts with monkeypatching (no pytest dependency).
+`backend/test_logic.py` is a standalone monkeypatched regression script. It covers dip-level crossing/de-duplication, recovery/new-ATH reset, failed-delivery behavior, and per-asset rollback isolation. Momentum behavior is implemented in the application but does not yet have an equivalent dedicated regression in this script.
 
-**Key Test Suite:**
-- [backend/test_logic.py](file:///C:/Users/Sasanka/ClaudeWork/dip-alert-app/backend/test_logic.py)
+`backend/test_security.py` uses FastAPI `TestClient` with a temporary SQLite database to cover optional token enforcement, validation, redaction, headers, and protected writes.
 
-**Run Command:**
-```bash
-cd backend
-.venv\Scripts\python test_logic.py
+```powershell
+backend\.venv\Scripts\python backend\test_logic.py
+backend\.venv\Scripts\python backend\test_security.py
+backend\.venv\Scripts\python -m pip check
 ```
 
-**Verifications Covered:**
-1. **Level-Crossing Alerts:** Asserts that crossing a drop boundary (e.g. -1%) fires a WhatsApp alert and logs it.
-2. **Alert Level Guard:** Asserts that the app does not send multiple alerts for the same level during the same dip.
-3. **Recovery Reset:** Asserts that when the price rises back to within `0.5%` of the ATH (`RECOVERY_RESET_PCT`), the tracker's `last_alerted_level` resets to `0`, allowing alerts to fire again if the price dips later.
-4. **New ATH Reset:** Asserts that a price exceeding the current ATH updates the tracker to the new price, sets the ATH date, and resets `last_alerted_level` to `0`.
-5. **WhatsApp Fail Protection:** Asserts that if the CallMeBot webhook fails (returns non-200), the tracker level does not advance and no AlertLog is written, ensuring a retry on the next tick.
-6. **DB Transaction Isolation:** Asserts that exceptions on a single Watchlist asset during a scheduler pass trigger a `session.rollback()` and do not poison subsequent asset lookups.
+There is no pytest dependency.
 
-## Frontend Testing
+## Frontend
 
-**Runner:**
-- Standard Node.js execution.
+`frontend/src/lib.test.js` is run directly by Node for shared helper regressions. ESLint and a production Vite build are required for source/UI changes.
 
-**Key Test Suite:**
-- [frontend/src/lib.test.js](file:///C:/Users/Sasanka/ClaudeWork/dip-alert-app/frontend/src/lib.test.js)
-
-**Run Command:**
-```bash
-cd frontend
-npm test
+```powershell
+npm.cmd --prefix frontend test
+npm.cmd --prefix frontend run lint
+npm.cmd --prefix frontend run build
 ```
 
-**Verifications Covered:**
-- Verifies severity scoring (mint vs amber vs rose colors depending on drop percentage).
-- Verifies decimal level string representations.
-- Verifies timezone clock conversions (`Asia/Kolkata` time checks).
+The frontend has no Jest suite. Glass-nav behavior also needs live visual checks: crisp parked state, strong but aligned travel refraction, interruption, same-tab click, resize, keyboard navigation, and reduced motion. Physical Safari/Firefox checks remain necessary because SVG filters vary by browser engine.
+
+## Deployment
+
+When `deploy/` changes:
+
+```powershell
+backend\.venv\Scripts\python deploy\test_deploy_safety.py
+& 'C:\Program Files\Git\bin\bash.exe' -n deploy/deploy.sh
+```
+
+The safety script checks deployment structure, backup behavior, rollback/quarantine safeguards, and credential separation. VM install, timer, rollback, restore, proxy, and TLS behavior require authorized live verification.
 
 ---
-
-*Testing audit: 2026-06-14*
-*Update when adding test coverage tools*
+*Replaces the obsolete severity/sparkline-only testing map dated 2026-06-14.*

@@ -1,80 +1,61 @@
 # Architecture
 
-**Analysis Date:** 2026-06-14
+**Verified:** 2026-07-15 from live source.
 
-## Pattern Overview
+## System Pattern
 
-**Overall:** Client-Server Monolith (FastAPI + React SPA)
+Dip Alert is a React single-page client backed by a FastAPI application that owns persistence, market polling, alert decisions, and WhatsApp delivery.
 
-**Key Characteristics:**
-- **Decoupled Deployment:** Backend hosts the API and scheduler (Railway + SQLite Volume); Frontend runs as a static application (Vercel).
-- **Polling Scheduler:** Time-based Cron-like checks run only during NSE market hours (IST) using APScheduler.
-- **Transactional State:** Persistent database updates are committed atomically. Errors roll back SQL transactions to prevent state corruption.
-- **Redacted Configuration:** Sensitive credentials (WhatsApp/CallMeBot details) are kept in the database and redacted in public API responses.
+## Backend
 
-## Layers
+- `main.py`: FastAPI construction, startup database creation/additive migrations, scheduler lifecycle, security headers, and optional docs exposure.
+- `routes.py`: status/history reads, watchlist CRUD, alert history, settings, and test-alert endpoints.
+- `ath_logic.py`: dip and momentum decision logic, reset/de-duplication rules, and alert-log updates.
+- `scheduler.py`: weekday/NSE-hours scheduling behavior.
+- `price_service.py`: yfinance current, previous-close, and history access.
+- `whatsapp.py`: CallMeBot delivery.
+- `db.py` and `models.py`: SQLModel engine/session and SQLite models.
 
-**FastAPI Backend (`backend/app`):**
-- **Entry point:** `main.py` (FastAPI app setup, startup DB creation and migrations, background thread ATH refresh, scheduler registration).
-- **Routes Layer:** `routes.py` (API endpoints for status dashboard, history, CRUD operations on watchlist, settings modification, and test alerts).
-- **Core Logic:** `ath_logic.py` (Asset-by-asset comparison of price to ATH, recovery check, level calculation, WhatsApp dispatcher trigger).
-- **Service Layer:** `price_service.py` (wrapper around yfinance for current and historical price data) and `whatsapp.py` (CallMeBot wrapper).
-- **Data Access:** `db.py` (database engine / session creation) and `models.py` (SQLModel table schemas).
+### Alert Flow
 
-**React Frontend (`frontend/src`):**
-- **State & Router:** `App.jsx` (Client-side routing, navigation control, layout structure).
-- **Page Layer:** `pages/` (Dashboard, Watchlist, Alerts, Settings page components).
-- **Component Layer:** `components/` (DipLadder segment fill, Sparkline SVG drawing, GSAP Reveal wrapper, dynamic three.js sphere).
-- **API Client:** `api.js` (Axios wrapper with interceptors for `X-App-Token` authentication).
-- **Helpers:** `lib.js` (Time and timezone helpers, severity styling logic, clock functions).
-
-## Data Flow
-
-### 1. Alert Checking Flow (Backend-Driven)
-
-```
-APScheduler (Mon-Fri 9:15-15:30 IST)
-  │
-  ▼
-ath_logic.check_all_assets()
-  │
-  ├──► Loop through active Watchlist rows
-  │      │
-  │      ▼
-  │    price_service.get_current_price(ticker)
-  │      │
-  │      ▼
-  │    Compare current price to AthTracker.ath_price
-  │      ├─► [Current Price > ATH]: Update ATH, reset levels to 0
-  │      │
-  │      └─► [Current Price < ATH]: Calculate drop percentage
-  │            │
-  │            ├─► [Drop <= 0.5% (Recovery)]: Reset level to 0
-  │            │
-  │            └─► [Drop > Threshold]: Calculate Level = floor(drop % / threshold)
-  │                  │
-  │                  └─► [Level > last_alerted_level]:
-  │                        │
-  │                        ├──► Send WhatsApp message (CallMeBot)
-  │                        │      │
-  │                        │      ├─► [Failed]: Do not save alert, retry on next tick
-  │                        │      │
-  │                        │      └─► [Success]: Continue
-  │                        │
-  │                        ├──► Create AlertLog record
-  │                        └──► Update last_alerted_level in AthTracker
-  │
-  └─► Rollback Session on exceptions (prevents PendingRollbackError)
+```text
+APScheduler -> active Watchlist rows -> yfinance price data
+  -> dip mode: ATH/drop/level/reset rules
+  -> momentum mode: previous-close move + UTC-day/direction de-duplication
+  -> CallMeBot delivery
+  -> only on success: AlertLog + tracker state commit
 ```
 
-### 2. Client Ingestion Flow (Frontend-Driven)
+Indian dip assets use the NSE weekday/time gate. Momentum assets run on weekdays without the IST-hours gate.
 
-1. User opens the browser dashboard.
-2. Frontend queries `/api/status` to get the list of watched assets, current prices, ATH prices, drop percentages, and next target alert levels.
-3. Frontend queries `/api/history/{ticker}` (lazy-loaded charts) to draw the Recharts SVG price chart.
-4. User changes settings (Settings page) or updates watchlist items (Watchlist page); the changes are posted to backend routes.
+## Frontend
+
+- `App.jsx` owns the phone shell and local four-tab state. There is no router.
+- `tabs/WatchTab.jsx`, `AlertsTab.jsx`, `HistoryTab.jsx`, and `ManageTab.jsx` remain mounted and expose the product workflows.
+- `AssetContext.jsx` polls status every 60 seconds, fetches 30-day histories, persists the selected ticker, and exposes refresh after mutations.
+- `api.js` owns Axios calls, the production `VITE_API_URL`, the dev-relative `/api` path, and the optional `X-App-Token` interceptor.
+- `GlassNav.jsx` owns semantic bottom-nav buttons, measured equal-column geometry, SVG filter definitions, and GSAP selector movement.
+- `gsap.js` registers shared GSAP integration/easing and provides the reduced-motion helper.
+- `index.css` owns the wallpaper, phone shell, glass recipes, tab states, and nav presentation.
+
+### Glass Nav Invariant
+
+One GSAP proxy is the position source for the rim and filter/map coordinates. The stationary highlighted icon/label is always crisp. A filtered duplicate is shown only while the selector physically travels; velocity and tween progress drive displacement/specular/chromatic strength. Completion, resize, cleanup, same-tab selection, and reduced motion restore zero refraction.
+
+## Persistence and Security
+
+- SQLite is the durable store; production should use `/var/lib/dip-alert/dip_alert.db`, outside the checkout.
+- CallMeBot credentials live in the settings row and are redacted by the API.
+- When `APP_TOKEN` is set, write requests require `X-App-Token`; API docs are disabled.
+- Frontend tokens are stored only in that browser's `localStorage`.
+
+## Deployment Target
+
+- Backend: Oracle Cloud Always Free VM, systemd, localhost-only uvicorn, HTTPS reverse proxy.
+- Frontend: Vercel static deployment with `VITE_API_URL`.
+- `deploy/` provides pull-based update, consistent backup, test gate, health check, rollback, quarantine, and optional deploy-only failure alerts.
+
+Deployment assets exist, but live infrastructure status must be verified separately.
 
 ---
-
-*Architecture analysis: 2026-06-14*
-*Update after major design or structural shifts*
+*Replaces the superseded Railway/split-pane architecture map dated 2026-06-14.*

@@ -1,16 +1,56 @@
-# React + Vite
+# Dip Alert frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The React/Vite frontend for the Dip Alert market-monitoring app. It is a mobile-first, four-tab single-page interface using the repository's Liquid Glass design system.
 
-Currently, two official plugins are available:
+## Requirements
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js 20.19+
+- npm 10+
+- The backend running at `http://localhost:8000` for live local data
 
-## React Compiler
+## Run locally
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+From this directory:
 
-## Expanding the ESLint configuration
+```powershell
+npm.cmd install
+npm.cmd run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Open `http://localhost:5173`. Vite proxies relative `/api` requests to `http://localhost:8000`.
+
+## Verification
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+```
+
+- `lint` checks the frontend source with ESLint.
+- `test` runs the Node regression tests in `src/lib.test.js`.
+- `build` creates the production bundle in `dist/`.
+
+## Environment
+
+Set `VITE_API_URL` to the deployed backend's HTTPS origin for production. Leave it unset in local development so the Vite proxy handles `/api`.
+
+If the backend enables `APP_TOKEN`, enter the matching access token in the app's Manage tab. The token is kept in browser local storage and attached to API writes as `X-App-Token`.
+
+## Structure
+
+- `src/App.jsx` — phone shell and four-tab state; there is no router.
+- `src/AssetContext.jsx` — shared status/history state and polling.
+- `src/tabs/` — Watch, Alerts, History, and Manage views.
+- `src/api.js` — Axios client and optional app-token header.
+- `src/gsap.js` — shared GSAP registration, reduced-motion helper, and glass easing.
+- `src/GlassNav.jsx` — floating glass bottom-navigation compositor.
+- `src/index.css` — Tailwind import plus the app's plain-CSS Liquid Glass tokens and components.
+
+## Glass navigation
+
+`GlassNav.jsx` follows the Aave web-glass technique adapted for this app. The real nav buttons stay semantic and stationary. While the indicator travels, a pointer-inert duplicate of the icon/label row is cropped by a generated SVG displacement filter, producing velocity-driven RGB refraction. The duplicate and filter strength return to zero at rest, which keeps the selected content crisp.
+
+Keep indicator position and SVG-filter position driven from the same GSAP coordinate source. Preserve the same-tab guard, `prefers-reduced-motion` snap, ResizeObserver geometry updates, and the usable CSS indicator fallback when SVG URL filters are unsupported.
+
+The production Vercel configuration is in `vercel.json`; it serves the SPA, applies security headers, and permits the data URL used by the generated displacement map.

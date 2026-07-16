@@ -1,70 +1,39 @@
-# Roadmap: Dip Alert Redesign
+# Roadmap: Dip Alert
 
-## Overview
-This roadmap covers the transition of the Dip Alert application from its current scrolling "Dynamic Island" layout to a viewport-locked, high-density "Stripe-Style Split Pane" desktop app shell.
+**Current-state roadmap — verified 2026-07-15.** The three phase files are historical records; their sidebar and split-pane implementation was later replaced.
 
-## Phases
+## Delivered Product
 
-- [x] **Phase 1: App Shell & Sidebar Dock** - Setup the `100dvh` layout, collapsible left navigation dock, and configure page routing. (completed 2026-06-13)
-- [x] **Phase 2: Live Asset Feed & State** - Build the middle feed pane with watchlist cards, live price/severity tracking, inline SVG sparklines, and active selection state. (completed 2026-06-14)
-- [x] **Phase 3: Workspace Detail Pane & Actions** - Construct the right detail pane containing asset metrics, Recharts drop charts, segment-colored dip ladders, buy triggers, and API write protection. (completed 2026-06-14)
+- [x] Dip and momentum alert engine, persistence, scheduler, WhatsApp delivery, and API.
+- [x] Four-tab mobile-first phone shell: Watch, Alerts, History, Manage.
+- [x] Bright Liquid Glass redesign and GSAP travelling-refraction bottom-nav selector.
+- [x] Optional app-token write protection and security regressions.
+- [x] Oracle VM systemd/auto-deploy assets with backup, rollback, and quarantine.
 
-## Phase Details
+## Current Workstream
 
-### Phase 1: App Shell & Sidebar Dock
-**Goal**: Establish the responsive app container, thin collapsible side-dock navigation, and wire up React router navigation.
-**Depends on**: Nothing
-**Requirements**: LAY-01, LAY-02, LAY-03, LAY-04, STATE-01
-**Success Criteria** (what must be TRUE):
-  1. The application shell fills the screen exactly using `100dvh` (no document body scrolls).
-  2. The left navigation dock displays as a thin 64px column containing icons that expands on hover.
-  3. Clicking sidebar icons changes routes correctly between Dashboard, Watchlist, Alerts, and Settings.
-  4. On smaller viewports, the sidebar auto-collapses or slides out of canvas.
-**Plans**: 1 plan
+- [x] Rebuild bottom navigation around one measured GSAP position source.
+- [x] Keep the selected option undistorted while parked.
+- [x] Apply SVG displacement, specular lighting, and chromatic separation only while the lens moves.
+- [x] Add same-position, resize, cleanup, and reduced-motion guards.
+- [x] Refresh the checked-in dashboard screenshot after the visual changes.
+- [ ] Perform physical Safari and Firefox spot checks for SVG filter behavior.
 
-Plans:
-- [x] 01-01: Set up responsive app-shell container, collapsible navigation sidebar, and wire React routing.
+## Operations Remaining
 
-### Phase 2: Live Asset Feed & State
-**Goal**: Build the middle feed column showcasing the user's watchlist with live indicators, sparklines, and selection memory.
-**Depends on**: Phase 1
-**Requirements**: FEED-01, FEED-02, FEED-03, STATE-02
-**Success Criteria** (what must be TRUE):
-  1. The middle panel lists watchlist assets featuring live price, drop %, and severity badges.
-  2. Asset feed items render self-drawing inline SVG sparklines indicating price movements.
-  3. Selected asset state persists in `localStorage` across page navigations or refreshes.
-  4. The feed header displays the live NSE market open/closed status badge and active clock.
-**Plans**: 1 plan
+- [ ] Install and verify the deployment units on the intended Oracle VM.
+- [ ] Verify live deploy, rollback/quarantine, backup restore, reverse proxy, TLS, DNS, firewall, CORS, and Vercel.
+- [ ] Record production evidence in `docs/SECURITY_AUDIT_PLAN.md` only after authorized live verification.
 
-Plans:
-- [x] 02-01: Implement the middle asset feed list column, inline sparklines, live clock headers, and active state memory.
+## Archived GSD Milestone
 
-### Phase 3: Workspace Detail Pane & Actions
-**Goal**: Finish the right-hand panel display featuring key metrics, historical drop charts, colored ladders, buy triggers, and token protection.
-**Depends on**: Phase 2
-**Requirements**: WORKSPACE-01, WORKSPACE-02, WORKSPACE-03, WORKSPACE-04, STATE-03
-**Success Criteria** (what must be TRUE):
-  1. Selecting an asset in the feed dynamically updates metrics (ATH, drop %, next target level) in the detail pane.
-  2. The detail pane loads and displays a custom Recharts SVG price drop chart.
-  3. Segmented dip ladder lists all target percentages, color-coded by severity, showing crossed states and a pulsing next target.
-  4. Outbound Groww.in button triggers navigation to the broker URL with the correct slug.
-  5. Watchlist CRUD, Settings PUT, and test alert triggers work correctly and send `X-App-Token` when enabled.
-**Plans**: 1 plan
+| Historical phase | Historical result | Current status |
+|---|---|---|
+| 1. App Shell & Sidebar Dock | Desktop sidebar and responsive bottom nav | Superseded by phone shell and `GlassNav.jsx` |
+| 2. Live Asset Feed & State | Middle-feed selection/context work | State concepts retained; split-pane UI superseded |
+| 3. Workspace Detail Pane & Actions | Right-pane dashboard/watchlist flow | Superseded by four tab components |
 
-Plans:
-- [x] 03-01: Build the right detail panel, Recharts chart wrapper, dip ladder component, buy links, and connect write API headers.
-
-## Progress
-
-**Execution Order:**
-Phases execute in numeric order: 1 ➔ 2 ➔ 3
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. App Shell & Sidebar | 1/1 | Complete    | 2026-06-13 |
-| 2. Live Asset Feed | 1/1 | Complete    | 2026-06-14 |
-| 3. Workspace Detail | 1/1 | Complete    | 2026-06-14 |
+Historical plan, summary, and UI-spec files remain under `.planning/phases/`; the directory README marks the entire set as archived provenance.
 
 ---
-*Roadmap defined: 2026-06-14*
-*Last updated: 2026-06-14 after initialization*
+*Last updated: 2026-07-15 from the live repository*

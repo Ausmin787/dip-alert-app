@@ -851,57 +851,63 @@ button.g {
 .sheet-sub { font-size: 11px; color: var(--dim); margin: 4px 0 16px; line-height: 1.5; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-/* ── Fade scrim behind the floating nav — keeps scrollable content from
-   peeking through the gap between the nav's bottom edge and the phone edge ── */
+/* The fade only protects the gap below the floating nav. Keeping it subtle
+   preserves the contrast that makes the lens refraction visible. */
 .nav-scrim {
   position: absolute;
-  left: 0;
   right: 0;
   bottom: 0;
-  height: 170px;
+  left: 0;
+  height: 150px;
   z-index: 5;
   pointer-events: none;
-  background: linear-gradient(to bottom, transparent 0%, rgba(2, 6, 20, 0.45) 45%, rgba(2, 6, 20, 0.88) 76%, rgba(2, 6, 20, 0.99) 100%);
-  backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
-  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.4) 30%, black 60%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.4) 30%, black 60%);
+  background: linear-gradient(to bottom, transparent 0%, rgba(2, 6, 20, 0.12) 44%, rgba(2, 6, 20, 0.58) 78%, rgba(2, 6, 20, 0.86) 100%);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.25) 38%, black 72%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.25) 38%, black 72%);
 }
 
-/* ── Bottom nav (Liquid Glass: floating pill + sliding indicator) ── */
+/* Aave-style nav compositor: the highlighted option row remains stationary.
+   Only the SVG filter crop and the independent glass rim move. */
 .nav {
   position: absolute;
+  right: 15px;
   bottom: calc(10px + env(safe-area-inset-bottom));
   left: 15px;
-  right: 15px;
   z-index: 10;
+  isolation: isolate;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 2px;
   padding: 8px;
-  border-radius: 31px;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.27);
+  border-radius: 31px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0.08)),
-    rgba(8, 14, 36, 0.62);
-  backdrop-filter: blur(26px) saturate(1.8) contrast(1.04);
-  -webkit-backdrop-filter: blur(26px) saturate(1.8) contrast(1.04);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.035)),
+    rgba(8, 14, 36, 0.36);
+  backdrop-filter: blur(22px) saturate(1.6) brightness(1.03);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6) brightness(1.03);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.50),
-    0 16px 40px rgba(0, 4, 20, 0.40);
+    inset 0 1px 0 rgba(255, 255, 255, 0.46),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 44px rgba(0, 4, 20, 0.38);
 }
+
 .nav button {
   position: relative;
-  z-index: 2;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
   min-height: 58px;
+  place-items: center;
+  gap: 4px;
   border: 0;
   border-radius: 25px;
   background: transparent;
-  display: grid;
-  place-items: center;
-  gap: 4px;
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.66);
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.04em;
@@ -910,64 +916,127 @@ button.g {
   user-select: none;
   transition:
     transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
-    color 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    text-shadow 220ms ease;
 }
+
 .nav button.active {
-  color: #ffffff;
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(255, 255, 255, 0.34);
 }
-.nav-indicator {
-  position: absolute;
-  top: 8px;
-  bottom: 8px;
-  left: 8px;
-  border-radius: 25px;
-  overflow: hidden; /* clips the refracted copy to the pill */
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.31), rgba(255, 255, 255, 0.13)),
-    rgba(255, 255, 255, 0.10);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.18),
-    0 10px 26px rgba(4, 22, 72, 0.22);
-  pointer-events: none;
-  opacity: 0;
-  /* transform/width are GSAP-driven (spring settle) — CSS only fades it in */
-  transition: opacity 180ms ease;
-  z-index: 3; /* above the buttons: the lens's refracted copy is what reads as "selected" */
+
+.nav button:focus-visible {
+  z-index: 4;
+  outline: 2px solid rgba(255, 255, 255, 0.92);
+  outline-offset: -4px;
 }
-.nav-indicator.ready { opacity: 1; }
-/* Liquid Glass lens: plain SVG filter (cross-browser, unlike backdrop-filter url())
-   bending the white tab-row copy. The copy's counter-translate shares the pill's
-   easing so the two transforms cancel out mid-flight and the copy stays glued
-   to the real buttons underneath. */
-.nav-lens {
+
+.nav-filter-defs {
   position: absolute;
-  inset: 0;
-  filter: url(#nav-lq);
-  will-change: filter;
+  width: 0;
+  height: 0;
+  overflow: hidden;
   pointer-events: none;
 }
-.nav-lens-copy {
+
+.nav-highlight-target {
   position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  inset: 8px;
+  z-index: 3;
+  display: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 2px;
-  color: #ffffff; /* matches the active label — the lens bends it without tinting */
-  /* transform is GSAP-driven in lockstep with the pill — no CSS transition */
+  pointer-events: none;
+  color: #fff;
 }
-.nav-lens-item {
+
+@supports (filter: url("#nav-filter-test")) {
+  .nav-highlight-target.ready.moving { display: grid; }
+}
+
+.nav-highlight-item {
   display: grid;
+  min-width: 0;
   place-items: center;
   gap: 4px;
+  border-radius: 25px;
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  text-shadow: 0 1px 8px rgba(255, 255, 255, 0.42);
 }
-.nav svg { width: 21px; height: 21px; stroke: currentColor; }
+
+.nav-indicator {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: 25px;
+  pointer-events: none;
+  opacity: 0;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  background:
+    radial-gradient(ellipse 78% 46% at 50% 2%, rgba(255, 255, 255, 0.20), transparent 72%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.035) 54%, rgba(180, 214, 255, 0.08)),
+    rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(12px) saturate(1.85) brightness(1.14);
+  -webkit-backdrop-filter: blur(12px) saturate(1.85) brightness(1.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.48),
+    inset 1px 0 0 rgba(255, 255, 255, 0.18),
+    inset -1px 0 0 rgba(180, 215, 255, 0.14),
+    inset 0 -1px 0 rgba(112, 153, 224, 0.20),
+    0 7px 18px rgba(1, 8, 34, 0.22),
+    0 0 0 0.5px rgba(255, 255, 255, 0.24);
+  transition: opacity 180ms ease;
+}
+
+.nav-indicator.ready { opacity: 1; }
+
+.nav-indicator::before,
+.nav-indicator::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.nav-indicator::before {
+  inset: 1px;
+  border-radius: inherit;
+  border-top: 1px solid rgba(255, 255, 255, 0.40);
+  mask-image: linear-gradient(90deg, transparent 3%, black 28%, black 72%, transparent 97%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 3%, black 28%, black 72%, transparent 97%);
+  opacity: 0.55;
+}
+
+.nav-indicator::after {
+  width: 52%;
+  height: 120%;
+  left: -14%;
+  top: -42%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  filter: blur(9px);
+  transform: rotate(-18deg);
+  opacity: 0.35;
+}
+
+.nav-indicator.moving::before { opacity: 1; }
+.nav-indicator.moving::after { opacity: 0.82; }
+
+.nav button svg,
+.nav-highlight-item svg {
+  width: 21px;
+  height: 21px;
+  stroke: currentColor;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), filter 220ms ease;
+}
+
+.nav button.active svg { filter: drop-shadow(0 1px 5px rgba(255, 255, 255, 0.26)); }
 
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -1,52 +1,44 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-06-14
+**Verified:** 2026-07-15 from live source and deployment documentation.
 
-## Tech Debt & System Constraints
+## External Data and Messaging
 
-**yfinance Rate Limits:**
-- **Issue:** The backend fetches market prices from Yahoo Finance via the `yfinance` package without authentication.
-- **Impact:** High frequency checking (e.g. less than 5 min intervals) or having too many watchlist assets can cause Yahoo to block the server IP.
-- **Mitigation:** Default poll interval is capped, and watchlist should be restricted to a modest size.
+- **Yahoo Finance rate limits/availability:** yfinance is unauthenticated and can throttle or fail. Keep the watchlist modest, avoid aggressive polling, and treat upstream errors as recoverable.
+- **CallMeBot delivery:** delivery depends on a third-party personal-use service and network availability. Tracker state must not advance when delivery fails so a later poll can retry.
+- **Broker links:** Groww URLs are configured per asset and can become invalid if external slugs change.
 
-**SQLite Persistence on Serverless Hosting:**
-- **Issue:** SQLite runs in a local file. Serverless setups (like Railway or render) destroy local files on every git deploy.
-- **Impact:** Watchlist settings, database alerts history, and ATH tracking levels reset on every build unless configured correctly.
-- **Mitigation:** Must configure a persistent volume mounted at `/data` and set `DATABASE_URL=sqlite:////data/dip_alert.db` in production.
+## Scheduling and Market Semantics
 
-**Groww.in ETF URL Mapping:**
-- **Issue:** Buy links require Groww's internal URL slug format (e.g., `sbietf-nifty` for SBI Nifty 50 ETF). Fund names or standard symbol names (like `SETFNIF50.NS`) do not map cleanly.
-- **Impact:** Buying ETF links from the dashboard or WhatsApp notifications will result in 404 pages on Groww if inputted incorrectly.
-- **Mitigation:** Slugs must be looked up manually on Groww.in before adding assets to the watchlist.
+- The NSE gate checks weekdays and 09:15–15:30 IST but does not include a maintained exchange-holiday calendar. Holiday polls can fetch unchanged data; this is an accepted limitation.
+- Momentum de-duplication is by UTC day and direction. Changes to time semantics require regression coverage.
 
-## Known Limitations
+## Persistence and Deployment
 
-**NSE Holiday Calendars:**
-- **Issue:** The scheduling loop only verifies weekday (Mon-Fri) and hour range (9:15 AM to 3:30 PM IST). NSE holiday calendars are not hardcoded.
-- **Impact:** On market holidays, backend polling ticks continue to run. They fetch stagnant prices, which is harmless, but waste server cycles and api calls.
-- **Mitigation:** Deliberately omitted to avoid yearly holiday schedule maintenance.
+- SQLite must live on persistent VM storage outside the git checkout. Container/serverless ephemeral filesystems are incompatible with the scheduler/state model.
+- The current target is Oracle Cloud, not Railway. Do not restore `/data` volume instructions or assume platform-provided TLS.
+- Auto-rollback reverts code, not database contents. Additive migrations preserve backward compatibility; destructive migrations need a different release design.
+- Deployment files do not prove a VM, domain, TLS certificate, firewall, timer, or Vercel project is live. Verify external state before claiming production readiness.
 
-## Animation & Visual Testing Gotchas
+## Glass Navigation
 
-**GSAP ScrollTrigger Entrance Opacities:**
-- **Issue:** `Reveal` wrappers start element opacity at `0` until they are scrolled into view.
-- **Impact:** Automated testing/scraping tools (like Playwright) capturing full-page screenshots will capture blank blocks below the fold.
-- **Mitigation:** Test suites must issue scroll events to trigger the GSAP reveals before taking screenshots.
+- SVG filter behavior can differ in Safari and Firefox. Keep a physical-browser spot check in the visual release gate.
+- The nav rim and filter map must share one position source. Independent clip/counter-translation paths previously drifted under interrupted animations.
+- The filtered duplicate must remain hidden at rest; parked chromatic distortion is a regression.
+- Reduced-motion, resize, cleanup, completion, and same-tab paths must leave refraction at zero.
 
-**Recharts StrictMode Render Error:**
-- **Issue:** Recharts drawing animations frequently fail to render and show up blank when wrapped in React StrictMode.
-- **Impact:** Price charts on the dashboard render blank in dev mode.
-- **Mitigation:** Keep `isAnimationActive={false}` on Recharts chart series.
+## Security
 
-## Security Considerations
+- `APP_TOKEN` is intentionally lightweight write protection for a single-user app, not full authentication. Public reads remain a deliberate exposure decision.
+- Never place CallMeBot credentials, app tokens, phone numbers, deploy credentials, or real database content in source, screenshots, logs, or frontend bundles.
+- The browser app token lives in `localStorage`; users must treat the browser profile as trusted.
+- Reverse proxy/TLS, firewall, OS patching, file permissions, backups, monitoring, and restore behavior remain production verification responsibilities.
 
-**API Write Access Protection:**
-- **Issue:** The API endpoints (Watchlist CRUD, Settings PUT, Test Alerts) are open by default.
-- **Impact:** Anyone discovering the Railway backend URL could change watchlist items or trigger spam WhatsApp messages.
-- **Mitigation:** An optional `APP_TOKEN` env var can be set on the backend. When active, all write endpoints require a matching `X-App-Token` header.
-- **Masking Secrets:** The settings GET/PUT route masks the phone number and API key. When PUT requests are sent, blank values must be interpreted as "retain existing secrets" to prevent overwriting the DB with asterisks.
+## Documentation Drift Risks
+
+- Archived `.planning/phases/` files describe a removed desktop sidebar/split-pane UI.
+- `docs/screenshots/dashboard-desktop.png` must be regenerated after meaningful visual changes.
+- Marketing assets should describe both dip and momentum modes rather than implying the app only tracks Nifty 50 dips.
 
 ---
-
-*Concerns audit: 2026-06-14*
-*Update as new dependencies or system issues arise*
+*Replaces the superseded Railway/Recharts/ScrollTrigger concern map dated 2026-06-14.*

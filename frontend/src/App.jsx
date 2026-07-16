@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { gsap, prefersReducedMotion } from './gsap.js'
+import { useEffect, useState } from 'react'
 import { AssetProvider } from './AssetContext.jsx'
 import { isMarketOpenIST } from './lib.js'
+import GlassNav from './GlassNav.jsx'
 import WatchTab from './tabs/WatchTab.jsx'
 import AlertsTab from './tabs/AlertsTab.jsx'
 import HistoryTab from './tabs/HistoryTab.jsx'
@@ -129,153 +129,6 @@ function Wallpaper() {
   )
 }
 
-// Edge-concentrated lens displacement map for the nav's Liquid Glass refraction.
-// Generated once into a canvas data-URL; fed to `.nav-lens` as a plain `filter`
-// (not backdrop-filter) so the refraction works beyond Chromium. The lens bends
-// a highlighted copy of the tab row (see BottomNav), not the backdrop — the
-// Aave "refractionTarget" technique (aave.com/design/building-glass-for-the-web).
-function NavLensFilter() {
-  useEffect(() => {
-    const W = 128
-    const H = 32
-    const canvas = document.createElement('canvas')
-    canvas.width = W
-    canvas.height = H
-    const ctx = canvas.getContext('2d')
-    const imageData = ctx.createImageData(W, H)
-    const d = imageData.data
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        const i = (y * W + x) * 4
-        const nx = (x / (W - 1)) * 2 - 1
-        const sx = (nx < 0 ? -1 : 1) * Math.abs(nx) ** 3
-        // Horizontal-only bend: the label sits flush against the pill's bottom
-        // edge, so any Y displacement ghosts the text below itself. The pill
-        // travels horizontally, so X is where the refraction reads anyway.
-        d[i] = Math.round(((sx + 1) / 2) * 255)
-        d[i + 1] = 128
-        d[i + 2] = 0
-        d[i + 3] = 255
-      }
-    }
-    ctx.putImageData(imageData, 0, 0)
-    document.getElementById('nav-dmap')?.setAttribute('href', canvas.toDataURL())
-  }, [])
-
-  return (
-    <svg aria-hidden="true" focusable="false" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-      <defs>
-        {/* colorInterpolationFilters MUST be "sRGB" (the literal keyword —
-            "sRGBLinear" is invalid and silently falls back to linearRGB, which
-            remaps the map's neutral 128-gray to ~55 and shifts everything
-            down-right by ~scale/3.5).
-            Three displacement passes at staggered scales, one per color
-            channel, recomposed additively — the chromatic fringe from the Aave
-            glass chain. Alpha is kept in every pass; the additive clamp is the
-            standard trade-off. */}
-        <filter id="nav-lq" x="-6%" y="-28%" width="112%" height="156%" colorInterpolationFilters="sRGB">
-          <feImage id="nav-dmap" preserveAspectRatio="none" result="dmap" />
-          <feDisplacementMap in="SourceGraphic" in2="dmap" scale="30" xChannelSelector="R" yChannelSelector="G" result="dispR" />
-          <feColorMatrix in="dispR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="chanR" />
-          <feDisplacementMap in="SourceGraphic" in2="dmap" scale="36" xChannelSelector="R" yChannelSelector="G" result="dispG" />
-          <feColorMatrix in="dispG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="chanG" />
-          <feDisplacementMap in="SourceGraphic" in2="dmap" scale="42" xChannelSelector="R" yChannelSelector="G" result="dispB" />
-          <feColorMatrix in="dispB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="chanB" />
-          <feComposite in="chanR" in2="chanG" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="chanRG" />
-          <feComposite in="chanRG" in2="chanB" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" />
-        </filter>
-      </defs>
-    </svg>
-  )
-}
-
-function BottomNav({ tab, setTab }) {
-  const navRef = useRef(null)
-  const btnRefs = useRef({})
-  const indRef = useRef(null)
-  const copyRef = useRef(null)
-  const [navW, setNavW] = useState(null)
-  const settledRef = useRef(false)
-
-  useLayoutEffect(() => {
-    const apply = (animate) => {
-      const nav = navRef.current
-      const btn = btnRefs.current[tab]
-      const ind = indRef.current
-      const copy = copyRef.current
-      if (!nav || !btn || !ind || !copy) return
-      const navRect = nav.getBoundingClientRect()
-      const btnRect = btn.getBoundingClientRect()
-      const x = btnRect.left - navRect.left - 8
-      setNavW(navRect.width - 16)
-      // feImage does NOT stretch to the filter region on its own — without an
-      // explicit size it renders the 128x32 map at natural size and the
-      // uncovered (transparent) area displaces by -scale/2, ghosting the copy
-      // down-right. Track the pill's live box so the lens edges follow the
-      // width tween frame by frame.
-      const dmap = document.getElementById('nav-dmap')
-      const sizeMap = () => {
-        if (!dmap) return
-        dmap.setAttribute('x', '0')
-        dmap.setAttribute('y', '0')
-        dmap.setAttribute('width', String(ind.offsetWidth))
-        dmap.setAttribute('height', String(btnRect.height))
-      }
-      if (!animate || prefersReducedMotion()) {
-        gsap.set(ind, { width: btnRect.width, x })
-        gsap.set(copy, { x: -x })
-        sizeMap()
-      } else {
-        // Aave-style spring settle: overshoot then ease into place. The pill
-        // and the counter-translated copy share one duration/ease so the two
-        // transforms cancel out mid-flight and the copy stays glued to the
-        // real buttons while the lens sweeps over it.
-        const spring = { duration: 0.55, ease: 'back.out(1.7)', overwrite: 'auto' }
-        gsap.to(ind, { width: btnRect.width, x, ...spring, onUpdate: sizeMap })
-        gsap.to(copy, { x: -x, ...spring })
-      }
-      ind.classList.add('ready')
-    }
-    apply(settledRef.current)
-    settledRef.current = true
-    const onResize = () => apply(false)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [tab])
-
-  return (
-    <nav className="nav" ref={navRef} aria-label="Primary">
-      <div className="nav-indicator" ref={indRef} aria-hidden="true">
-        {/* Refraction target: white copy of the tab row, counter-translated so it
-            stays aligned with the real buttons while the pill (and the lens
-            filter with it) slides over it. */}
-        <div className="nav-lens">
-          <div className="nav-lens-copy" ref={copyRef} style={navW ? { width: navW } : undefined}>
-            {TABS.map(({ id, label, icon: Icon }) => (
-              <span key={id} className="nav-lens-item">
-                <Icon />
-                {label}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-      {TABS.map(({ id, label, icon: Icon }) => (
-        <button
-          key={id}
-          ref={(el) => { btnRefs.current[id] = el }}
-          className={tab === id ? 'active' : ''}
-          type="button"
-          onClick={() => setTab(id)}
-        >
-          <Icon />
-          {label}
-        </button>
-      ))}
-    </nav>
-  )
-}
-
 function AppShell() {
   const [tab, setTab] = useState('watch')
   const [tabMotionKey, setTabMotionKey] = useState(0)
@@ -298,9 +151,8 @@ function AppShell() {
           <ManageTab active={tab === 'manage'} />
         </div>
         <div className="nav-scrim" aria-hidden="true" />
-        <BottomNav tab={tab} setTab={switchTab} />
+        <GlassNav tabs={TABS} activeTab={tab} onSelect={switchTab} />
       </div>
-      <NavLensFilter />
     </div>
   )
 }

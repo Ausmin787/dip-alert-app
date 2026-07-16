@@ -1,56 +1,53 @@
 # External Integrations
 
-**Analysis Date:** 2026-06-14
+**Verified:** 2026-07-15 from live source and deployment assets.
 
-## APIs & External Services
+## Market Data
 
-**Alerting / Messaging:**
-- CallMeBot WhatsApp API - Sends automated alerts to the user's phone number.
-  - Integration method: HTTP GET request via `httpx` (asynchronous client).
-  - Auth: Credentials (phone number and API key) are saved in the `Settings` DB table and redacted on retrieval.
-  - Configuration: Configured dynamically via the frontend's Settings page, never committed in code.
+- **Yahoo Finance via yfinance 1.4.1** supplies current prices, previous closes, and historical closes.
+- No API credential is used. Availability and throttling are external constraints.
+- Frontend history requests are served by the backend; the browser does not call Yahoo directly.
 
-**Market Ingestion:**
-- Yahoo Finance API - Used to fetch current market price and historical maximum (ATH).
-  - SDK/Client: `yfinance` Python library.
-  - Auth: No authentication required.
-  - Rate limits: Rate-limited by Yahoo. Solved by polling only every N minutes (default 5 min) and caching.
+## Messaging
 
-## Data Storage
+- **CallMeBot WhatsApp API** sends alert and test messages through `httpx`.
+- The owner configures phone/API key through Manage; values live in SQLite and are redacted on API reads.
+- Optional deployment-failure CallMeBot credentials are separate in `/etc/dip-alert/deploy-alert.env` and are loaded only by the deploy service.
 
-**Databases:**
-- SQLite - Single-user relational DB stored locally (e.g. `dip_alert.db`).
-  - Connection: Configured via `DATABASE_URL` (defaults to local SQLite file).
-  - Client: `SQLModel` ORM.
-  - Migrations: Hand-crafted additive SQLite migrations in `backend/app/main.py` using `PRAGMA table_info` before server start.
+## Broker Links
 
-## UI Linkages / Broker Integration
+- Per-asset outbound broker URLs can point to Groww or another configured target.
+- The app provides reminders/links only; it never places orders.
 
-**Outbound Links:**
-- Groww.in Broker Integration - Outbound links to purchase the Nifty 50 ETF.
-  - Slug: Configured per-asset in the `Watchlist` table. Default: `https://groww.in/etfs/sbietf-nifty` (verified internal Groww slug).
-  - Purpose: Embeds a direct link in both WhatsApp messages and the dashboard UI to allow the user to easily buy ETF units.
+## Persistence
 
-## Hosting & CI/CD
+- **SQLite + SQLModel** is configured through `DATABASE_URL`.
+- Local development defaults to a backend-local database.
+- Oracle production should use `sqlite:////var/lib/dip-alert/dip_alert.db` outside the checkout.
+- Startup migrations are hand-written, additive, and idempotent.
 
-**Hosting Platforms:**
-- Railway (Backend) - Fast deployment from GitHub.
-  - Environment: Requires env vars (`DATABASE_URL`, `FRONTEND_ORIGIN`, and optionally `APP_TOKEN`).
-  - Storage: Requires a persistent volume mounted at `/data` to prevent database reset on redeployments.
-- Vercel (Frontend) - Static React hosting.
-  - Config: Requires env var `VITE_API_URL`.
+## Hosting and Delivery
 
-## Environment Configuration
+- **Oracle Cloud Always Free VM** is the backend target. systemd runs uvicorn on `127.0.0.1:8000`; Caddy/nginx must terminate public HTTPS.
+- **Vercel** is the frontend target. `VITE_API_URL` points the static build at the HTTPS backend origin.
+- **GitHub master** is polled by the VM deployment timer after one-time installation.
+- `deploy/deploy.sh` performs backup, fast-forward update, conditional dependency install, verification, restart, health check, rollback, and quarantine.
 
-**Development:**
-- Backend: Uses local sqlite file `dip_alert.db`. Scheduler can be disabled via `DISABLE_SCHEDULER=1`.
-- Frontend: Vite dev server proxies `/api` to `localhost:8000`.
+These are configured targets and repository capabilities. Do not claim they are live without external verification.
 
-**Production:**
-- Secrets (phone number/API key) are not stored in `.env` files; they are configured directly in the SQLite DB row via Settings.
-- `APP_TOKEN` provides basic write protection on the API endpoints.
+## Environment Contract
+
+Backend:
+
+- `DATABASE_URL`
+- `DISABLE_SCHEDULER=1` for development/tests
+- `FRONTEND_ORIGIN` for CORS
+- optional `APP_TOKEN` for write protection
+
+Frontend:
+
+- `VITE_API_URL` in production
+- relative `/api` in development, proxied by Vite to `localhost:8000`
 
 ---
-
-*Integration audit: 2026-06-14*
-*Update when adding/removing external services*
+*Railway and persistent `/data` volume instructions are obsolete.*

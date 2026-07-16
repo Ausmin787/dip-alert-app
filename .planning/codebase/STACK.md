@@ -1,83 +1,39 @@
 # Technology Stack
 
-**Analysis Date:** 2026-06-14
+**Verified:** 2026-07-15 from `requirements.txt`, `package.json`, and `package-lock.json`.
 
-## Languages
+## Backend
 
-**Primary:**
-- Python 3.14.3 - Backend server, database queries, and scheduler tasks
-- JavaScript (ES6+ / React JSX) - Frontend dashboard and settings pages
+- Python 3.11+
+- FastAPI 0.136.3, Starlette 1.3.1, Uvicorn 0.49.0
+- SQLModel 0.0.38 + SQLite
+- APScheduler 3.11.2
+- yfinance 1.4.1
+- httpx 0.28.1
 
-**Secondary:**
-- HTML5 / CSS3 (Vanilla + Tailwind CSS v4) - Frontend layout, styling, and animations
+## Frontend
 
-## Runtime
+- Node.js 20.19+ and npm (`package-lock.json` tracked)
+- React/React DOM 19.2.7 resolved (`^19.2.6` declared)
+- Vite 8.0.16 and `@vitejs/plugin-react` 6.0.2 resolved (`^8.0.12` / `^6.0.1` declared)
+- Tailwind CSS 4.3.0 through `@tailwindcss/vite`
+- GSAP 3.15.0 and `@gsap/react` 2.1.2
+- Axios 1.17.0
+- ESLint 10.4.1 resolved (`^10.3.0` declared)
 
-**Environment:**
-- Python 3.14.3
-- Node.js 20.19+ (Vite 8 floor requirement)
-- Modern Web Browsers (Chrome, Safari, Firefox, Edge)
-
-**Package Manager:**
-- pip - Python packages
-- npm 10.x - Node.js packages (lockfile: `package-lock.json` present)
-
-## Frameworks
-
-**Core:**
-- FastAPI 0.136.3 - Python async web API framework
-- SQLModel 0.0.38 - SQL database ORM combining SQLAlchemy and Pydantic
-- React 19.2.6 - Frontend component framework
-- Vite 8.0.12 - Frontend build tool and dev server
-
-**Testing:**
-- Python standard library (monkeypatched scripting in `test_logic.py`)
-- Node.js (regression tests in `src/lib.test.js` run via `npm test`)
-
-**Build/Dev:**
-- Tailwind CSS v4 - Styling compiler
-- ESLint 10.3.0 - JS static analysis / linting
-- Uvicorn 0.49.0 - ASGI server for FastAPI
-
-## Key Dependencies
-
-**Critical:**
-- yfinance 1.4.1 - Market price ingestion (Yahoo Finance API)
-- apscheduler 3.11.2 - Cron-like job scheduling for market hours polling
-- three 0.184.0 & @react-three/fiber 9.6.1 & @react-three/drei 10.7.7 - WebGL Point-Cloud Sphere (three.js hero)
-- gsap 3.15.0 - ScrollTrigger entrance animations and CountUp counters
-- motion 12.40.0 - Dynamic Island morph animations and route transitions
-- recharts 3.8.1 - Asset price history charts (lazy-loaded)
-- axios 1.17.0 - HTTP client for API requests
+The current frontend has no Motion, Recharts, three.js, React Router, Jest, or TypeScript dependency.
 
 ## Configuration
 
-**Environment:**
-- Backend configuration:
-  - `DATABASE_URL` (SQLite file location, e.g. `sqlite:////data/dip_alert.db` in production)
-  - `DISABLE_SCHEDULER` (1 to skip scheduling in dev/testing)
-  - `FRONTEND_ORIGIN` (CORS configuration)
-  - `APP_TOKEN` (optional API write protection token)
-- Frontend configuration:
-  - `VITE_API_URL` (backend API endpoint)
-- WhatsApp config: stored directly in the `settings` SQLite DB row.
+- Backend: `DATABASE_URL`, `DISABLE_SCHEDULER`, `FRONTEND_ORIGIN`, optional `APP_TOKEN`.
+- Frontend: `VITE_API_URL`; Vite proxies local `/api` to `localhost:8000`.
+- Production target: Oracle VM backend plus Vercel frontend. Railway is obsolete.
 
-**Build:**
-- `eslint.config.js` - ESLint configuration
-- `vite.config.js` - Vite configuration with Tailwind CSS integration
+## Verification
 
-## Platform Requirements
-
-**Development:**
-- Windows/macOS/Linux
-- Python 3.11+
-- Node.js 20.19+
-
-**Production:**
-- Backend: Railway (requires persistent volume for SQLite DB)
-- Frontend: Vercel (static deployment with environment proxy/API URL)
+- Backend: standalone `test_logic.py` and `test_security.py` scripts; no pytest dependency.
+- Frontend: Node helper test, ESLint, and Vite production build.
+- Deployment: `deploy/test_deploy_safety.py` plus Bash syntax validation.
 
 ---
-
-*Stack analysis: 2026-06-14*
-*Update after major dependency changes*
+*Replaces the stale Python 3.14/Railway/three.js/Motion/Recharts stack map.*

@@ -1,61 +1,46 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-06-14
+**Verified:** 2026-07-15 from live source.
 
-## Naming Patterns
+## Naming and Files
 
-**Files:**
-- Backend: `snake_case.py` for all python script files.
-- Frontend React components: `PascalCase.jsx` (e.g. `DipLadder.jsx`, `IndexOrb.jsx`).
-- Frontend vanilla scripts and hooks: `camelCase.js` (e.g. `useReducedMotion.js`, `api.js`).
+- Python modules/functions/variables use `snake_case`; constants use `UPPER_SNAKE_CASE`.
+- React component files/components use `PascalCase.jsx`.
+- Shared JavaScript modules/hooks use descriptive camel-case names such as `api.js`, `gsap.js`, `lib.js`, and `useAssets.js`.
+- The four primary views live under `frontend/src/tabs/` and end in `Tab.jsx`.
 
-**Functions:**
-- Backend: `snake_case` with explicit type annotations (e.g. `def refresh_ath(session: Session, ticker: str) -> AthTracker | None:`).
-- Frontend: `camelCase` (e.g. `isMarketOpenIST()`). Component names are `PascalCase`.
+## Backend
 
-**Variables:**
-- Backend & Frontend variables: `camelCase` for Javascript, `snake_case` for Python.
-- Constants: `UPPER_SNAKE_CASE` (e.g., `RECOVERY_RESET_PCT = 0.5` in python, `@theme` variables in index.css).
+- Keep route validation in Pydantic/SQLModel schemas and return explicit `HTTPException` responses.
+- Roll back the SQLModel session after an asset-level exception so one failure does not poison later scheduler work.
+- Preserve delivery ordering: send WhatsApp first; commit tracker/log changes only after success.
+- Schema evolution is additive and idempotent at startup.
+- Settings responses must redact stored credentials; blank masked fields on update mean retain existing values.
 
-## Code Style
+## Frontend
 
-**Python Style (Backend):**
-- Standard PEP 8 rules.
-- Double quotes `"` for docstrings and strings where appropriate, single quotes `'` for dictionary keys or simple strings.
-- Explicit database transaction handling:
-  ```python
-  try:
-      check_asset(session, item)
-  except Exception:
-      session.rollback()
-      logger.exception("Check failed for %s", ticker)
-  ```
-  *Rule:* Always perform `session.rollback()` inside asset scheduler loops when encountering errors, to avoid poisoning the session with `PendingRollbackError`.
+- Use ES modules and functional React components.
+- `App.jsx` owns tab state; do not introduce route assumptions without an explicit architecture change.
+- API access goes through `api.js`; write-token injection stays centralized in the Axios interceptor.
+- Shared asset state is consumed through `useAssets.js` and provided by `AssetContext.jsx`.
+- All GSAP components import `gsap`, `useGSAP`, reduced-motion helpers, and shared easing from `gsap.js`, not directly from GSAP packages.
+- Scope GSAP work to component refs/contexts and clean it up on unmount.
+- Prefer transform/opacity animation; avoid width/layout animation in the bottom nav.
 
-**Javascript Style (Frontend):**
-- Strict module formatting (ES Modules).
-- Dark mode theme tokens under Tailwind CSS v4 `@theme` block:
-  - Canvas: `#070a0e`
-  - Surface-1: `#10161d`
-  - Surface-2: `#18212b`
-  - Hairline: `#263241`
-  - Text ink: `#f4f7fa`
-  - Text ink-muted: `#8a97a6`
-  - Accent: `#2d7dff` (strictly for interactive highlights, never solid backgrounds)
-- Numerical formatting using `.num` utility class (forces tabular numbers font features for aligned digit columns).
+## Liquid Glass System
 
-## Error Handling
+- Current visual tokens are CSS custom properties under `:root` in `index.css`; the old dark Tailwind `@theme` token map is obsolete.
+- Preserve semantic HTML beneath effects. The nav is a labelled `<nav>` with real buttons.
+- The stationary nav target is the normal icon/label. The filtered duplicate is an in-motion effect layer only.
+- Rim movement and SVG filter/map coordinates must be painted from the same measured position source.
+- Honor `prefers-reduced-motion` by snapping position and keeping refraction disabled.
 
-**Backend Routes:**
-- Returns standard HTTP exceptions (`raise HTTPException(status_code=400, detail="...")`).
-- Input validation: Pydantic schemas (e.g., validating `threshold_pct > 0` to prevent division by zero in calculations).
+## Verification
 
-**Frontend API:**
-- Interactive REST endpoints handle failures using Toast / state alerts.
-- Mashed token headers: settings configurations redact key parts of saved passwords or access tokens. PUT payloads must accept empty strings to avoid clearing existing records.
+- Backend behavior changes require `test_logic.py` and `test_security.py` as applicable.
+- Frontend changes require `npm test`, `npm run lint`, and `npm run build`.
+- Deployment changes also require `deploy/test_deploy_safety.py` and Bash syntax validation.
+- Use `npm.cmd` in Windows PowerShell when the `.ps1` shim is blocked by execution policy.
 
 ---
-
-*Convention audit: 2026-06-14*
-*Update when introducing new style guides*
-```
+*Replaces the superseded dark split-pane convention map dated 2026-06-14.*

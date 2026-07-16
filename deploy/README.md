@@ -1,6 +1,6 @@
 # Backend auto-deploy (Oracle Cloud VM)
 
-Pull-based deployment for the Dip Alert backend. A `systemd` timer on the VM
+Pull-based deployment target for the Dip Alert backend. After the one-time VM setup below, a `systemd` timer
 polls GitHub every few minutes; when `master` has new commits it runs a safe
 deploy (consistent DB backup → pull → install → **test gate** → restart →
 **health check**) and **auto-rolls-back** to the previous commit if any
@@ -8,8 +8,8 @@ post-update step fails. A rejected commit is quarantined until `master` advances
 so the VM does not retry the same broken release every five minutes.
 
 **Why pull-based:** no SSH keys, IPs, or secrets ever leave the VM or land in
-the repo. The friend does nothing — you just `git push`, and the VM updates
-itself within the poll interval. The frontend keeps auto-deploying on Vercel.
+the repo. Once the services are installed, a `git push` is enough for the VM to
+update within the poll interval, while Vercel can auto-deploy the frontend.
 
 > Prerequisite: the VM already serves HTTPS via a reverse proxy (Caddy or
 > nginx + Let's Encrypt) in front of the backend — see the main `README.md`.
@@ -110,10 +110,10 @@ systemctl list-timers dip-alert-deploy.timer # shows next fire time
 1. Fix the bug locally, run the same gate the VM will run:
    `backend\.venv\Scripts\python test_logic.py` and `… test_security.py`.
 2. `git commit` and `git push` to `master`.
-3. Vercel redeploys the frontend automatically. Within ~5 min the VM timer
+3. If those deployment targets have been configured, Vercel redeploys the frontend automatically. Within ~5 min the VM timer
    picks up the backend change, deploys it safely, and **rolls back on its own**
    if any post-update step fails. The failed commit stays quarantined until you
-   push a newer commit. **The friend does nothing.**
+   push a newer commit. No recurring SSH action is required for ordinary code-only releases.
 
 Before pushing deployment-file changes, also run:
 

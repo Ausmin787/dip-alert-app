@@ -14,7 +14,7 @@ The original dip strategy is still supported: *"Buy ₹1L of Nifty 50 ETF for ev
 <p align="center">
   <img
     src="docs/screenshots/dashboard-desktop.png"
-    alt="Dip Alert dashboard — Watch tab showing live asset price, dip levels, and next alert"
+    alt="Dip Alert Liquid Glass dashboard — Watch tab with the floating bottom navigation"
     width="360"
   />
 </p>
@@ -51,7 +51,13 @@ Alert fires once per UTC day per direction when abs(daily_change%) >= threshold
 | Backend | Python 3.11+, FastAPI, SQLModel (SQLite), APScheduler, yfinance |
 | Alerts | CallMeBot WhatsApp API (free, personal use) |
 | Frontend | React + Vite, Tailwind CSS v4, GSAP, Axios (requires Node 20.19+ — Vite 8 floor) |
-| Hosting | Oracle Cloud Always Free VM (backend, systemd service), Vercel (frontend) |
+| Deployment targets | Oracle Cloud Always Free VM (backend, systemd service), Vercel (frontend) |
+
+## Interface
+
+The frontend is a mobile-first, four-tab **Liquid Glass** dashboard: **Watch**, **Alerts**, **History**, and **Manage**. The floating bottom navigation uses the web-compatible refraction technique documented by Aave: a generated SVG displacement map and RGB channel offsets appear only while the selector moves. At rest, the filtered duplicate is hidden so the selected icon and label remain crisp. GSAP owns the selector position and motion envelope; reduced-motion users get an immediate, non-refracting transition.
+
+Chromium has been visually verified. Safari and Firefox retain a readable glass-selector fallback but still need physical-browser spot checks for exact SVG-filter rendering.
 
 ## Run locally
 
@@ -72,11 +78,17 @@ npm install
 npm run dev
 ```
 
-**Core-logic tests:**
+**Full local verification:**
 
-```bash
-cd backend
-.venv\Scripts\python test_logic.py
+```powershell
+backend\.venv\Scripts\python backend\test_logic.py
+backend\.venv\Scripts\python backend\test_security.py
+backend\.venv\Scripts\python deploy\test_deploy_safety.py
+
+cd frontend
+npm.cmd test
+npm.cmd run lint
+npm.cmd run build
 ```
 
 ## WhatsApp setup (one-time, done by the app's owner)

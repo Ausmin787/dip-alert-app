@@ -67,19 +67,19 @@
   <!-- H1 line 1 -->
   <text x="204" y="194"
         font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-        font-size="52" font-weight="800" fill="white" letter-spacing="-1.4">Never Miss a</text>
+        font-size="52" font-weight="800" fill="white" letter-spacing="-1.4">Stay Ahead of</text>
 
   <!-- H1 line 2 (colour split) -->
   <text x="204" y="250"
         font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
         font-size="52" font-weight="800" letter-spacing="-1.4">
-    <tspan fill="#4f8cff">Nifty 50</tspan><tspan fill="white"> Dip</tspan>
+    <tspan fill="#4f8cff">Dip + Momentum</tspan><tspan fill="white"> Alerts</tspan>
   </text>
 
   <!-- Sub -->
   <text x="204" y="290"
         font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-        font-size="15" font-weight="400" fill="white" fill-opacity="0.40">Automated WhatsApp alerts every −1% fall from ATH · FastAPI · React glassmorphism dashboard</text>
+        font-size="15" font-weight="400" fill="white" fill-opacity="0.40">WhatsApp alerts for Nifty dips and global momentum · FastAPI · React Liquid Glass UI</text>
 
   <!-- ── Pill grid (x=874, 2×2, col=159px, gap=8px) ── -->
 
@@ -87,12 +87,12 @@
   <rect x="874" y="144" width="159" height="42" rx="14" fill="#08061c" fill-opacity="0.88" stroke="white" stroke-opacity="0.28" stroke-width="1"/>
   <line x1="893" y1="158" x2="893" y2="169" stroke="#ef4444" stroke-width="1.3" stroke-linecap="round"/>
   <polyline points="890,166 893,170 896,166" stroke="#ef4444" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <text x="908" y="170" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="white" fill-opacity="0.90">Every −1% Dip</text>
+  <text x="908" y="170" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="white" fill-opacity="0.90">Dip Alerts</text>
 
-  <!-- Pill 2: Nifty 50 (row1, col2) -->
+  <!-- Pill 2: Momentum alerts (row1, col2) -->
   <rect x="1041" y="144" width="159" height="42" rx="14" fill="#08061c" fill-opacity="0.88" stroke="white" stroke-opacity="0.28" stroke-width="1"/>
   <polyline points="1058,170 1061,165 1065,168 1069,162 1073,165" stroke="#22c55e" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <text x="1081" y="170" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="white" fill-opacity="0.90">Nifty 50</text>
+  <text x="1081" y="170" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="white" fill-opacity="0.90">Momentum Alerts</text>
 
   <!-- Pill 3: WhatsApp (row2, col1) -->
   <rect x="874" y="194" width="159" height="42" rx="14" fill="#08061c" fill-opacity="0.88" stroke="white" stroke-opacity="0.28" stroke-width="1"/>

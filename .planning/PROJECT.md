@@ -1,63 +1,65 @@
-# Dip Alert — Nifty ATH Tracker Redesign
+# Dip Alert
+
+**Current-state planning reference — verified 2026-07-15.** Historical split-pane plans under `.planning/phases/` are archived and are not the current frontend specification.
 
 ## What This Is
-A single-user web app that watches the Nifty 50 index during NSE market hours, fires a WhatsApp alert (via CallMeBot) each time the price crosses a new -1% level below its all-time high (ATH), and shows a high-density, viewport-locked monitoring dashboard.
+
+A single-user, mobile-first market alert dashboard. The backend monitors a small watchlist and sends CallMeBot WhatsApp alerts. The frontend is a four-tab phone-shell interface: **Watch · Alerts · History · Manage**.
+
+Two alert modes are live:
+
+- **Dip:** Indian assets such as Nifty 50 alert at each new configured percentage level below all-time high, with recovery/new-ATH reset behavior and an NSE-hours gate.
+- **Momentum:** Global assets alert once per UTC day per direction when the move from previous close crosses the configured threshold.
 
 ## Core Value
-Fires real-time WhatsApp alerts when drop thresholds are crossed, enabling the user to immediately buy Nifty 50 ETFs at calculated discount levels.
 
-## Requirements
+Deliver dependable, de-duplicated WhatsApp alerts while giving the owner a compact view of live status, history, watchlist configuration, and credentials.
 
-### Validated
-- [x] **CORE-01**: Background price checking of watchlist assets during market hours (Mon-Fri 9:15-15:30 IST)
-- [x] **CORE-02**: Drop level calculation based on threshold percentages and ATH price
-- [x] **CORE-03**: CallMeBot WhatsApp alert dispatcher with failed-delivery retry gate
-- [x] **CORE-04**: Recovery reset (price returning within 0.5% of ATH) and new ATH reset triggers
-- [x] **DB-01**: SQLite storage with automatic, additive startup migrations
-- [x] **API-01**: FastAPI endpoint routing with redacted WhatsApp credentials and write protection interceptor
-- [x] **UI-01**: Viewport-locked (`100dvh` flex) app shell container (Validated in Phase 1)
-- [x] **UI-02**: Far-left collapsible navigation dock (64px expandable sidebar) (Validated in Phase 1)
-- [x] **UI-05**: Responsive mobile bottom navigation tab bar (Validated in Phase 1)
+## Current Product
 
-### Active (Redesign)
-- [ ] **UI-03**: Middle live-asset feed showing all watchlist cards, current prices, severities, and inline self-drawing sparklines
-- [ ] **UI-04**: Right detail pane presenting selected asset charts (lazy-loaded Recharts) and segmented dip ladders
+- FastAPI + SQLModel + SQLite backend with APScheduler and yfinance.
+- React/Vite frontend with a bright Liquid Glass phone-shell design.
+- Four state-driven tabs in `frontend/src/App.jsx`; there is no router.
+- `GlassNav.jsx` provides the bottom navigation selector. The parked selection remains crisp; SVG displacement/specular/chromatic refraction appears only while the selector travels.
+- Global asset state lives in `AssetContext.jsx`, polls every 60 seconds, loads 30-day histories, and persists the selected ticker in `localStorage`.
+- Optional `APP_TOKEN` protects writes through the `X-App-Token` header.
+- Production target: Oracle Cloud Always Free VM for the backend and Vercel for the frontend. The Oracle deployment automation exists in `deploy/`; live infrastructure still requires independent verification.
 
-### Out of Scope
-- Multi-user authentication — Single-user dashboard, security is handled via basic `APP_TOKEN` header check.
-- Automated order placement / trading integration — Requires complex broker APIs, kept out of scope for simplicity. Direct Groww.in buy links are used instead.
-- Hardcoded NSE holiday calendars — Omitted to avoid yearly calendar maintenance (harmless since prices don't update on holidays).
+## Validated Requirements
 
-## Context
-- The existing codebase is built using FastAPI (Python) and React + Vite + Tailwind CSS v4.
-- The user is unsatisfied with the current "Dynamic Island" layout, noting it feels like a website instead of a native application.
-- The redesign will restructure the frontend from a scrolling website to a viewport-contained "Stripe-Style Split Pane" desktop dashboard.
+- [x] Dip and momentum alert modes with mode-aware de-duplication.
+- [x] Five default assets: Nifty 50, Gold, Silver, S&P 500, and Nasdaq 100.
+- [x] Watch, Alerts, History, and Manage tab workflows.
+- [x] Watchlist CRUD, settings, redacted credentials, and test-alert action.
+- [x] Mobile-first Liquid Glass cards and responsive 375px phone shell.
+- [x] Velocity-driven refractive bottom-nav selector with reduced-motion handling.
+- [x] Backend logic/security scripts and frontend helper/lint/build gates.
+- [x] Pull-based Oracle VM deployment assets with backup, health gate, rollback, and rejected-commit quarantine.
+
+## Out of Scope
+
+- Multi-user accounts or a full authentication system.
+- Automated broker order placement.
+- A hardcoded NSE holiday calendar.
+- React Router, desktop sidebar/split-pane navigation, Recharts, Motion, or three.js in the current frontend.
 
 ## Constraints
-- **Tech Stack**: Must remain React + Vite + Tailwind CSS v4 + Motion + GSAP on the frontend.
-- **State Limits**: Must not break existing backend SQLModel relationships or alert level checks.
 
-## Key Decisions
+- Preserve the backend data model and existing alert semantics.
+- Keep credentials out of source, logs, screenshots, and frontend bundles.
+- Keep SQLite on persistent VM storage outside the checkout in production.
+- Maintain keyboard semantics and `prefers-reduced-motion` behavior in navigation.
+- Regenerate `docs/screenshots/dashboard-desktop.png` after meaningful visual changes.
 
-| Decision | Rationale | Outcome |
-|----------|-----------|---------|
-| stripe_split_pane | Layout selected to replace "Dynamic Island" website look with an app-like split-pane monitoring dashboard | ➔ Pending |
+## Current Decisions
 
-## Evolution
-This document evolves at phase transitions and milestone boundaries.
-
-**After each phase transition** (via `/gsd-transition`):
-1. Requirements invalidated? ➔ Move to Out of Scope with reason
-2. Requirements validated? ➔ Move to Validated with phase reference
-3. New requirements emerged? ➔ Add to Active
-4. Decisions to log? ➔ Add to Key Decisions
-5. "What This Is" still accurate? ➔ Update if drifted
-
-**After each milestone** (via `/gsd-complete-milestone`):
-1. Full review of all sections
-2. Core Value check ➔ still the right priority?
-3. Audit Out of Scope ➔ reasons still valid?
-4. Update Context with current state
+| Decision | Rationale | Status |
+|---|---|---|
+| Four-tab phone shell | Fits the mobile-first owner workflow better than the former desktop split pane | Current |
+| Liquid Glass visual system | Provides depth and selection feedback without a WebGL dependency | Current |
+| One GSAP position source for the nav lens | Prevents rim/filter drift during interrupted movement | Current |
+| Refraction only while travelling | Keeps the selected icon and label readable at rest | Current |
+| Oracle VM + Vercel target | Supports persistent SQLite and an always-on scheduler without a container free-tier mismatch | Current target; live status unverified |
 
 ---
-*Last updated: 2026-06-14 after Phase 1 completion*
+*Last updated: 2026-07-15 from the live repository*
