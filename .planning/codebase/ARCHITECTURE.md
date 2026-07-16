@@ -37,10 +37,15 @@ Indian dip assets use the NSE weekday/time gate. Momentum assets run on weekdays
 - `GlassNav.jsx` owns semantic bottom-nav buttons, measured equal-column geometry, SVG filter definitions, and GSAP selector movement.
 - `gsap.js` registers shared GSAP integration/easing and provides the reduced-motion helper.
 - `index.css` owns the wallpaper, phone shell, glass recipes, tab states, and nav presentation.
+- `Wallpaper.jsx` owns the decorative wallpaper layers; `wallpaperImage.js` snapshots them (plus their CSS rules) into a shared pre-blurred bitmap; `liquidGlass.js` + `useLiquidGlass.jsx` + `GlassSurface.jsx` bend that bitmap under every `.g` card and the Manage sheet via per-surface `filter: url()` chains (Chromium-gated, plain-CSS fallback elsewhere).
 
 ### Glass Nav Invariant
 
 One GSAP proxy is the position source for the rim and filter/map coordinates. The stationary highlighted icon/label is always crisp. A filtered duplicate is shown only while the selector physically travels; velocity and tween progress drive displacement/specular/chromatic strength. Completion, resize, cleanup, same-tab selection, and reduced motion restore zero refraction.
+
+### Surface Refraction Invariant
+
+Card/sheet refraction filters a static pre-baked wallpaper bitmap (`filter: url()` on an empty window layer), never the live backdrop — `backdrop-filter: url()` collapsed the app to ~25fps. The bitmap is a PNG (vector feImage sources re-rasterize per filter run), the host's scrim repaints above the bent layer via `background: inherit`, and the nav container is deliberately excluded (its indicator's backdrop-filter double-processes anything painted beneath it). Kill switches: `REFRACTION_ENABLED`, `data-refract="off"`, `?refract=off`.
 
 ## Persistence and Security
 

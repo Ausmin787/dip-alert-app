@@ -294,6 +294,10 @@ export default function GlassNav({ tabs, activeTab, onSelect }) {
 
   return (
     <nav className="nav" ref={navRef} aria-label="Primary">
+      {/* Container refraction deliberately omitted: the indicator's own
+          backdrop-filter would double-process a static bent layer beneath it
+          (measured as a neon pill washing out the active icon). The nav keeps
+          its frosted glass + the animated indicator lens. */}
       <LensFilter
         filter={filter}
         filterRef={filterRef}

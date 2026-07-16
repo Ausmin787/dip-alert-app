@@ -12,6 +12,7 @@ import {
 } from '../api.js'
 import { useAssets } from '../useAssets.js'
 import { fmtLakh, fmtLevel, tickerMeta } from '../lib.js'
+import GlassSurface from '../GlassSurface.jsx'
 
 const Icon = ({ d, ...p }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
@@ -63,7 +64,7 @@ function AssetSheet({ initial, onClose, onSave }) {
 
   return createPortal(
     <div className="sheet-overlay" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+      <GlassSurface variant="sheet" className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-grip" />
         <div className="sheet-title">{isEdit ? 'Edit asset' : 'Track a new asset'}</div>
         <div className="sheet-sub">
@@ -111,7 +112,7 @@ function AssetSheet({ initial, onClose, onSave }) {
             </button>
           </div>
         </form>
-      </div>
+      </GlassSurface>
     </div>,
     document.getElementById('phone-shell') ?? document.body,
   )
@@ -145,7 +146,7 @@ function WatchlistManager() {
   }
 
   return (
-    <div className="g mcard">
+    <GlassSurface className="g mcard">
       <div className="row-hd" style={{ marginBottom: 6 }}>
         <span className="sec-lbl">Watchlist</span>
         <button className="btn btn-primary" style={{ flex: 'none', padding: '7px 14px', fontSize: 12 }} onClick={() => setSheet('new')}>
@@ -181,7 +182,7 @@ function WatchlistManager() {
         })
       )}
       {sheet && <AssetSheet initial={sheet === 'new' ? null : sheet} onClose={() => setSheet(null)} onSave={save} />}
-    </div>
+    </GlassSurface>
   )
 }
 
@@ -246,7 +247,7 @@ function WhatsAppCard() {
   const ready = loadState === 'ready'
 
   return (
-    <form className="g mcard" onSubmit={save}>
+    <GlassSurface as="form" className="g mcard" onSubmit={save}>
       <div className="mcard-hd">WhatsApp Delivery</div>
 
       {loadState === 'error' && (
@@ -318,7 +319,7 @@ function WhatsAppCard() {
         <button type="button" className="btn btn-ghost" onClick={test} disabled={busy || !ready}>Send test</button>
         <button type="submit" className="btn btn-primary" disabled={busy || !ready}>{busy ? 'Working…' : 'Save'}</button>
       </div>
-    </form>
+    </GlassSurface>
   )
 }
 
@@ -330,7 +331,7 @@ function SetupCard() {
     <>Enter your number and that key above, save, then fire a test alert.</>,
   ]
   return (
-    <div className="g mcard">
+    <GlassSurface className="g mcard">
       <div className="mcard-hd">One-time CallMeBot setup</div>
       <div className="ol-steps">
         {steps.map((s, i) => (
@@ -340,7 +341,7 @@ function SetupCard() {
           </div>
         ))}
       </div>
-    </div>
+    </GlassSurface>
   )
 }
 

@@ -18,6 +18,8 @@ dip-alert-app/
 │   │   ├── App.jsx, main.jsx
 │   │   ├── AssetContext.jsx, useAssets.js
 │   │   ├── GlassNav.jsx, gsap.js
+│   │   ├── Wallpaper.jsx, wallpaperImage.js
+│   │   ├── liquidGlass.js, useLiquidGlass.jsx, GlassSurface.jsx
 │   │   ├── api.js, lib.js, lib.test.js, index.css
 │   │   └── tabs/{WatchTab,AlertsTab,HistoryTab,ManageTab}.jsx
 │   ├── package.json, package-lock.json
@@ -39,6 +41,7 @@ dip-alert-app/
 
 - `App.jsx`: phone shell, wallpaper/header, four-tab state.
 - `GlassNav.jsx`: semantic bottom nav, geometry, SVG filter, selector motion.
+- `liquidGlass.js` / `useLiquidGlass.jsx` / `GlassSurface.jsx` / `wallpaperImage.js`: static-bitmap refraction for cards + sheet.
 - `AssetContext.jsx`: status/history polling, selected ticker, refresh.
 - `tabs/`: user-facing Watch, Alerts, History, and Manage workflows.
 - `ath_logic.py`: dip/momentum alert decisions.

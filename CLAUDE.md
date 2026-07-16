@@ -126,8 +126,14 @@ The frontend is a **mobile-first single-page app** on the **Liquid Glass** desig
 
 - `api.js` — all backend calls; baseURL is `VITE_API_URL` in production, relative (proxied) in dev. Axios `X-App-Token` interceptor.
 - `gsap.js` — tiny shared module: registers `useGSAP` + `CustomEase` once and exports `gsap`/`useGSAP`/`prefersReducedMotion()`/`glassSpringEase`. Every component doing GSAP work imports from here instead of `gsap` directly.
-- `App.jsx` — phone shell + 4-tab state. `Wallpaper` (sky/ribbon/glow/grain decorative layers), `StatusBar`, `AppHeader` (live/closed chip), and `AppShell` (`useState` + `tabMotionKey`). The bottom-nav compositor lives in `GlassNav.jsx`. Shell `.wrap` carries `id="phone-shell"`. Default export wraps in `<AssetProvider>`.
+- `App.jsx` — phone shell + 4-tab state. `StatusBar`, `AppHeader` (live/closed chip), and `AppShell` (`useState` + `tabMotionKey`). The bottom-nav compositor lives in `GlassNav.jsx`. Shell `.wrap` carries `id="phone-shell"`. Default export wraps in `<AssetProvider>`.
+- `Wallpaper.jsx` — the sky/ribbon/glow/grain decorative layers (moved out of `App.jsx`); `wallpaperImage.js` snapshots these layers + their index.css rules live, so wallpaper design edits reach the refraction surfaces automatically.
 - `GlassNav.jsx` — floating semantic nav, generated displacement map, memoized SVG filter definitions, stationary highlighted icon/label target, ResizeObserver geometry, and the single-source GSAP lens motion described below.
+- **Glass-everywhere refraction (2026-07-16)** — every `.g` card + the Manage sheet carries a static Liquid Glass refraction (bent wallpaper + chromatic fringe + specular at the rim). Machinery:
+  - `liquidGlass.js` — SDF displacement-map generator (`createGlassMap`, adapted from samasante/liquid-glass, MIT — erf-feathered rim + spherical-cap dome), per-variant `PRESETS` (`card`/`sheet`), `supportsRefraction()` (Blink-only gate), kill switches (`REFRACTION_ENABLED`, `data-refract="off"`, `?refract=off`).
+  - `wallpaperImage.js` — `getWallpaperBitmap()`: serializes the LIVE wallpaper DOM + its CSS into an SVG foreignObject, rasterizes once per shell size into a pre-blurred half-res PNG shared by all surfaces via feImage.
+  - `useLiquidGlass.jsx` — `useLiquidGlass(ref, variant)` → `{ defs, layer }`: per-surface SVG filter (3-pass RGB displacement + specular, versioned ids, ResizeObserver + debounced scroll re-align via transform-free offsetParent-chain measurement) and the `.glass-refract` layer.
+  - `GlassSurface.jsx` — `<GlassSurface as variant className>` wrapper used by all swapped cards; cards owning a GSAP ref (TodaysAlerts, AlertsTab list) use the hook directly.
 - `AssetContext.jsx` — `AssetProvider`: data loading from `/api/status`, 30-day history pre-fetching, active selection memory (localStorage), `refresh()`. `useAssets` hook lives in `useAssets.js` (fast-refresh rule). 60s poll.
 - `tabs/WatchTab.jsx` — hero price card, **mode-aware display**:
   - **Dip mode**: `Tracker` (5 dip-level pills, windowed) + `NextAlert` (next trigger price + distance)
@@ -158,7 +164,16 @@ Bright sky/ribbon wallpaper behind **transparent, refractive** glass cards, all 
 - `.badge-up` / `.badge-dn` — momentum alert badge variants (green/rose), distinct from gold `.badge` for dip alerts.
 - `.momentum-row` / `.momentum-val` / `.momentum-sub` — the `MomentumCard` layout inside `.tracker` glass card.
 - `Wallpaper` (in `App.jsx`) — four decorative layers (`.wallpaper`/`.ribbons`/`.grain`/`.glow`), not a single `.atmo` div like the old design.
-- Recipes: `.g` (glass card), `.panel`, `.btn-primary`, `.btn-ghost`, `.btn-danger`, `.field`, `.sheet-overlay`/`.sheet` (portaled to `#phone-shell`), `.nav`/`.nav-indicator` (see Bottom nav below).
+- Recipes: `.g` (glass card), `.panel`, `.btn-primary`, `.btn-ghost`, `.btn-danger`, `.field`, `.sheet-overlay`/`.sheet` (portaled to `#phone-shell`; `.sheet` is now a glass recipe — hero-depth scrim + blur(28px), no longer solid `#0b1222`), `.nav`/`.nav-indicator` (see Bottom nav below), `.glass-refract`/`.glass-refract-window`/`.glass-defs` (refraction layer plumbing).
+- **Card/sheet refraction — hard-won rules (2026-07-16), don't regress:**
+  - **Never use `backdrop-filter: url(#svg-chain)` for this.** It disables Chromium's compositor fast path: measured 25fps with 117–250ms hitches app-wide vs a 60fps baseline (blink dots/entrance animations/scroll all force full software re-filters). The shipped design filters a **static pre-baked wallpaper bitmap** through `filter: url()` instead (60fps steady, repeat tab-switch worst frame 33ms) — same family of trick as the nav highlight.
+  - The wallpaper bitmap must be a **PNG**, not an SVG data URI — Blink re-rasterizes *vector* feImage sources on every filter application (measured 550ms on a first tab switch).
+  - **No `will-change: filter`** on the refraction windows — it made early-session frames 10× worse (10fps) by promoting all 14 windows into managed layers.
+  - **The nav container deliberately has NO refraction layer** — the indicator's own `backdrop-filter` (saturate 1.85 / brightness 1.14) double-processes anything painted beneath it inside the nav and turned the pill neon while washing out the active icon. The nav keeps CSS frost + the animated indicator lens only.
+  - Tiered scope (Apple guidance): cards + sheet only; `.btn-*`, `.field`, chips/badges stay flat tint.
+  - Text contrast is preserved by `.glass-refract::after` repainting the host's own scrim via a `background: inherit` ladder above the bent clone — the host element's scrim/background recipes remain the single source of truth.
+  - Surface alignment is measured through the **offsetParent chain minus ancestor scrollTop** (transform-free) so entrance animations can't skew the clone; re-aligned on debounced panel scroll.
+  - Fallback: non-Chromium (or any kill switch) renders zero layers/defs — byte-identical to the plain CSS recipes. Verified via `?refract=off`.
 
 ### Bottom nav (`.nav`) — design rules locked in
 

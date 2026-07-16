@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getAlerts } from '../api.js'
 import { useAssets } from '../useAssets.js'
 import { fmtDayIST, fmtLakh, fmtLevel, fmtPrice, fmtTimeIST, isTodayIST, monthLabelIST } from '../lib.js'
+import GlassSurface from '../GlassSurface.jsx'
 
 export default function HistoryTab({ active }) {
   const { items, selectedItem } = useAssets()
@@ -49,7 +50,7 @@ export default function HistoryTab({ active }) {
     <div className={panelClass}>
       <div className="tab-title">History</div>
 
-      <div className="g" style={{ padding: 0 }}>
+      <GlassSurface className="g" style={{ padding: 0 }}>
         <div className="summ-top">
           <div className="summ-val"><span>₹</span>{whole}</div>
           <div className="summ-sub">Deployed this month · {thisMonth}</div>
@@ -60,13 +61,13 @@ export default function HistoryTab({ active }) {
           <div className="stat-cell"><div className="stat-v">{maxDipToday > 0 ? `−${maxDipToday.toFixed(0)}%` : '—'}</div><div className="stat-l">Max dip today</div></div>
           <div className="stat-cell"><div className="stat-v">{nextTarget != null ? `−${fmtLevel(nextTarget)}%` : '—'}</div><div className="stat-l">Next target</div></div>
         </div>
-      </div>
+      </GlassSurface>
 
       {groups.length === 0 ? (
-        <div className="g"><div className="empty">No deployment history yet.<br />Alerts land here as dip levels are crossed.</div></div>
+        <GlassSurface className="g"><div className="empty">No deployment history yet.<br />Alerts land here as dip levels are crossed.</div></GlassSurface>
       ) : (
         groups.map((g) => (
-          <div className="g alist" key={g.key}>
+          <GlassSurface className="g alist" key={g.key}>
             <div className="alist-hd">
               <span className="sec-lbl">{g.key}</span>
               <span style={{ fontSize: 11, color: 'var(--dim)' }}>{fmtLakh(g.total)} deployed</span>
@@ -81,7 +82,7 @@ export default function HistoryTab({ active }) {
                 <div className="ai-time">+{fmtLakh(investFor(a.ticker))}</div>
               </div>
             ))}
-          </div>
+          </GlassSurface>
         ))
       )}
     </div>

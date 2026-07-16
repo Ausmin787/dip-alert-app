@@ -3,6 +3,8 @@ import { getAlerts, getSettings } from '../api.js'
 import { useAssets } from '../useAssets.js'
 import { gsap, useGSAP, prefersReducedMotion } from '../gsap.js'
 import { fmtLakh, fmtLevel, fmtPrice, fmtTimeIST, isMarketOpenIST } from '../lib.js'
+import GlassSurface from '../GlassSurface.jsx'
+import { useLiquidGlass } from '../useLiquidGlass.jsx'
 
 function ConfigRow({ label, sub, value, toggle, onManage }) {
   return (
@@ -33,6 +35,7 @@ export default function AlertsTab({ active, onManage }) {
 
   const configured = Boolean(settings?.apikey_set && settings?.whatsapp_phone_masked)
   const listRef = useRef(null)
+  const { defs: listGlassDefs, layer: listGlassLayer } = useLiquidGlass(listRef, 'card')
   const topId = alerts[0]?.id
   const prevTopId = useRef(topId)
 
@@ -48,7 +51,7 @@ export default function AlertsTab({ active, onManage }) {
     <div className={`panel ${active ? 'active animating' : ''}`}>
       <div className="tab-title">Alerts</div>
 
-      <div className="g">
+      <GlassSurface className="g">
         <ConfigRow
           label="WhatsApp Alerts"
           sub={settings?.whatsapp_phone_masked || 'Not configured — tap to set up'}
@@ -73,9 +76,11 @@ export default function AlertsTab({ active, onManage }) {
           value={settings ? `${settings.check_interval_min} min` : '—'}
           onManage={onManage}
         />
-      </div>
+      </GlassSurface>
 
       <div className="g alist" ref={listRef}>
+        {listGlassDefs}
+        {listGlassLayer}
         <div className="alist-hd">
           <span className="sec-lbl">Recent Alerts</span>
         </div>
@@ -101,7 +106,7 @@ export default function AlertsTab({ active, onManage }) {
         )}
       </div>
 
-      <div className="g" style={{ padding: '16px 18px' }}>
+      <GlassSurface className="g" style={{ padding: '16px 18px' }}>
         <div className="sec-lbl" style={{ marginBottom: 12 }}>Market Hours · IST</div>
         <div className="mh-row">
           <span className="mh-lbl">Pre-open session</span>
@@ -115,7 +120,7 @@ export default function AlertsTab({ active, onManage }) {
           <span className="mh-lbl">Monitoring paused</span>
           <span className="mh-val dim">After 3:30 PM</span>
         </div>
-      </div>
+      </GlassSurface>
     </div>
   )
 }

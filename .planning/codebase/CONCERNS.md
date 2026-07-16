@@ -27,6 +27,13 @@
 - The filtered duplicate must remain hidden at rest; parked chromatic distortion is a regression.
 - Reduced-motion, resize, cleanup, completion, and same-tab paths must leave refraction at zero.
 
+## Surface Refraction (cards + sheet)
+
+- Never switch the card/sheet refraction back to `backdrop-filter: url()` — measured 25fps with 117–250ms hitches vs 60fps baseline. The static-bitmap `filter: url()` design is the load-bearing choice.
+- The shared wallpaper bitmap must stay a raster (PNG); vector feImage sources are re-rasterized by Blink on every filter application (~550ms hitch).
+- Do not add `will-change: filter` to `.glass-refract-window` (10fps early-session regression) and do not add a refraction layer inside `.nav` (indicator backdrop-filter turns it neon and hides the active icon).
+- Safari/Firefox render the plain CSS recipes (Blink-only gate); expanding the gate needs physical-browser checks first.
+
 ## Security
 
 - `APP_TOKEN` is intentionally lightweight write protection for a single-user app, not full authentication. Public reads remain a deliberate exposure decision.

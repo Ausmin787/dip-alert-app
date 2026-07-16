@@ -261,6 +261,40 @@ body {
 }
 
 /* ── Glass card (Liquid Glass: transparent glass + dark scrim + edge refraction) ── */
+/* Holder for per-surface SVG filter defs (GlassSurface.jsx); must never affect layout. */
+.glass-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+/* Bent-wallpaper refraction layer (useLiquidGlass.jsx). z-index:-1 keeps it
+   above the surface's own background but below all content — the surface's
+   backdrop-filter guarantees a stacking context, so the negative z stays
+   contained. ::after repaints the surface's own scrim over the bent clone
+   (background: inherit resolves to the host's computed gradient), keeping
+   text contrast identical to the plain CSS recipe. */
+.glass-refract {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  background: inherit;
+}
+.glass-refract::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: inherit;
+}
+.glass-refract-window {
+  position: absolute;
+  inset: -40px; /* keep in sync with BLEED in useLiquidGlass.jsx */
+}
 .g {
   background: linear-gradient(150deg, rgba(0, 8, 36, 0.56) 0%, rgba(2, 14, 60, 0.68) 100%);
   backdrop-filter: blur(28px) saturate(180%) contrast(1.05);
@@ -825,7 +859,11 @@ button.g {
 }
 .sheet {
   width: 100%;
-  background: #0b1222;
+  /* Hero-depth scrim: deep enough that form fields stay legible over the blurred
+     overlay, translucent enough for the refraction rim to read as glass. */
+  background: linear-gradient(165deg, rgba(0, 6, 32, 0.78) 0%, rgba(0, 4, 24, 0.88) 100%);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
   border-top: 1px solid var(--gb);
   border-radius: 26px 26px 0 0;
   padding: 18px 18px calc(20px + env(safe-area-inset-bottom));

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { getAlerts } from '../api.js'
 import { useAssets } from '../useAssets.js'
 import { gsap, useGSAP, prefersReducedMotion } from '../gsap.js'
+import GlassSurface from '../GlassSurface.jsx'
+import { useLiquidGlass } from '../useLiquidGlass.jsx'
 import {
   fmtLakh,
   fmtLevel,
@@ -37,7 +39,7 @@ function Hero({ item }) {
   const changeDown = change != null && change < 0
 
   return (
-    <div className="g hero dash-card">
+    <GlassSurface className="g hero dash-card">
       <div className="hero-asset">
         <div className={`green-dot ${item.active ? '' : 'off'}`} />
         {item.display_name} · {exchange}
@@ -74,7 +76,7 @@ function Hero({ item }) {
         <span className="open-lbl">{open ? 'Market open' : 'Market closed'}</span>
         <span className="upd-time">{item.active ? 'Live' : 'Paused'}</span>
       </div>
-    </div>
+    </GlassSurface>
   )
 }
 
@@ -96,7 +98,7 @@ function Tracker({ item }) {
   }, [fired])
 
   return (
-    <div className="g tracker dash-card">
+    <GlassSurface className="g tracker dash-card">
       <div className="row-hd">
         <span className="sec-lbl">Dip Levels</span>
         <span className="dep-note">
@@ -111,7 +113,7 @@ function Tracker({ item }) {
           </div>
         ))}
       </div>
-    </div>
+    </GlassSurface>
   )
 }
 
@@ -120,7 +122,7 @@ function MomentumCard({ item }) {
   const crossed = change != null && Math.abs(change) >= item.threshold_pct
   const dir = change > 0 ? 'up' : change < 0 ? 'down' : null
   return (
-    <div className="g tracker dash-card">
+    <GlassSurface className="g tracker dash-card">
       <div className="row-hd">
         <span className="sec-lbl">Daily Move</span>
         <span className="dep-note">Alert at ±{fmtLevel(item.threshold_pct)}%</span>
@@ -135,7 +137,7 @@ function MomentumCard({ item }) {
             : `±${fmtLevel(item.threshold_pct)}% triggers WhatsApp`}
         </div>
       </div>
-    </div>
+    </GlassSurface>
   )
 }
 
@@ -144,7 +146,7 @@ function NextAlert({ item }) {
   const nextPrice = item.ath_price != null && nextPct != null ? item.ath_price * (1 - nextPct / 100) : null
   const distance = nextPrice != null && item.current_price != null ? item.current_price - nextPrice : null
   return (
-    <div className="g next-card dash-card">
+    <GlassSurface className="g next-card dash-card">
       <div className="next-bell">
         <svg viewBox="0 0 24 24" fill="none" stroke="#00e4ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -162,7 +164,7 @@ function NextAlert({ item }) {
             : 'WhatsApp fires when crossed'}
         </div>
       </div>
-    </div>
+    </GlassSurface>
   )
 }
 
@@ -170,6 +172,9 @@ function TodaysAlerts({ alerts, items }) {
   const today = alerts.filter((a) => isTodayIST(a.alerted_at))
   const investFor = (ticker) => items.find((i) => i.ticker === ticker)?.invest_amount ?? 100000
   const listRef = useRef(null)
+  // This card already owns a ref (querySelector target for the new-alert
+  // slide-in) and GlassSurface doesn't forward refs — use the hook directly.
+  const { defs: glassDefs, layer: glassLayer } = useLiquidGlass(listRef, 'card')
   const topId = today[0]?.id
   const prevTopId = useRef(topId)
 
@@ -183,6 +188,8 @@ function TodaysAlerts({ alerts, items }) {
 
   return (
     <div className="g alist dash-card" ref={listRef}>
+      {glassDefs}
+      {glassLayer}
       <div className="alist-hd">
         <span className="sec-lbl">Today's Alerts</span>
         <span style={{ fontSize: 11, color: 'var(--dim)' }}>
@@ -221,7 +228,7 @@ function TodaysAlerts({ alerts, items }) {
 
 function WatchlistMini({ items, selectedAsset, setSelectedAsset }) {
   return (
-    <div className="g wlist dash-card">
+    <GlassSurface className="g wlist dash-card">
       <span className="sec-lbl">Watchlist</span>
       <div className="wit">
         {items.map((item) => {
@@ -251,7 +258,7 @@ function WatchlistMini({ items, selectedAsset, setSelectedAsset }) {
           )
         })}
       </div>
-    </div>
+    </GlassSurface>
   )
 }
 
