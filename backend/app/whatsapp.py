@@ -5,6 +5,10 @@ import urllib.parse
 import httpx
 
 logger = logging.getLogger(__name__)
+# HTTPX's INFO request log includes the complete query string. CallMeBot
+# requires phone/key in that query, so keep transport request logging disabled.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 CALLMEBOT_URL = "https://api.callmebot.com/whatsapp.php"
 
@@ -20,7 +24,7 @@ def format_alert_message(
 ) -> str:
     invest_str = f"₹{invest_amount:,}"
     msg = (
-        "\U0001f6a8 NIFTY DIP ALERT \U0001f6a8\n"
+        f"\U0001f6a8 {display_name} DIP ALERT \U0001f6a8\n"
         f"Level: -{level_pct:g}% from ATH\n"
         f"Current: {current_price:,.2f} | ATH: {ath_price:,.2f}\n"
         f"Drop: {drop_pct:.2f}%\n"
@@ -64,5 +68,7 @@ def send_whatsapp(phone: str, apikey: str, message: str) -> bool:
             logger.error("CallMeBot returned %s: %s", resp.status_code, resp.text[:200])
         return ok
     except Exception:
-        logger.exception("Failed to send WhatsApp message")
+        # Do not attach the request exception: it can contain the secret-bearing
+        # URL. The caller already logs the affected ticker and retry behavior.
+        logger.error("Failed to send WhatsApp message (request details redacted)")
         return False

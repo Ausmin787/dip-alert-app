@@ -1,6 +1,6 @@
 # Technology Stack
 
-**Verified:** 2026-07-15 from `requirements.txt`, `package.json`, and `package-lock.json`.
+**Verified:** 2026-07-21 from `requirements.txt`, `package.json`, and `package-lock.json`.
 
 ## Backend
 
@@ -18,7 +18,7 @@
 - Vite 8.0.16 and `@vitejs/plugin-react` 6.0.2 resolved (`^8.0.12` / `^6.0.1` declared)
 - Tailwind CSS 4.3.0 through `@tailwindcss/vite`
 - GSAP 3.15.0 and `@gsap/react` 2.1.2
-- Axios 1.17.0
+- Axios 1.18.0
 - ESLint 10.4.1 resolved (`^10.3.0` declared)
 
 The current frontend has no Motion, Recharts, three.js, React Router, Jest, or TypeScript dependency.
@@ -31,7 +31,7 @@ The current frontend has no Motion, Recharts, three.js, React Router, Jest, or T
 
 ## Verification
 
-- Backend: standalone `test_logic.py` and `test_security.py` scripts; no pytest dependency.
+- Backend: standalone `test_logic.py`, `test_security.py`, and `test_migrations.py` scripts; no pytest dependency.
 - Frontend: Node helper test, ESLint, and Vite production build.
 - Deployment: `deploy/test_deploy_safety.py` plus Bash syntax validation.
 

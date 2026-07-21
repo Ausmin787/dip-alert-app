@@ -108,7 +108,7 @@ systemctl list-timers dip-alert-deploy.timer # shows next fire time
 ## Day-to-day (the payoff)
 
 1. Fix the bug locally, run the same gate the VM will run:
-   `backend\.venv\Scripts\python test_logic.py` and `… test_security.py`.
+   `test_logic.py`, `test_security.py`, and `test_migrations.py` with the backend venv.
 2. `git commit` and `git push` to `master`.
 3. If those deployment targets have been configured, Vercel redeploys the frontend automatically. Within ~5 min the VM timer
    picks up the backend change, deploys it safely, and **rolls back on its own**

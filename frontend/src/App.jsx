@@ -7,6 +7,7 @@ import WatchTab from './tabs/WatchTab.jsx'
 import AlertsTab from './tabs/AlertsTab.jsx'
 import HistoryTab from './tabs/HistoryTab.jsx'
 import ManageTab from './tabs/ManageTab.jsx'
+import { useAssets } from './useAssets.js'
 
 const TABS = [
   { id: 'watch', label: 'Watch', icon: IconWatch },
@@ -80,17 +81,21 @@ function fmtClock() {
 }
 
 function AppHeader() {
+  const { selectedItem } = useAssets()
   const [open, setOpen] = useState(() => isMarketOpenIST())
   useEffect(() => {
     const id = setInterval(() => setOpen(isMarketOpenIST()), 30000)
     return () => clearInterval(id)
   }, [])
+  const isMomentum = selectedItem?.alert_mode === 'momentum'
+  const active = isMomentum ? selectedItem?.active : open
+  const label = isMomentum ? (active ? 'Monitoring' : 'Paused') : (open ? 'Live' : 'Closed')
   return (
     <div className="aheader">
       <div className="aname">Dip Alert</div>
-      <div className={`live-chip ${open ? '' : 'closed'}`}>
+      <div className={`live-chip ${active ? '' : 'closed'}`}>
         <div className="live-dot" />
-        {open ? 'Live' : 'Closed'}
+        {label}
       </div>
     </div>
   )

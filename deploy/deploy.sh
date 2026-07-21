@@ -187,6 +187,7 @@ log "running test gate..."
 "$VENV_PY" -m pip check
 "$VENV_PY" test_logic.py
 "$VENV_PY" test_security.py
+"$VENV_PY" test_migrations.py
 log "test gate passed."
 
 # --- 5. restart + health check ----------------------------------------------

@@ -1,10 +1,11 @@
 # Codebase Concerns
 
-**Verified:** 2026-07-15 from live source and deployment documentation.
+**Verified:** 2026-07-21 from live source and deployment documentation.
 
 ## External Data and Messaging
 
 - **Yahoo Finance rate limits/availability:** yfinance is unauthenticated and can throttle or fail. Keep the watchlist modest, avoid aggressive polling, and treat upstream errors as recoverable.
+- **Request amplification:** price reads use short TTL caches and per-key single-flight, and the UI fetches history only for the selected asset. Preserve those controls when adding consumers.
 - **CallMeBot delivery:** delivery depends on a third-party personal-use service and network availability. Tracker state must not advance when delivery fails so a later poll can retry.
 - **Broker links:** Groww URLs are configured per asset and can become invalid if external slugs change.
 
@@ -12,12 +13,14 @@
 
 - The NSE gate checks weekdays and 09:15–15:30 IST but does not include a maintained exchange-holiday calendar. Holiday polls can fetch unchanged data; this is an accepted limitation.
 - Momentum de-duplication is by UTC day and direction. Changes to time semantics require regression coverage.
+- Momentum evaluation intentionally runs every scheduler tick so global and weekend-traded symbols are not silently skipped.
 
 ## Persistence and Deployment
 
 - SQLite must live on persistent VM storage outside the git checkout. Container/serverless ephemeral filesystems are incompatible with the scheduler/state model.
 - The current target is Oracle Cloud, not Railway. Do not restore `/data` volume instructions or assume platform-provided TLS.
 - Auto-rollback reverts code, not database contents. Additive migrations preserve backward compatibility; destructive migrations need a different release design.
+- `test_migrations.py` is part of the deploy gate; schema changes must keep its legacy-upgrade and repeated-run checks green.
 - Deployment files do not prove a VM, domain, TLS certificate, firewall, timer, or Vercel project is live. Verify external state before claiming production readiness.
 
 ## Glass Navigation

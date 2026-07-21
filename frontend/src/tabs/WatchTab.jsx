@@ -32,8 +32,8 @@ function dipLevels(item) {
 function Hero({ item }) {
   const { whole, frac } = splitPrice(item.current_price)
   const { exchange, currency } = tickerMeta(item.ticker)
-  const open = isMarketOpenIST()
   const isMomentum = item.alert_mode === 'momentum'
+  const open = isMomentum ? item.active : isMarketOpenIST()
   const change = item.daily_change_pct
   const changeUp = change != null && change > 0
   const changeDown = change != null && change < 0
@@ -73,7 +73,9 @@ function Hero({ item }) {
       <div className="hero-divider" />
       <div className="hero-meta">
         <div className={`open-dot ${open ? '' : 'off'}`} />
-        <span className="open-lbl">{open ? 'Market open' : 'Market closed'}</span>
+        <span className="open-lbl">
+          {isMomentum ? (open ? 'Momentum monitoring' : 'Monitoring paused') : (open ? 'Market open' : 'Market closed')}
+        </span>
         <span className="upd-time">{item.active ? 'Live' : 'Paused'}</span>
       </div>
     </GlassSurface>
@@ -133,7 +135,7 @@ function MomentumCard({ item }) {
         </div>
         <div className="momentum-sub">
           {crossed
-            ? `⚡ Crossed ±${fmtLevel(item.threshold_pct)}% — alert sent`
+            ? `⚡ Crossed ±${fmtLevel(item.threshold_pct)}% — alert condition active`
             : `±${fmtLevel(item.threshold_pct)}% triggers WhatsApp`}
         </div>
       </div>
@@ -145,10 +147,12 @@ function NextAlert({ item }) {
   const nextPct = item.next_alert_level
   const nextPrice = item.ath_price != null && nextPct != null ? item.ath_price * (1 - nextPct / 100) : null
   const distance = nextPrice != null && item.current_price != null ? item.current_price - nextPrice : null
+  const { currency } = tickerMeta(item.ticker)
+  const unit = currency === 'pts' ? '' : currency
   return (
     <GlassSurface className="g next-card dash-card">
       <div className="next-bell">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#00e4ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
@@ -156,11 +160,11 @@ function NextAlert({ item }) {
       <div className="next-body">
         <div className="next-lbl">Next Alert</div>
         <div className="next-val">
-          {nextPrice != null ? `₹${fmtPrice(nextPrice)} · −${fmtLevel(nextPct)}%` : '—'}
+          {nextPrice != null ? `${unit}${fmtPrice(nextPrice)} · −${fmtLevel(nextPct)}%` : '—'}
         </div>
         <div className="next-sub">
           {distance != null && distance > 0
-            ? `₹${fmtPrice(distance)} below · WhatsApp will fire`
+            ? `${unit}${fmtPrice(distance)} below · WhatsApp will fire`
             : 'WhatsApp fires when crossed'}
         </div>
       </div>
@@ -168,9 +172,51 @@ function NextAlert({ item }) {
   )
 }
 
-function TodaysAlerts({ alerts, items }) {
+function PriceHistory({ history, item }) {
+  if (!history || history.length < 2) {
+    return (
+      <GlassSurface className="g history-card dash-card">
+        <div className="row-hd"><span className="sec-lbl">30-Day Price</span></div>
+        <div className="empty">Price history is not available yet.</div>
+      </GlassSurface>
+    )
+  }
+
+  const width = 320
+  const height = 84
+  const values = history.map((point) => point.close)
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = max - min || 1
+  const points = values.map((value, index) => {
+    const x = (index / (values.length - 1)) * width
+    const y = height - ((value - min) / range) * (height - 8) - 4
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+  const { currency } = tickerMeta(item.ticker)
+  const unit = currency === 'pts' ? '' : currency
+
+  return (
+    <GlassSurface className="g history-card dash-card">
+      <div className="row-hd">
+        <span className="sec-lbl">30-Day Price</span>
+        <span className="dep-note">{unit}{fmtPrice(values[values.length - 1])}</span>
+      </div>
+      <svg
+        className="history-chart"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={`${item.display_name} 30-day closing-price trend`}
+      >
+        <polyline points={points} fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <div className="history-range"><span>{history[0].date}</span><span>{history[history.length - 1].date}</span></div>
+    </GlassSurface>
+  )
+}
+
+function TodaysAlerts({ alerts }) {
   const today = alerts.filter((a) => isTodayIST(a.alerted_at))
-  const investFor = (ticker) => items.find((i) => i.ticker === ticker)?.invest_amount ?? 100000
   const listRef = useRef(null)
   // This card already owns a ref (querySelector target for the new-alert
   // slide-in) and GlassSurface doesn't forward refs — use the hook directly.
@@ -214,7 +260,9 @@ function TodaysAlerts({ alerts, items }) {
                 <div className="ai-sub">
                   {isMomentum
                     ? `Daily move · ${a.ticker}`
-                    : `Buy ₹${investFor(a.ticker).toLocaleString('en-IN')} · ${a.ticker}`}
+                    : a.invest_amount == null
+                      ? `Amount not recorded · ${a.ticker}`
+                      : `Buy ₹${a.invest_amount.toLocaleString('en-IN')} · ${a.ticker}`}
                 </div>
               </div>
               <div className="ai-time">{fmtTimeIST(a.alerted_at)}</div>
@@ -263,17 +311,21 @@ function WatchlistMini({ items, selectedAsset, setSelectedAsset }) {
 }
 
 export default function WatchTab({ active, activeKey }) {
-  const { items, selectedItem, selectedAsset, setSelectedAsset, loading, error } = useAssets()
+  const { items, selectedItem, selectedAsset, setSelectedAsset, history, loading, error } = useAssets()
   const [alerts, setAlerts] = useState([])
   const panelRef = useRef(null)
   const panelClass = `panel ${active ? 'active animating' : ''}`
   const selectedItemId = selectedItem?.id
 
   useEffect(() => {
-    getAlerts(1, 20)
+    if (!active) return undefined
+    const loadAlerts = () => getAlerts(1, 100)
       .then((d) => setAlerts(d.alerts))
-      .catch(() => {})
-  }, [])
+      .catch((err) => console.error('Failed to load alerts', err))
+    loadAlerts()
+    const interval = setInterval(loadAlerts, 60_000)
+    return () => clearInterval(interval)
+  }, [active])
 
   // Stagger the dashboard cards in whenever the selected asset changes (incl.
   // first mount) — not on every 60s poll, since selectedAsset is a stable string.
@@ -296,6 +348,7 @@ export default function WatchTab({ active, activeKey }) {
   return (
     <div className={panelClass} ref={panelRef} data-active-key={activeKey}>
       <Hero item={selectedItem} />
+      <PriceHistory history={history} item={selectedItem} />
       {isMomentum ? (
         <MomentumCard item={selectedItem} />
       ) : (
@@ -304,7 +357,7 @@ export default function WatchTab({ active, activeKey }) {
           <NextAlert item={selectedItem} />
         </>
       )}
-      <TodaysAlerts alerts={alerts} items={items} />
+      <TodaysAlerts alerts={alerts} />
       <WatchlistMini items={items} selectedAsset={selectedAsset} setSelectedAsset={setSelectedAsset} />
     </div>
   )

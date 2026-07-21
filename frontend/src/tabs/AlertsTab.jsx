@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getAlerts, getSettings } from '../api.js'
 import { useAssets } from '../useAssets.js'
 import { gsap, useGSAP, prefersReducedMotion } from '../gsap.js'
-import { fmtLakh, fmtLevel, fmtPrice, fmtTimeIST, isMarketOpenIST } from '../lib.js'
+import { fmtLakh, fmtLevel, fmtPrice, fmtTimeIST, isMarketOpenIST, tickerMeta } from '../lib.js'
 import GlassSurface from '../GlassSurface.jsx'
 import { useLiquidGlass } from '../useLiquidGlass.jsx'
 
@@ -29,11 +29,18 @@ export default function AlertsTab({ active, onManage }) {
   const open = isMarketOpenIST()
 
   useEffect(() => {
-    getSettings().then(setSettings).catch(() => {})
-    getAlerts(1, 20).then((d) => setAlerts(d.alerts)).catch(() => {})
-  }, [])
+    if (!active) return undefined
+    const load = () => {
+      getSettings().then(setSettings).catch((err) => console.error('Failed to load settings', err))
+      getAlerts(1, 100).then((d) => setAlerts(d.alerts)).catch((err) => console.error('Failed to load alerts', err))
+    }
+    load()
+    const interval = setInterval(load, 60_000)
+    return () => clearInterval(interval)
+  }, [active])
 
   const configured = Boolean(settings?.apikey_set && settings?.whatsapp_phone_masked)
+  const isMomentum = selectedItem?.alert_mode === 'momentum'
   const listRef = useRef(null)
   const { defs: listGlassDefs, layer: listGlassLayer } = useLiquidGlass(listRef, 'card')
   const topId = alerts[0]?.id
@@ -59,20 +66,20 @@ export default function AlertsTab({ active, onManage }) {
           onManage={onManage}
         />
         <ConfigRow
-          label="Dip Interval"
-          sub="Alert every N% from ATH"
+          label={isMomentum ? 'Momentum Threshold' : 'Dip Interval'}
+          sub={isMomentum ? 'Alert on ± daily move' : 'Alert every N% from ATH'}
           value={selectedItem ? `${fmtLevel(selectedItem.threshold_pct)}%` : '—'}
           onManage={onManage}
         />
         <ConfigRow
-          label="Deploy Amount"
-          sub="Per alert trigger"
-          value={selectedItem ? fmtLakh(selectedItem.invest_amount) : '—'}
+          label={isMomentum ? 'Alert Direction' : 'Deploy Amount'}
+          sub={isMomentum ? 'Up and down tracked separately' : 'Per alert trigger'}
+          value={isMomentum ? '±' : selectedItem ? fmtLakh(selectedItem.invest_amount) : '—'}
           onManage={onManage}
         />
         <ConfigRow
           label="Check Interval"
-          sub="Polling cadence in market hours"
+          sub={isMomentum ? 'Continuous polling cadence' : 'Polling cadence in market hours'}
           value={settings ? `${settings.check_interval_min} min` : '—'}
           onManage={onManage}
         />
@@ -85,28 +92,44 @@ export default function AlertsTab({ active, onManage }) {
           <span className="sec-lbl">Recent Alerts</span>
         </div>
         {alerts.length === 0 ? (
-          <div className="empty">No alerts logged yet — they appear once a dip level is crossed.</div>
+          <div className="empty">No alerts logged yet — they appear after a configured condition is delivered.</div>
         ) : (
-          alerts.slice(0, 8).map((a, idx) => (
-            <div className="ai" key={a.id}>
-              <div className={`badge ${idx === 0 ? '' : 'old'}`}>−{fmtLevel(a.level_pct ?? a.alert_level)}%</div>
-              <div className="ai-body">
-                <div className="ai-price">₹{fmtPrice(a.current_price)}</div>
-                <div className="ai-sub">{a.ticker} · drop {a.drop_pct.toFixed(2)}%</div>
+          alerts.slice(0, 8).map((a, idx) => {
+            const momentum = a.alert_direction != null
+            const sign = momentum ? (a.alert_direction === 'up' ? '+' : '−') : '−'
+            const badgeClass = momentum ? (a.alert_direction === 'up' ? 'badge-up' : 'badge-dn') : (idx === 0 ? '' : 'old')
+            const { currency } = tickerMeta(a.ticker)
+            const unit = currency === 'pts' ? '' : currency
+            return (
+              <div className="ai" key={a.id}>
+                <div className={`badge ${badgeClass}`}>{sign}{fmtLevel(a.level_pct ?? a.alert_level)}%</div>
+                <div className="ai-body">
+                  <div className="ai-price">{unit}{fmtPrice(a.current_price)}</div>
+                  <div className="ai-sub">{a.ticker} · {momentum ? `${a.alert_direction} daily move` : `drop ${a.drop_pct.toFixed(2)}%`}</div>
+                </div>
+                <div className="ai-time">
+                  {fmtTimeIST(a.alerted_at)}
+                  <br />
+                  <span className={a.whatsapp_sent ? 'ai-sent' : ''} style={a.whatsapp_sent ? {} : { color: 'var(--dim)' }}>
+                    {a.whatsapp_sent ? 'Sent ✓' : 'not sent'}
+                  </span>
+                </div>
               </div>
-              <div className="ai-time">
-                {fmtTimeIST(a.alerted_at)}
-                <br />
-                <span className={a.whatsapp_sent ? 'ai-sent' : ''} style={a.whatsapp_sent ? {} : { color: 'var(--dim)' }}>
-                  {a.whatsapp_sent ? 'Sent ✓' : 'not sent'}
-                </span>
-              </div>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
 
       <GlassSurface className="g" style={{ padding: '16px 18px' }}>
+        {isMomentum ? (
+          <>
+            <div className="sec-lbl" style={{ marginBottom: 12 }}>Momentum Monitoring</div>
+            <div className="mh-row"><span className="mh-lbl">Schedule</span><span className="mh-val live">Every day</span></div>
+            <div className="mh-row"><span className="mh-lbl">Reference</span><span className="mh-val">Previous close</span></div>
+            <div className="mh-row"><span className="mh-lbl">De-duplication</span><span className="mh-val dim">Once per UTC day/direction</span></div>
+          </>
+        ) : (
+          <>
         <div className="sec-lbl" style={{ marginBottom: 12 }}>Market Hours · IST</div>
         <div className="mh-row">
           <span className="mh-lbl">Pre-open session</span>
@@ -120,6 +143,8 @@ export default function AlertsTab({ active, onManage }) {
           <span className="mh-lbl">Monitoring paused</span>
           <span className="mh-val dim">After 3:30 PM</span>
         </div>
+          </>
+        )}
       </GlassSurface>
     </div>
   )

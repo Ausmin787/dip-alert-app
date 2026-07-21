@@ -3,12 +3,15 @@ import math
 import os
 import re
 import secrets
+import threading
+import time
 from datetime import datetime
 from typing import Literal
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import func
 from sqlmodel import Session, desc, select
 
 from .ath_logic import refresh_ath
@@ -98,21 +101,40 @@ def get_status(session: Session = Depends(get_session)):
     return {"market_open": is_market_open(), "items": result}
 
 
+TICKER_RE = re.compile(r"^[A-Z0-9.^=-]{1,24}$")
+
+
+def normalize_ticker(value: str) -> str:
+    value = value.strip().upper()
+    if not TICKER_RE.fullmatch(value):
+        raise ValueError("Ticker must be a Yahoo-style symbol using letters, digits, ., ^, =, or -")
+    return value
+
+
 @router.get("/history/{ticker:path}")
-def get_history(ticker: str, days: int = Query(30, ge=1, le=365)):
+def get_history(
+    ticker: str,
+    days: int = Query(30, ge=1, le=365),
+    session: Session = Depends(get_session),
+):
+    try:
+        ticker = normalize_ticker(ticker)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    tracked = session.exec(select(Watchlist.id).where(Watchlist.ticker == ticker)).first()
+    if tracked is None:
+        raise HTTPException(404, "Ticker is not in the watchlist")
     return get_recent_history(ticker, days)
 
 
 # ---------- watchlist ----------
-
-TICKER_RE = re.compile(r"^[A-Z0-9.^=-]{1,24}$")
 
 
 class WatchlistIn(BaseModel):
     ticker: str = Field(min_length=1, max_length=24)
     display_name: str = Field(min_length=1, max_length=80)
     threshold_pct: float = Field(1.0, gt=0, le=50)
-    invest_amount: int = Field(100000, ge=0)
+    invest_amount: int = Field(100000, ge=0, le=1_000_000_000)
     broker_url: str = Field("", max_length=300)
     active: bool = True
     alert_mode: Literal["dip", "momentum"] = "dip"
@@ -120,15 +142,19 @@ class WatchlistIn(BaseModel):
     @field_validator("ticker")
     @classmethod
     def validate_ticker(cls, value: str) -> str:
-        value = value.strip().upper()
-        if not TICKER_RE.fullmatch(value):
-            raise ValueError("Ticker must be a Yahoo-style symbol using letters, digits, ., ^, =, or -")
-        return value
+        return normalize_ticker(value)
 
     @field_validator("display_name", "broker_url")
     @classmethod
     def trim_string(cls, value: str) -> str:
         return value.strip()
+
+    @field_validator("display_name")
+    @classmethod
+    def validate_display_name(cls, value: str) -> str:
+        if any(ord(char) < 32 for char in value):
+            raise ValueError("Display name cannot contain control characters")
+        return value
 
     @field_validator("broker_url")
     @classmethod
@@ -136,7 +162,12 @@ class WatchlistIn(BaseModel):
         if not value:
             return value
         parsed = urlparse(value)
-        if parsed.scheme != "https" or not parsed.netloc:
+        if (
+            parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+        ):
             raise ValueError("Broker URL must be blank or an https:// URL")
         return value
 
@@ -155,8 +186,9 @@ def add_watchlist(body: WatchlistIn, session: Session = Depends(get_session)):
     session.add(item)
     session.commit()
     session.refresh(item)
-    # Initialize ATH right away so the dashboard has data
-    refresh_ath(session, item.ticker)
+    # Momentum mode never uses ATH history.
+    if item.alert_mode == "dip":
+        refresh_ath(session, item.ticker)
     return item
 
 
@@ -169,10 +201,29 @@ def update_watchlist(item_id: int, body: WatchlistIn, session: Session = Depends
         # Ticker is the key linking watchlist <-> ath_tracker; changing it would
         # orphan the tracker. Delete + re-add instead.
         raise HTTPException(400, "Ticker cannot be changed — delete this asset and add a new one")
+    alert_rules_changed = (
+        body.threshold_pct != item.threshold_pct or body.alert_mode != item.alert_mode
+    )
+    switched_to_dip = item.alert_mode != "dip" and body.alert_mode == "dip"
     for key, value in body.model_dump().items():
         setattr(item, key, value)
+    if alert_rules_changed:
+        tracker = session.exec(
+            select(AthTracker).where(AthTracker.ticker == item.ticker)
+        ).first()
+        if tracker:
+            # Stored level numbers are threshold-specific. Re-arm the dip state
+            # whenever the threshold or alert mode changes.
+            tracker.last_alerted_level = 0
+            tracker.updated_at = datetime.utcnow()
     session.commit()
     session.refresh(item)
+    if body.alert_mode == "dip" and (switched_to_dip or not session.exec(
+        select(AthTracker.id).where(AthTracker.ticker == item.ticker)
+    ).first()):
+        # Mode changes from momentum need an ATH before the dashboard can show
+        # dip levels; refresh immediately instead of waiting for a scheduler tick.
+        refresh_ath(session, item.ticker)
     return item
 
 
@@ -200,7 +251,7 @@ def list_alerts(
     alerts = session.exec(
         select(AlertLog).order_by(desc(AlertLog.alerted_at)).offset(offset).limit(page_size)
     ).all()
-    total = len(session.exec(select(AlertLog)).all())
+    total = session.exec(select(func.count()).select_from(AlertLog)).one()
     return {"alerts": alerts, "total": total, "page": page, "page_size": page_size}
 
 
@@ -212,11 +263,26 @@ class SettingsIn(BaseModel):
     whatsapp_phone: str = Field("", max_length=32)
     callmebot_apikey: str = Field("", max_length=128)
     check_interval_min: int = Field(5, ge=1, le=60)
+    clear_credentials: bool = False
 
     @field_validator("whatsapp_phone", "callmebot_apikey")
     @classmethod
     def trim_secret(cls, value: str) -> str:
         return value.strip()
+
+    @field_validator("whatsapp_phone")
+    @classmethod
+    def validate_phone(cls, value: str) -> str:
+        if value and not re.fullmatch(r"\+?[0-9]{8,20}", value):
+            raise ValueError("WhatsApp phone must contain 8-20 digits with an optional leading +")
+        return value
+
+    @field_validator("callmebot_apikey")
+    @classmethod
+    def validate_apikey(cls, value: str) -> str:
+        if any(char.isspace() or ord(char) < 32 for char in value):
+            raise ValueError("CallMeBot API key cannot contain whitespace or control characters")
+        return value
 
 
 def _mask_phone(phone: str) -> str:
@@ -256,40 +322,48 @@ def update_settings(body: SettingsIn, session: Session = Depends(get_session)):
         settings = Settings()
         session.add(settings)
     old_interval = settings.check_interval_min
-    if body.whatsapp_phone.strip():
-        settings.whatsapp_phone = body.whatsapp_phone.strip()
-    if body.callmebot_apikey.strip():
-        settings.callmebot_apikey = body.callmebot_apikey.strip()
+    if body.clear_credentials:
+        settings.whatsapp_phone = ""
+        settings.callmebot_apikey = ""
+    else:
+        if body.whatsapp_phone.strip():
+            settings.whatsapp_phone = body.whatsapp_phone.strip()
+        if body.callmebot_apikey.strip():
+            settings.callmebot_apikey = body.callmebot_apikey.strip()
     settings.check_interval_min = body.check_interval_min
     session.commit()
     session.refresh(settings)
     if body.check_interval_min != old_interval:
-        try:
-            reschedule_price_check(body.check_interval_min)
-        except Exception:
-            pass  # scheduler may not be running in dev
+        reschedule_price_check(body.check_interval_min)
     return _redacted(settings)
 
 
 # ---------- test alert ----------
 
 TEST_ALERT_COOLDOWN_SECONDS = 60
-_last_test_alert_at: datetime | None = None
+_last_test_alert_at: float | None = None
+_test_alert_lock = threading.Lock()
 
 
 @router.post("/test-alert", dependencies=write_protected)
 def test_alert(session: Session = Depends(get_session)):
     global _last_test_alert_at
-    if _last_test_alert_at is not None:
-        elapsed = (datetime.utcnow() - _last_test_alert_at).total_seconds()
-        if elapsed < TEST_ALERT_COOLDOWN_SECONDS:
-            raise HTTPException(
-                429, f"Please wait {int(TEST_ALERT_COOLDOWN_SECONDS - elapsed)}s before testing again"
-            )
-
     settings = session.exec(select(Settings)).first()
     if not settings or not settings.whatsapp_phone or not settings.callmebot_apikey:
         raise HTTPException(400, "WhatsApp phone and API key must be configured first")
+
+    with _test_alert_lock:
+        now = time.monotonic()
+        if _last_test_alert_at is not None:
+            elapsed = now - _last_test_alert_at
+            if elapsed < TEST_ALERT_COOLDOWN_SECONDS:
+                raise HTTPException(
+                    429, f"Please wait {int(TEST_ALERT_COOLDOWN_SECONDS - elapsed)}s before testing again"
+                )
+        # Rate-limit attempts, not only successful deliveries. Otherwise a bad
+        # key or upstream outage allows repeated external requests.
+        _last_test_alert_at = now
+
     message = format_alert_message(
         display_name="Test Asset",
         level_pct=1.0,
@@ -303,5 +377,4 @@ def test_alert(session: Session = Depends(get_session)):
     sent = send_whatsapp(settings.whatsapp_phone, settings.callmebot_apikey, message)
     if not sent:
         raise HTTPException(502, "CallMeBot request failed — check phone/apikey")
-    _last_test_alert_at = datetime.utcnow()
     return {"sent": True, "sent_at": datetime.utcnow().isoformat()}

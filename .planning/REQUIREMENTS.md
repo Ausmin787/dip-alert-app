@@ -1,6 +1,6 @@
 # Requirements: Dip Alert
 
-**Current-state requirements — verified 2026-07-15.** The old `LAY-*`, `FEED-*`, and `WORKSPACE-*` split-pane requirements are superseded by the implemented phone-shell product.
+**Current-state requirements — verified 2026-07-21.** The old `LAY-*`, `FEED-*`, and `WORKSPACE-*` split-pane requirements are superseded by the implemented phone-shell product.
 
 ## Alert Engine
 
@@ -23,7 +23,7 @@
 
 ## State, API, and Security
 
-- [x] **STATE-01:** Poll `/api/status` every 60 seconds and load 30-day history for watchlist assets.
+- [x] **STATE-01:** Poll `/api/status` every 60 seconds and load 30-day history only for the selected asset every five minutes.
 - [x] **STATE-02:** Persist selected asset and optional app token in browser `localStorage`.
 - [x] **STATE-03:** Attach `X-App-Token` to API requests when a browser token is configured.
 - [x] **STATE-04:** Protect backend write endpoints when `APP_TOKEN` is set and redact stored messaging credentials in responses.
@@ -43,6 +43,7 @@
 ```powershell
 backend\.venv\Scripts\python backend\test_logic.py
 backend\.venv\Scripts\python backend\test_security.py
+backend\.venv\Scripts\python backend\test_migrations.py
 npm.cmd --prefix frontend test
 npm.cmd --prefix frontend run lint
 npm.cmd --prefix frontend run build
@@ -59,4 +60,4 @@ Run `backend\.venv\Scripts\python deploy\test_deploy_safety.py` and Bash syntax 
 - The archived desktop sidebar, middle feed, right workspace, route-based page shell, Recharts, Motion, and three.js design.
 
 ---
-*Last updated: 2026-07-15 from live source and package manifests*
+*Last updated: 2026-07-21 from live source and package manifests*

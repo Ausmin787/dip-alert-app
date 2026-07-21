@@ -42,6 +42,9 @@ class AlertLog(SQLModel, table=True):
     alerted_at: datetime = Field(default_factory=datetime.utcnow)
     whatsapp_sent: bool = False
     alert_direction: Optional[str] = None  # "up" | "down" for momentum; None for dip
+    # Snapshot the configured amount at fire time. Historical deployment totals
+    # must not change when the watchlist row is later edited or deleted.
+    invest_amount: Optional[int] = None
 
 
 class Settings(SQLModel, table=True):
@@ -51,3 +54,5 @@ class Settings(SQLModel, table=True):
     whatsapp_phone: str = ""
     callmebot_apikey: str = ""
     check_interval_min: int = 5
+    # Prevent deliberately deleted seed assets from reappearing on restart.
+    defaults_seeded: bool = False

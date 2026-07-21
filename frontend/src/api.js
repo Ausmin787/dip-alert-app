@@ -2,7 +2,7 @@ import axios from 'axios'
 
 // In production (Vercel), set VITE_API_URL to the backend's public URL.
 // In dev it stays relative and Vite proxies /api to localhost:8000.
-const base = import.meta.env.VITE_API_URL ?? ''
+const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '')
 const client = axios.create({ baseURL: `${base}/api` })
 
 // Optional write protection: if the backend sets APP_TOKEN, every write

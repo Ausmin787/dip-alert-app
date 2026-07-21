@@ -2,9 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { getStatus, getHistory } from './api'
 import { AssetContext } from './useAssets.js'
 
-/* Global asset state: fetches /api/status + 30-day histories for every
-   watchlist asset, persists the selected ticker in localStorage, and exposes a
-   refresh() the Watchlist CRUD calls to update the feed instantly. */
+/* Global asset state: polls /api/status every 60 s and fetches 30-day history
+   only for the selected asset, with a separate five-minute refresh cadence. */
 export function AssetProvider({ children }) {
   const [items, setItems] = useState([])
   const [selectedAsset, setSelectedAssetState] = useState(
@@ -14,13 +13,8 @@ export function AssetProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Live mirrors of state so the 60s poll reads the current values, not a stale
-  // closure captured when the effect was created.
   const selectedRef = useRef(selectedAsset)
-  const historiesRef = useRef(histories)
-  useEffect(() => {
-    historiesRef.current = histories
-  }, [histories])
+  const statusInFlight = useRef(false)
 
   const setSelectedAsset = useCallback((ticker) => {
     selectedRef.current = ticker
@@ -29,6 +23,8 @@ export function AssetProvider({ children }) {
   }, [])
 
   const loadData = useCallback(async () => {
+    if (statusInFlight.current) return
+    statusInFlight.current = true
     try {
       const data = await getStatus()
       const fetched = data?.items || []
@@ -44,21 +40,11 @@ export function AssetProvider({ children }) {
         if (firstActive) setSelectedAsset(firstActive.ticker)
       }
 
-      const results = await Promise.all(
-        fetched.map(async (item) => {
-          try {
-            return { ticker: item.ticker, data: await getHistory(item.ticker, 30) }
-          } catch (err) {
-            console.error(`Failed to fetch history for ${item.ticker}`, err)
-            return { ticker: item.ticker, data: [] }
-          }
-        }),
-      )
-      setHistories(Object.fromEntries(results.map((r) => [r.ticker, r.data])))
     } catch (err) {
       console.error('Failed to load asset status', err)
       setError('Backend unreachable — is the API server running?')
     } finally {
+      statusInFlight.current = false
       setLoading(false)
     }
   }, [setSelectedAsset])
@@ -72,12 +58,22 @@ export function AssetProvider({ children }) {
     return () => clearInterval(interval)
   }, [loadData])
 
-  // Backfill history for the selected asset if a poll hasn't covered it yet.
+  // Market history is displayed only for the selected asset. Fetching every
+  // watchlist history on every status poll multiplied Yahoo traffic without
+  // changing anything visible in the UI.
   useEffect(() => {
-    if (selectedAsset && !historiesRef.current[selectedAsset]) {
-      getHistory(selectedAsset, 30)
-        .then((data) => setHistories((prev) => ({ ...prev, [selectedAsset]: data })))
-        .catch(() => {})
+    if (!selectedAsset) return undefined
+    let cancelled = false
+    const loadHistory = () => getHistory(selectedAsset, 30)
+      .then((data) => {
+        if (!cancelled) setHistories((prev) => ({ ...prev, [selectedAsset]: data }))
+      })
+      .catch((err) => console.error(`Failed to fetch history for ${selectedAsset}`, err))
+    loadHistory()
+    const interval = setInterval(loadHistory, 5 * 60_000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
     }
   }, [selectedAsset])
 

@@ -40,7 +40,7 @@ If the backend enables `APP_TOKEN`, enter the matching access token in the app's
 ## Structure
 
 - `src/App.jsx` — phone shell and four-tab state; there is no router.
-- `src/AssetContext.jsx` — shared status/history state and polling.
+- `src/AssetContext.jsx` — 60-second shared status polling and five-minute selected-asset history refresh.
 - `src/tabs/` — Watch, Alerts, History, and Manage views.
 - `src/api.js` — Axios client and optional app-token header.
 - `src/gsap.js` — shared GSAP registration, reduced-motion helper, and glass easing.

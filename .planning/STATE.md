@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: current-product
 milestone_name: four-tab-liquid-glass
 status: maintenance
-stopped_at: Glass navigation, documentation, and screenshot refresh verified
-last_updated: "2026-07-15T00:00:00+05:30"
-last_activity: 2026-07-15 — Current architecture reconciled with live source
+stopped_at: Full correctness, security, persistence, and request-efficiency audit remediated
+last_updated: "2026-07-21T00:00:00+05:30"
+last_activity: 2026-07-21 — Audit repairs and regression coverage reconciled with live source
 progress:
   historical_phases: 3
   historical_phases_completed: 3
@@ -20,13 +20,15 @@ Dip Alert is a working single-user FastAPI/React application with dip and moment
 
 **Current frontend:** `App.jsx`, `AssetContext.jsx`, `GlassNav.jsx`, `gsap.js`, `api.js`, `lib.js`, and `tabs/{Watch,Alerts,History,Manage}Tab.jsx`.
 
-**Current backend:** FastAPI routes, SQLModel/SQLite, APScheduler, yfinance, CallMeBot integration, additive migrations, optional `APP_TOKEN`, and logic/security regression scripts.
+**Current backend:** FastAPI routes, SQLModel/SQLite, APScheduler, cached/single-flight yfinance reads, CallMeBot integration, additive migrations, optional `APP_TOKEN`, and logic/security/migration regression scripts.
 
 ## Current Position
 
 - Bottom-nav architecture rebuilt and motion refraction corrected.
 - Parked selector is crisp; the filtered duplicate is visible only during travel.
 - Frontend lint, helper tests, and production build are the standard UI gate.
+- Alert state advances only after configured, successful delivery; alert history snapshots the investment amount used at alert time.
+- Status polling is guarded against overlap and chart history is fetched only for the selected asset.
 - Oracle/Vercel is the deployment target; live infrastructure verification remains pending.
 - README screenshot and supporting documentation match the current UI.
 
@@ -50,4 +52,4 @@ The June 2026 three-phase Stripe-style split-pane milestone completed, but that 
 Resume from the live repository and `CLAUDE.md`, not from archived phase plans. Verify current files before applying historical assumptions.
 
 ---
-*Last updated: 2026-07-15 from the live repository*
+*Last updated: 2026-07-21 from the live repository*

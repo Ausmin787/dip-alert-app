@@ -53,6 +53,7 @@ class DeploySafetyTests(unittest.TestCase):
         self.assertIn("trap deploy_error ERR", script)
         self.assertIn("BLOCKED_COMMIT_FILE", script)
         self.assertIn("REQS_CHANGED", script)
+        self.assertIn('"$VENV_PY" test_migrations.py', script)
         self.assertNotIn('cp "$DB_PATH" "$dest"', script)
 
     def test_deploy_failure_alert_is_wired(self) -> None:

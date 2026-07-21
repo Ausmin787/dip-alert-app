@@ -11,11 +11,15 @@ os.environ["DISABLE_SCHEDULER"] = "1"
 os.environ["APP_TOKEN"] = "right-token"
 
 from fastapi.testclient import TestClient  # noqa: E402
+from sqlmodel import Session, select  # noqa: E402
 
 from app.main import app  # noqa: E402
 import app.routes as routes  # noqa: E402
+from app.db import engine  # noqa: E402
+from app.models import AthTracker, Settings  # noqa: E402
 
-routes.refresh_ath = lambda session, ticker: None
+refreshed_tickers = []
+routes.refresh_ath = lambda session, ticker: refreshed_tickers.append(ticker)
 
 failures = []
 
@@ -34,12 +38,13 @@ with TestClient(app) as client:
         "display_name": "ABC",
     }).status_code == 401)
 
-    check("valid yahoo ticker accepted", client.post("/api/watchlist", headers=token, json={
+    created = client.post("/api/watchlist", headers=token, json={
         "ticker": "SETFNIF50.NS",
         "display_name": "Nifty ETF",
         "broker_url": "https://groww.in/etfs/sbietf-nifty",
         "alert_mode": "dip",
-    }).status_code == 201)
+    })
+    check("valid yahoo ticker accepted", created.status_code == 201)
 
     check("invalid alert_mode rejected", client.post("/api/watchlist", headers=token, json={
         "ticker": "MODE",
@@ -57,12 +62,92 @@ with TestClient(app) as client:
         "display_name": "URL",
         "broker_url": "javascript:alert(1)",
     }).status_code == 422)
+    check("broker URL userinfo rejected", client.post("/api/watchlist", headers=token, json={
+        "ticker": "USERINFO",
+        "display_name": "URL",
+        "broker_url": "https://trusted.example@evil.example/buy",
+    }).status_code == 422)
+    check("display-name control characters rejected", client.post("/api/watchlist", headers=token, json={
+        "ticker": "CONTROL",
+        "display_name": "Injected\nmessage",
+    }).status_code == 422)
 
     check("oversized settings secret rejected", client.put("/api/settings", headers=token, json={
         "whatsapp_phone": "+" + ("9" * 200),
         "callmebot_apikey": "k",
         "check_interval_min": 5,
     }).status_code == 422)
+    check("malformed phone rejected", client.put("/api/settings", headers=token, json={
+        "whatsapp_phone": "+91 call me",
+        "callmebot_apikey": "key",
+        "check_interval_min": 5,
+    }).status_code == 422)
+    check("control characters in API key rejected", client.put("/api/settings", headers=token, json={
+        "whatsapp_phone": "+919876543210",
+        "callmebot_apikey": "key\nvalue",
+        "check_interval_min": 5,
+    }).status_code == 422)
+
+    check("history ticker uses watchlist validation", client.get("/api/history/not/a/ticker").status_code == 422)
+    check("history is limited to tracked assets", client.get("/api/history/UNTRACKED").status_code == 404)
+    check("investment amount has an upper bound", client.post("/api/watchlist", headers=token, json={
+        "ticker": "HUGE",
+        "display_name": "Huge",
+        "invest_amount": 10**30,
+    }).status_code == 422)
+
+    item_id = created.json()["id"]
+    with Session(engine) as session:
+        session.add(AthTracker(ticker="SETFNIF50.NS", ath_price=100.0, last_alerted_level=4))
+        session.commit()
+    updated = client.put(f"/api/watchlist/{item_id}", headers=token, json={
+        "ticker": "SETFNIF50.NS",
+        "display_name": "Nifty ETF",
+        "threshold_pct": 2.0,
+        "broker_url": "https://groww.in/etfs/sbietf-nifty",
+        "alert_mode": "dip",
+    })
+    with Session(engine) as session:
+        tracker = session.exec(select(AthTracker).where(AthTracker.ticker == "SETFNIF50.NS")).first()
+        check("threshold update re-arms alert state", updated.status_code == 200 and tracker.last_alerted_level == 0)
+
+    momentum = client.post("/api/watchlist", headers=token, json={
+        "ticker": "MODETEST",
+        "display_name": "Mode test",
+        "threshold_pct": 2.0,
+        "invest_amount": 0,
+        "alert_mode": "momentum",
+    })
+    switched = client.put(f"/api/watchlist/{momentum.json()['id']}", headers=token, json={
+        "ticker": "MODETEST",
+        "display_name": "Mode test",
+        "threshold_pct": 2.0,
+        "invest_amount": 1000,
+        "alert_mode": "dip",
+    })
+    check("switching to dip mode initializes ATH state", switched.status_code == 200 and "MODETEST" in refreshed_tickers)
+
+    saved = client.put("/api/settings", headers=token, json={
+        "whatsapp_phone": "+919876543210",
+        "callmebot_apikey": "secret",
+        "check_interval_min": 5,
+    })
+    cleared = client.put("/api/settings", headers=token, json={
+        "check_interval_min": 5,
+        "clear_credentials": True,
+    })
+    check("credentials can be explicitly cleared", saved.status_code == 200 and not cleared.json()["apikey_set"])
+
+    client.put("/api/settings", headers=token, json={
+        "whatsapp_phone": "+919876543210",
+        "callmebot_apikey": "bad-key",
+        "check_interval_min": 5,
+    })
+    routes.send_whatsapp = lambda phone, key, message: False
+    routes._last_test_alert_at = None
+    first_attempt = client.post("/api/test-alert", headers=token)
+    repeated_attempt = client.post("/api/test-alert", headers=token)
+    check("failed external test alert starts cooldown", first_attempt.status_code == 502 and repeated_attempt.status_code == 429)
 
     response = client.get("/")
     check("content type sniffing disabled", response.headers.get("x-content-type-options") == "nosniff")

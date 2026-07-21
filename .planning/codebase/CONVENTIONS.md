@@ -1,6 +1,6 @@
 # Coding Conventions
 
-**Verified:** 2026-07-15 from live source.
+**Verified:** 2026-07-21 from live source.
 
 ## Naming and Files
 
@@ -37,7 +37,7 @@
 
 ## Verification
 
-- Backend behavior changes require `test_logic.py` and `test_security.py` as applicable.
+- Backend behavior changes require `test_logic.py`, `test_security.py`, and `test_migrations.py` as applicable.
 - Frontend changes require `npm test`, `npm run lint`, and `npm run build`.
 - Deployment changes also require `deploy/test_deploy_safety.py` and Bash syntax validation.
 - Use `npm.cmd` in Windows PowerShell when the `.ps1` shim is blocked by execution policy.

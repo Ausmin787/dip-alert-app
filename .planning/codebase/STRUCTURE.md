@@ -1,6 +1,6 @@
 # Codebase Structure
 
-**Verified:** 2026-07-15 from the live tree.
+**Verified:** 2026-07-21 from the live tree.
 
 ```text
 dip-alert-app/
@@ -11,7 +11,8 @@ dip-alert-app/
 │   │   └── db.py, models.py
 │   ├── requirements.txt
 │   ├── test_logic.py
-│   └── test_security.py
+│   ├── test_security.py
+│   └── test_migrations.py
 ├── frontend/
 │   ├── public/{favicon.svg,manifest.webmanifest}
 │   ├── src/

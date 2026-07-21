@@ -24,6 +24,8 @@ export function useLiquidGlass(ref, variant = 'card') {
   const reactId = useId().replace(/[^a-zA-Z0-9_-]/g, '')
   const versionRef = useRef(0)
   const geoRef = useRef('')
+  const wallpaperRef = useRef(null)
+  const positionRef = useRef({ offsetX: 0, offsetY: 0 })
   const [surface, setSurface] = useState(null)
 
   useEffect(() => {
@@ -33,7 +35,8 @@ export function useLiquidGlass(ref, variant = 'card') {
     if (!element || !shell) return undefined
     const preset = PRESETS[variant] || PRESETS.card
     geoRef.current = ''
-    let timer = 0
+    let resizeTimer = 0
+    let scrollFrame = 0
     let disposed = false
 
     const measure = () => {
@@ -53,11 +56,23 @@ export function useLiquidGlass(ref, variant = 'card') {
         offsetX -= node.scrollLeft
         offsetY -= node.scrollTop
       }
+      positionRef.current = { offsetX, offsetY }
+
+      // Scrolling only changes which part of the already-decoded wallpaper is
+      // sampled. Mutate that input in place so Blink keeps the same filter
+      // graph and never flashes an undecoded replacement frame.
+      if (wallpaperRef.current) {
+        wallpaperRef.current.setAttribute('x', String(BLEED - offsetX - WALLPAPER_MARGIN))
+        wallpaperRef.current.setAttribute('y', String(BLEED - offsetY - WALLPAPER_MARGIN))
+      }
+
       const radius = Math.round(parseFloat(getComputedStyle(element).borderTopLeftRadius) || 0)
       const shellRect = shell.getBoundingClientRect()
       const shellW = Math.round(shellRect.width)
       const shellH = Math.round(shellRect.height)
-      const geoKey = `${width}x${height}x${radius}@${offsetX},${offsetY}/${shellW}x${shellH}`
+      // Position deliberately stays out of this key. Rebuilding the complete
+      // SVG graph after every scroll caused a one-frame dark/light color swap.
+      const geoKey = `${width}x${height}x${radius}/${shellW}x${shellH}`
       if (geoRef.current === geoKey) return
       geoRef.current = geoKey
       const { url } = createGlassMap(width, height, radius, {
@@ -69,6 +84,7 @@ export function useLiquidGlass(ref, variant = 'card') {
       // it rasterizes simply pick up refraction a beat later.
       getWallpaperBitmap(shellW, shellH).then((wallpaperUrl) => {
         if (disposed || geoRef.current !== geoKey) return
+        const latestPosition = positionRef.current
         // Fresh filter id per geometry/map change (GlassNav's filter-caching rule).
         versionRef.current += 1
         setSurface({
@@ -77,8 +93,8 @@ export function useLiquidGlass(ref, variant = 'card') {
           wallpaperUrl,
           width,
           height,
-          offsetX,
-          offsetY,
+          offsetX: latestPosition.offsetX,
+          offsetY: latestPosition.offsetY,
           shellW,
           shellH,
           preset,
@@ -86,25 +102,33 @@ export function useLiquidGlass(ref, variant = 'card') {
       }).catch(() => {})
     }
 
-    const schedule = () => {
-      window.clearTimeout(timer)
-      timer = window.setTimeout(measure, 90)
+    const scheduleResize = () => {
+      window.clearTimeout(resizeTimer)
+      resizeTimer = window.setTimeout(measure, 90)
+    }
+
+    const scheduleScroll = () => {
+      if (scrollFrame) return
+      scrollFrame = window.requestAnimationFrame(() => {
+        scrollFrame = 0
+        measure()
+      })
     }
 
     measure()
-    const observer = new ResizeObserver(schedule)
+    const observer = new ResizeObserver(scheduleResize)
     observer.observe(element)
     observer.observe(shell)
-    // Re-align once scrolling settles; while scrolling the bend rides with the
-    // card, which the 28px frost makes imperceptible.
+    // Keep the persistent filter aligned continuously with its moving card.
     const scroller = findScroller(element)
-    if (scroller) scroller.addEventListener('scroll', schedule, { passive: true })
+    if (scroller) scroller.addEventListener('scroll', scheduleScroll, { passive: true })
 
     return () => {
       disposed = true
-      window.clearTimeout(timer)
+      window.clearTimeout(resizeTimer)
+      window.cancelAnimationFrame(scrollFrame)
       observer.disconnect()
-      if (scroller) scroller.removeEventListener('scroll', schedule)
+      if (scroller) scroller.removeEventListener('scroll', scheduleScroll)
     }
   }, [ref, variant, reactId])
 
@@ -139,6 +163,7 @@ export function useLiquidGlass(ref, variant = 'card') {
             colorInterpolationFilters="sRGB"
           >
             <feImage
+              ref={wallpaperRef}
               href={wallpaperUrl}
               x={BLEED - offsetX - m}
               y={BLEED - offsetY - m}

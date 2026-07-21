@@ -1,6 +1,6 @@
 # Roadmap: Dip Alert
 
-**Current-state roadmap — verified 2026-07-15.** The three phase files are historical records; their sidebar and split-pane implementation was later replaced.
+**Current-state roadmap — verified 2026-07-21.** The three phase files are historical records; their sidebar and split-pane implementation was later replaced.
 
 ## Delivered Product
 
@@ -9,6 +9,7 @@
 - [x] Bright Liquid Glass redesign and GSAP travelling-refraction bottom-nav selector.
 - [x] Optional app-token write protection and security regressions.
 - [x] Oracle VM systemd/auto-deploy assets with backup, rollback, and quarantine.
+- [x] Correct delivery-state semantics, migration coverage, credential clearing, strict validation, mode-aware UI, immutable history amounts, and bounded/cached upstream reads.
 
 ## Current Workstream
 
@@ -36,4 +37,4 @@
 Historical plan, summary, and UI-spec files remain under `.planning/phases/`; the directory README marks the entire set as archived provenance.
 
 ---
-*Last updated: 2026-07-15 from the live repository*
+*Last updated: 2026-07-21 from the live repository*

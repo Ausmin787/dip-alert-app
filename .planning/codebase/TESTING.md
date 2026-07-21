@@ -1,16 +1,19 @@
 # Testing and Verification
 
-**Verified:** 2026-07-15 from live scripts and package commands.
+**Verified:** 2026-07-21 from live scripts and package commands.
 
 ## Backend
 
-`backend/test_logic.py` is a standalone monkeypatched regression script. It covers dip-level crossing/de-duplication, recovery/new-ATH reset, failed-delivery behavior, and per-asset rollback isolation. Momentum behavior is implemented in the application but does not yet have an equivalent dedicated regression in this script.
+`backend/test_logic.py` is a standalone monkeypatched regression script. It covers dip-level crossing/de-duplication, recovery/new-ATH reset, failed or unconfigured delivery behavior, per-asset rollback isolation, and momentum up/down/de-duplication/retry behavior.
 
 `backend/test_security.py` uses FastAPI `TestClient` with a temporary SQLite database to cover optional token enforcement, validation, redaction, headers, and protected writes.
+
+`backend/test_migrations.py` builds a legacy SQLite schema, runs migrations twice, and verifies new columns, one-time seeding state, idempotence, and preservation of customized rows.
 
 ```powershell
 backend\.venv\Scripts\python backend\test_logic.py
 backend\.venv\Scripts\python backend\test_security.py
+backend\.venv\Scripts\python backend\test_migrations.py
 backend\.venv\Scripts\python -m pip check
 ```
 

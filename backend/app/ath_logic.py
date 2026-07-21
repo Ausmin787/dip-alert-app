@@ -76,6 +76,12 @@ def check_asset(session: Session, item: Watchlist) -> AlertLog | None:
     # New level crossed — fire alert
     settings = session.exec(select(Settings)).first()
     configured = bool(settings and settings.whatsapp_phone and settings.callmebot_apikey)
+    if not configured:
+        logger.warning(
+            "WhatsApp is not configured; leaving %s dip alert pending",
+            item.ticker,
+        )
+        return None
     level_pct = level * item.threshold_pct
     message = format_alert_message(
         display_name=item.display_name,
@@ -106,6 +112,7 @@ def check_asset(session: Session, item: Watchlist) -> AlertLog | None:
         ath_price=tracker.ath_price,
         drop_pct=round(drop_pct, 2),
         whatsapp_sent=sent,
+        invest_amount=item.invest_amount,
     )
     session.add(alert)
     tracker.last_alerted_level = level
@@ -144,6 +151,12 @@ def check_momentum_asset(session: Session, item: Watchlist) -> AlertLog | None:
 
     settings = session.exec(select(Settings)).first()
     configured = bool(settings and settings.whatsapp_phone and settings.callmebot_apikey)
+    if not configured:
+        logger.warning(
+            "WhatsApp is not configured; leaving %s momentum alert pending",
+            item.ticker,
+        )
+        return None
     change_rounded = round(daily_change_pct, 2)
     message = format_momentum_message(
         display_name=item.display_name,
@@ -170,6 +183,7 @@ def check_momentum_asset(session: Session, item: Watchlist) -> AlertLog | None:
         drop_pct=change_rounded,
         whatsapp_sent=sent,
         alert_direction=direction,
+        invest_amount=0,
     )
     session.add(alert)
     session.commit()
@@ -205,7 +219,12 @@ def check_all_assets(market_open: bool = True) -> None:
 def refresh_all_aths() -> None:
     """Daily job at market open: refresh ATH from full history."""
     with Session(engine) as session:
-        items = session.exec(select(Watchlist).where(Watchlist.active == True)).all()  # noqa: E712
+        items = session.exec(
+            select(Watchlist).where(
+                Watchlist.active == True,  # noqa: E712
+                Watchlist.alert_mode == "dip",
+            )
+        ).all()
         for item in items:
             ticker = item.ticker
             try:

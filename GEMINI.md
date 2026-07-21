@@ -24,7 +24,7 @@ The frontend does **not** use Motion, three.js, React Three Fiber, Recharts, or 
 
 - `backend/app/main.py` creates the FastAPI app, initializes the database, and starts scheduled monitoring.
 - `backend/app/routes.py` owns the API; `ath_logic.py` contains alert evaluation; `price_service.py` fetches prices; `whatsapp.py` sends notifications.
-- `frontend/src/AssetContext.jsx` owns shared asset status/history and polling.
+- `frontend/src/AssetContext.jsx` polls shared status and fetches history only for the selected asset.
 - `frontend/src/App.jsx` owns the phone shell and four-tab state.
 - `frontend/src/tabs/` contains the four tab views.
 - `frontend/src/api.js` is the Axios API client and attaches the optional `X-App-Token` from browser storage.
@@ -45,6 +45,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
 .\.venv\Scripts\python.exe test_logic.py
 .\.venv\Scripts\python.exe test_security.py
+.\.venv\Scripts\python.exe test_migrations.py
 ```
 
 Frontend, from `frontend/`:

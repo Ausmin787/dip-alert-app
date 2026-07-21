@@ -1,6 +1,6 @@
 # Architecture
 
-**Verified:** 2026-07-15 from live source.
+**Verified:** 2026-07-21 from live source.
 
 ## System Pattern
 
@@ -26,13 +26,13 @@ APScheduler -> active Watchlist rows -> yfinance price data
   -> only on success: AlertLog + tracker state commit
 ```
 
-Indian dip assets use the NSE weekday/time gate. Momentum assets run on weekdays without the IST-hours gate.
+Indian dip assets use the NSE weekday/time gate. Momentum assets run on every scheduler tick without the IST-hours gate.
 
 ## Frontend
 
 - `App.jsx` owns the phone shell and local four-tab state. There is no router.
 - `tabs/WatchTab.jsx`, `AlertsTab.jsx`, `HistoryTab.jsx`, and `ManageTab.jsx` remain mounted and expose the product workflows.
-- `AssetContext.jsx` polls status every 60 seconds, fetches 30-day histories, persists the selected ticker, and exposes refresh after mutations.
+- `AssetContext.jsx` polls status every 60 seconds, fetches 30-day history only for the selected ticker every five minutes, persists that selection, and exposes refresh after mutations.
 - `api.js` owns Axios calls, the production `VITE_API_URL`, the dev-relative `/api` path, and the optional `X-App-Token` interceptor.
 - `GlassNav.jsx` owns semantic bottom-nav buttons, measured equal-column geometry, SVG filter definitions, and GSAP selector movement.
 - `gsap.js` registers shared GSAP integration/easing and provides the reduced-motion helper.

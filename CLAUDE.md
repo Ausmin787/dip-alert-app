@@ -8,7 +8,7 @@ A single-user web app (built for a friend — no auth) that watches assets durin
 
 **Two alert modes on the watchlist:**
 - **Dip Alert** (`alert_mode="dip"`, default): watches Indian indices/ETFs, fires when price crosses a new −X% level below its all-time high. Strategy: "buy ₹1L of Nifty 50 ETF for every −1% fall from ATH." Runs only during NSE market hours (9:15–15:30 IST, Mon–Fri).
-- **Momentum Alert** (`alert_mode="momentum"`): watches global assets (Gold, Silver, S&P 500, Nasdaq 100, etc.), fires once per day per direction when `|daily change from prev close| > threshold%`. Runs any weekday (no IST hours gate — global markets are active at different times).
+- **Momentum Alert** (`alert_mode="momentum"`): watches global assets (Gold, Silver, S&P 500, Nasdaq 100, etc.), fires once per UTC day per direction when `|daily change from prev close| >= threshold%`. Evaluated on every scheduler tick because global markets span time zones and weekend-traded symbols are allowed.
 
 **Default seeded assets (5 total):**
 - `^NSEI` Nifty 50 Index — dip 1%, ₹1L deploy, Groww broker URL
@@ -30,10 +30,11 @@ cd backend
 .venv\Scripts\python -m uvicorn app.main:app --port 8000   # run API
 .venv\Scripts\python test_logic.py                          # run core-logic tests
 .venv\Scripts\python test_security.py                       # run security regression tests
+.venv\Scripts\python test_migrations.py                     # verify legacy SQLite upgrades and idempotence
 .venv\Scripts\pip install -r requirements.txt               # (re)install deps
 ```
 
-There is no pytest — `test_logic.py` is a plain script that monkeypatches the price functions and exits non-zero on failure. It writes/deletes `test_dip_alert.db` in `backend/`. `test_security.py` spins up a `TestClient` against a temp SQLite DB to check token enforcement, input validation, and response headers.
+There is no pytest — the three backend checks are standalone scripts that exit non-zero on failure. `test_logic.py` monkeypatches price/delivery functions, `test_security.py` uses a `TestClient` with a temporary database, and `test_migrations.py` upgrades a synthetic legacy SQLite database twice to prove compatibility and idempotence.
 
 Set `DISABLE_SCHEDULER=1` to run the API without APScheduler (useful in dev/tests).
 
@@ -43,7 +44,7 @@ Set `DISABLE_SCHEDULER=1` to run the API without APScheduler (useful in dev/test
 cd frontend
 npm run dev      # dev server on :5173, proxies /api -> localhost:8000
 npm test         # tiny Node regression tests for shared frontend helpers
-npm run build    # production build (run this to typecheck/verify changes)
+npm run build    # production bundle verification
 npm run lint
 ```
 
@@ -55,7 +56,7 @@ Full-stack dev = run both servers; the Vite proxy handles API calls, no CORS con
 
 **Dip mode** (existing logic, IST-gated):
 ```
-APScheduler (every N min) → market_hours_check() [skips non-weekdays]
+APScheduler (every N min) → market_hours_check()
   → check_all_assets(market_open=True/False)
     → for each active dip-mode Watchlist row (only when market_open=True):
        check_asset(session, item)
@@ -67,11 +68,11 @@ APScheduler (every N min) → market_hours_check() [skips non-weekdays]
            advances last_alerted_level
 ```
 
-**Momentum mode** (new, weekday-only, no IST hours gate):
+**Momentum mode** (continuous, no NSE gate):
 ```
-APScheduler (every N min) → market_hours_check() [skips weekends]
+APScheduler (every N min) → market_hours_check()
   → check_all_assets(market_open=...)
-    → for each active momentum-mode Watchlist row (always runs on weekdays):
+    → for each active momentum-mode Watchlist row (runs on every tick):
        check_momentum_asset(session, item)
          - fetches current price + prev_close (price_service.py / yfinance)
          - daily_change_pct = (price - prev_close) / prev_close * 100
@@ -88,6 +89,7 @@ State rules for **dip mode** (all in `ath_logic.py`, verified by `test_logic.py`
 - **New ATH** updates the tracker and resets the level to 0
 - Levels are in units of `threshold_pct`; `level_pct = level × threshold_pct` stored on `AlertLog`
 - **Failed WhatsApp delivery does not consume the level**: no `AlertLog` row, level unchanged, next tick retries
+- **Missing WhatsApp credentials also leave the alert pending**: no delivery attempt, log row, or state advance
 - **Scheduler loops must `session.rollback()`** in per-asset exception handlers — without it one DB error poisons the shared session (`PendingRollbackError`). Regression-tested.
 
 State rules for **momentum mode**:
@@ -98,18 +100,18 @@ State rules for **momentum mode**:
 ### Backend layout (`backend/app/`)
 
 - `models.py` — SQLModel tables: `watchlist` (now has `alert_mode`), `ath_tracker`, `alert_log` (now has `alert_direction`), `settings` (single row)
-- `price_service.py` — `get_current_price`, `get_historical_max`, **`get_prev_close`** (uses `fast_info.previous_close`, fallback to 5d history[-2])
+- `price_service.py` — validated finite-positive Yahoo reads with short TTL caches and per-key single-flight; `get_current_price`, `get_historical_max`, `get_prev_close`, and chart history
 - `ath_logic.py` — `check_asset` (dip), **`check_momentum_asset`** (momentum), `check_all_assets(market_open)`, `refresh_ath`, `refresh_all_aths`
 - `whatsapp.py` — `format_alert_message` (dip), **`format_momentum_message`** (momentum: "📈 Gold UP +2.5%"), `send_whatsapp`
-- `scheduler.py` — `market_hours_check()` skips weekends; on weekdays passes `market_open=is_market_open()` to `check_all_assets()`. Dip assets skip when `market_open=False`; momentum assets always run.
+- `scheduler.py` — every tick passes `market_open=is_market_open()` to `check_all_assets()`. Dip assets skip when `market_open=False`; momentum assets always run.
 - `routes.py` — all endpoints under `/api` (status, history, watchlist CRUD, alerts, settings, test-alert)
   - `WatchlistIn` Pydantic model includes `alert_mode: Literal["dip", "momentum"] = "dip"`
   - `/api/status` returns `alert_mode` and `daily_change_pct` for each asset; momentum items have `ath_price/drop_pct/next_alert_level = None`, dip items have `daily_change_pct = None`
   - `next_alert_level` in dip status is `(max(last_alerted_level, current_crossed_level) + 1) × threshold_pct`
 - `main.py` — lifespan: create tables → migrate → seed defaults → refresh ATHs in background thread → start scheduler
-  - `seed_defaults()` now adds missing assets by ticker (safe to re-run on existing installs — won't duplicate)
+  - `seed_defaults()` seeds the starter list once per database; intentionally deleted defaults do not reappear on restart
   - Default seed: 5 assets (^NSEI dip + 4 global momentum)
-  - `migrate_db()` adds `watchlist.alert_mode` (VARCHAR DEFAULT 'dip') and `alert_log.alert_direction` (VARCHAR, nullable)
+  - `migrate_db()` includes guarded additions for alert mode/direction, alert investment snapshots, and the one-time seed marker
 - WhatsApp credentials live in the `settings` DB row (entered via the UI), **never** in env vars or code
 - **Settings API is redacted**: GET/PUT `/api/settings` return only `whatsapp_phone_masked` + `apikey_set` + `check_interval_min` + `write_protected`
 - **Optional write protection**: `APP_TOKEN` env var gates all write endpoints; frontend stores token in localStorage. If unset, `warn_if_unprotected()` (`main.py`, called from `lifespan`) logs a loud startup warning since writes are then fully open to anyone with the URL.
@@ -134,11 +136,12 @@ The frontend is a **mobile-first single-page app** on the **Liquid Glass** desig
   - `wallpaperImage.js` — `getWallpaperBitmap()`: serializes the LIVE wallpaper DOM + its CSS into an SVG foreignObject, rasterizes once per shell size into a pre-blurred half-res PNG shared by all surfaces via feImage.
   - `useLiquidGlass.jsx` — `useLiquidGlass(ref, variant)` → `{ defs, layer }`: per-surface SVG filter (3-pass RGB displacement + specular, versioned ids, ResizeObserver + debounced scroll re-align via transform-free offsetParent-chain measurement) and the `.glass-refract` layer.
   - `GlassSurface.jsx` — `<GlassSurface as variant className>` wrapper used by all swapped cards; cards owning a GSAP ref (TodaysAlerts, AlertsTab list) use the hook directly.
-- `AssetContext.jsx` — `AssetProvider`: data loading from `/api/status`, 30-day history pre-fetching, active selection memory (localStorage), `refresh()`. `useAssets` hook lives in `useAssets.js` (fast-refresh rule). 60s poll.
+- `AssetContext.jsx` — `AssetProvider`: 60-second `/api/status` polling with an in-flight guard, selected-asset-only 30-day history refreshed every five minutes, active selection memory (localStorage), and `refresh()`. `useAssets` lives in `useAssets.js`.
 - `tabs/WatchTab.jsx` — hero price card, **mode-aware display**:
   - **Dip mode**: `Tracker` (5 dip-level pills, windowed) + `NextAlert` (next trigger price + distance)
   - **Momentum mode**: `MomentumCard` (daily change % in green/rose, threshold reminder) — replaces Tracker+NextAlert
   - `Hero` shows `daily_change_pct` (signed, colored) for momentum assets; ATH drop for dip assets. Currency prefix is `$` for futures, blank for index points, `₹` for Indian.
+  - `PriceHistory` renders an accessible selected-asset 30-day closing-price SVG chart.
   - `TodaysAlerts` shows directional badge (`.badge-up` green / `.badge-dn` rose) for momentum alerts vs `.badge` gold for dip alerts
   - `WatchlistMini` shows signed daily % for momentum assets, drop % for dip assets
   - **Animations**: the four cards share a `.dash-card` class. Tab switches stay mounted and use CSS `panel-enter` / `card-enter` animations through `.panel.active.animating`; asset switches still use a scoped `useGSAP` timeline (`autoAlpha` + `y`). `Tracker` pulses the pill that just flipped to "done". `TodaysAlerts` slides a new alert in when the top alert id changes (not on initial load).
@@ -169,7 +172,7 @@ Bright sky/ribbon wallpaper behind **transparent, refractive** glass cards, all 
   - **Never use `backdrop-filter: url(#svg-chain)` for this.** It disables Chromium's compositor fast path: measured 25fps with 117–250ms hitches app-wide vs a 60fps baseline (blink dots/entrance animations/scroll all force full software re-filters). The shipped design filters a **static pre-baked wallpaper bitmap** through `filter: url()` instead (60fps steady, repeat tab-switch worst frame 33ms) — same family of trick as the nav highlight.
   - The wallpaper bitmap must be a **PNG**, not an SVG data URI — Blink re-rasterizes *vector* feImage sources on every filter application (measured 550ms on a first tab switch).
   - **No `will-change: filter`** on the refraction windows — it made early-session frames 10× worse (10fps) by promoting all 14 windows into managed layers.
-  - **The nav container deliberately has NO refraction layer** — the indicator's own `backdrop-filter` (saturate 1.85 / brightness 1.14) double-processes anything painted beneath it inside the nav and turned the pill neon while washing out the active icon. The nav keeps CSS frost + the animated indicator lens only.
+- **The nav container deliberately has NO card-style refraction layer** — the indicator's own backdrop filtering double-processes anything painted beneath it inside the nav and can turn the pill neon while washing out the active icon. The nav keeps CSS frost + the animated indicator lens only.
   - Tiered scope (Apple guidance): cards + sheet only; `.btn-*`, `.field`, chips/badges stay flat tint.
   - Text contrast is preserved by `.glass-refract::after` repainting the host's own scrim via a `background: inherit` ladder above the bent clone — the host element's scrim/background recipes remain the single source of truth.
   - Surface alignment is measured through the **offsetParent chain minus ancestor scrollTop** (transform-free) so entrance animations can't skew the clone; re-aligned on debounced panel scroll.
@@ -181,18 +184,18 @@ Implemented by `GlassNav.jsx`. The nav is **floating**: `position:absolute; bott
 
 **Single-layer glass only**: `backdrop-filter` on `.nav` itself — NOT a child. Chrome seam bug on child inside `overflow:hidden`.
 
-**Sliding indicator** (`.nav-indicator`): the equal-column lens width is measured once and movement is transform-only. One GSAP proxy owns the live X coordinate; its update paints both the rim transform and SVG filter/map X attributes. Refraction combines tween progress with measured X velocity: the filtered duplicate is hidden and displacement/specular are zero at rest, it rises toward the 36/28/20 RGB peak while the lens is physically travelling, then the duplicate is hidden again on completion. A same-position guard prevents active-tab clicks from triggering stationary refraction. That keeps the parked icon/label structurally crisp while producing the strong chromatic bend as the lens crosses options. Do not restore the old moving clip + counter-translated copy or animate width — those independent paths visibly drifted when interrupted. `prefersReducedMotion()` snaps the same position source and keeps refraction at zero.
+**Sliding indicator** (`.nav-indicator`): the equal-column lens width is measured once and movement is transform-only. One GSAP proxy owns the live X coordinate; its update paints both the rim transform and SVG filter/map X attributes. Refraction combines tween progress with measured X velocity: the filtered duplicate is hidden and displacement/specular are zero at rest, it rises toward the 32/29/26 RGB peak while the lens is physically travelling, then the duplicate is hidden again on completion. A same-position guard prevents active-tab clicks from triggering stationary refraction. That keeps the parked icon/label structurally crisp while producing the strong chromatic bend as the lens crosses options. Do not restore the old moving clip + counter-translated copy or animate width — those independent paths visibly drifted when interrupted. `prefersReducedMotion()` snaps the same position source and keeps refraction at zero.
 
 **Tab switch flash fix**: all four tab panels stay mounted in `App.jsx` (do NOT go back to conditional `{tab === ... && <Tab />}` rendering). Inactive panels use `opacity: 0; visibility: hidden; pointer-events: none` (NOT `display: none`). Active panels use `.panel.active.animating` with CSS `panel-enter`; direct child `.dash-card` cards use CSS `card-enter` with staggered delays. This preserves the original entrance feel without React remount flicker.
 
-**Liquid Glass refraction** (rebuilt 2026-07-15 from Aave's documented technique — aave.com/design/building-glass-for-the-web): the real buttons remain semantic and stationary. A pointer-inert `.nav-highlight-target` duplicates only the white icons/labels and stays fixed across the full option row. A `userSpaceOnUse` SVG filter crops that target to the current lens bounds and moves its `filter x` + `feImage x`; no source counter-translation is involved. The generated RG displacement map bends X/Y at the pill edge, B supplies the specular mask, and staggered RGB displacement passes create the chromatic fringe. The moving `.nav-indicator` independently owns the glass surface/rim beneath the filtered highlight. Hard-won details, don't regress: (1) `colorInterpolationFilters="sRGB"`; (2) filter and `feImage` use the exact measured lens width/height; (3) output is cropped to the exact lens bounds, with no neutral padded area leaking highlighted content; (4) map generation occurs only when measured geometry changes; (5) each geometry/map update gets a fresh filter ID for Safari caching; (6) `LensFilter` remains memoized so ordinary React tab rerenders cannot overwrite imperative SVG coordinates; (7) geometry comes from the real buttons so the basic moving indicator still works when URL filters are unsupported. Chromium is live-verified; Safari/Firefox remain compatibility targets requiring physical-browser spot checks when available.
+**Liquid Glass refraction** (rebuilt 2026-07-15 from Aave's documented technique — aave.com/design/building-glass-for-the-web): the real buttons remain semantic and stationary. A pointer-inert `.nav-highlight-target` duplicates only the white icons/labels and stays fixed across the full option row. A `userSpaceOnUse` SVG filter crops that target to the current lens bounds and moves its `filter x` + `feImage x`; no source counter-translation is involved. The generated RG displacement map bends X/Y at the pill edge, B supplies the specular mask, and staggered RGB displacement passes create the chromatic fringe. The moving `.nav-indicator` independently owns the glass surface/rim beneath the filtered highlight. Hard-won details, don't regress: (1) `colorInterpolationFilters="sRGB"`; (2) filter and `feImage` use the exact measured lens width/height; (3) output is cropped to the exact lens bounds, with no neutral padded area leaking highlighted content; (4) map generation occurs only when measured geometry changes; (5) each geometry/map update gets a fresh filter ID for Safari caching; (6) `SelectorFilter` remains memoized so ordinary React tab rerenders cannot overwrite imperative SVG coordinates; (7) geometry comes from the real buttons so the basic moving indicator still works when URL filters are unsupported. Chromium is live-verified; Safari/Firefox remain compatibility targets requiring physical-browser spot checks when available.
 
 **`.nav-scrim`**: a separate absolutely-positioned fade layer (`z-index: 5`, between panel content and the nav's `z-index: 10`) sitting behind the nav. Needed because the floating nav leaves a small gap between its own bottom edge and the phone's edge that isn't covered by the nav or clipped by the panel — without the scrim, scrollable content (e.g. the watchlist's first row) shows through as "ghost text" right at the bottom of the Watch tab. The scrim uses **`mask-image`** (not just a `background` gradient) so the `backdrop-filter` blur itself fades in gradually — a plain gradient background only fades the *tint*, not the blur, which left a visible hard seam where the blur snapped on. This is the standard progressive-blur trick (how iOS does it too).
 
 ## Gotchas
 
 - Market-hours check uses `Asia/Kolkata` via `zoneinfo` — never compare against UTC or server-local time
-- **Momentum assets run on weekdays, no IST hours gate** — checked every N minutes all day. This is safe because when a global market is closed, the price barely moves, so `|daily_change| < threshold` and no alert fires.
+- **Momentum assets run on every scheduler tick, no IST hours gate** — this supports global and weekend-traded symbols; UTC-day directional de-duplication bounds repeat notifications.
 - **Known limitation**: NSE holidays not modeled (dip mode). Harmless — prices don't move on holidays.
 - yfinance is unauthenticated and rate-limited; don't poll faster than every few minutes. Momentum mode adds `get_prev_close()` per asset per tick — the `fast_info` call is cached by yfinance so it's fast.
 - Backend runs on an Oracle Cloud "Always Free" VM (not a container platform), so the default `DATABASE_URL` (a local SQLite file) persists fine across restarts on the VM's own disk — no separate volume needed
@@ -210,6 +213,6 @@ Implemented by `GlassNav.jsx`. The nav is **floating**: `position:absolute; bott
 
 The friend deploys on **their own** Oracle Cloud Always Free VM (backend, SSH + systemd service, no platform auto-deploy) + Vercel (frontend, root dir `frontend`, `VITE_API_URL` env var) accounts and enters their own CallMeBot phone/key via the Manage tab. No developer credentials, phone numbers, or data anywhere in the repo — keep it that way. Full deploy steps are in README.md.
 
-**Backend auto-deploy (pull-based, in `deploy/`):** a `dip-alert-deploy.timer` on the VM polls `master` every ~5 min and runs `deploy/deploy.sh` (transactionally consistent DB backup → `git pull --ff-only` → conditional `pip install` → compile/`pip check`/`test_logic.py`/`test_security.py` gate → `systemctl restart` → health check on `GET /` at `127.0.0.1:8000` → **auto-rollback to the previous commit on any post-update failure**). Failed commits are quarantined until `master` advances, preventing an endless five-minute retry/restart loop. Chosen over GitHub-Actions-over-SSH so **no secrets ever leave the friend's VM** (fits the ownership model). Key facts: runs as unprivileged user `dipalert`; backend binds `127.0.0.1` (Caddy/nginx terminates TLS in front); DB lives at `/var/lib/dip-alert/dip_alert.db` (env `DATABASE_URL`, 4 slashes) and the env file at `/etc/dip-alert/dip-alert.env` (`APP_TOKEN`/`DATABASE_URL`/`FRONTEND_ORIGIN`), both **outside** the checkout; the only sudo grant is `systemctl restart/is-active dip-alert.service` via a `/etc/sudoers.d/` drop-in. Rollback reverts **code only** (additive migrations are backward-compatible); DB backups under `/var/lib/dip-alert/backups/` are for manual recovery. Changes to copied systemd/sudoers files require a deliberate SSH maintenance step. Full runbook: `deploy/README.md`. **Status (2026-06-21):** built, committed, and pushed to public `master` (exact revision tracked in `docs/SECURITY_AUDIT_PLAN.md` rather than hard-coded here); the full local gate is green, but it has **not** been installed on a VM yet — VM install, `visudo -c`/unit validation, a live timer-deploy, a rollback/quarantine drill, a backup restore drill, and reverse-proxy/TLS/firewall/Vercel checks are all still pending (tracked in `docs/SECURITY_AUDIT_PLAN.md`, SEC-001..004). Deployment-failure alerting **is** built and opt-in: set `DEPLOY_ALERT_PHONE`/`DEPLOY_ALERT_APIKEY` (the developer's own CallMeBot creds, distinct from the friend's app-alert creds in the DB) in `/etc/dip-alert/deploy-alert.env` — a **deploy-only** file (loaded only by `dip-alert-deploy.service`, never by the app, so the internet-facing process can't leak them) — and `deploy.sh`'s `notify_failure()` sends one best-effort WhatsApp ping per rolled-back commit; left unset it's silent (journalctl only). Pre-update refusals (dirty checkout / non-ff / failed fetch) are intentionally not alerted.
+**Backend auto-deploy (pull-based, in `deploy/`):** a `dip-alert-deploy.timer` on the VM polls `master` every ~5 min and runs `deploy/deploy.sh` (transactionally consistent DB backup → `git pull --ff-only` → conditional `pip install` → compile/`pip check`/logic/security/migration regression gate → `systemctl restart` → health check on `GET /` at `127.0.0.1:8000` → **auto-rollback to the previous commit on any post-update failure**). Failed commits are quarantined until `master` advances, preventing an endless five-minute retry/restart loop. Chosen over GitHub-Actions-over-SSH so **no secrets ever leave the friend's VM** (fits the ownership model). Key facts: runs as unprivileged user `dipalert`; backend binds `127.0.0.1` (Caddy/nginx terminates TLS in front); DB lives at `/var/lib/dip-alert/dip_alert.db` (env `DATABASE_URL`, 4 slashes) and the env file at `/etc/dip-alert/dip-alert.env` (`APP_TOKEN`/`DATABASE_URL`/`FRONTEND_ORIGIN`), both **outside** the checkout; the only sudo grant is `systemctl restart/is-active dip-alert.service` via a `/etc/sudoers.d/` drop-in. Rollback reverts **code only** (additive migrations are backward-compatible); DB backups under `/var/lib/dip-alert/backups/` are for manual recovery. Changes to copied systemd/sudoers files require a deliberate SSH maintenance step. Full runbook: `deploy/README.md`. **Status (2026-06-21):** built, committed, and pushed to public `master` (exact revision tracked in `docs/SECURITY_AUDIT_PLAN.md` rather than hard-coded here); the full local gate is green, but it has **not** been installed on a VM yet — VM install, `visudo -c`/unit validation, a live timer-deploy, a rollback/quarantine drill, a backup restore drill, and reverse-proxy/TLS/firewall/Vercel checks are all still pending (tracked in `docs/SECURITY_AUDIT_PLAN.md`, SEC-001..004). Deployment-failure alerting **is** built and opt-in: set `DEPLOY_ALERT_PHONE`/`DEPLOY_ALERT_APIKEY` (the developer's own CallMeBot creds, distinct from the friend's app-alert creds in the DB) in `/etc/dip-alert/deploy-alert.env` — a **deploy-only** file (loaded only by `dip-alert-deploy.service`, never by the app, so the internet-facing process can't leak them) — and `deploy.sh`'s `notify_failure()` sends one best-effort WhatsApp ping per rolled-back commit; left unset it's silent (journalctl only). Pre-update refusals (dirty checkout / non-ff / failed fetch) are intentionally not alerted.
 
 Switched from Railway to Oracle Cloud Always Free (2026-06-21): Railway's $5 one-time trial credit isn't a recurring free tier — past it, the only ongoing free allowance is $1/month, far short of what an always-on backend with a persistent SQLite file + in-process APScheduler needs. Render's free tier has no persistent disk and spins down after 15 min idle (kills both the DB and the scheduler); Fly.io dropped its free tier entirely (Oct 2024). Oracle's Always Free tier is the one host that's genuinely free forever **and** matches this app's existing architecture (real VM, persistent disk, always-on process) with zero code changes — the tradeoff is manual VM/systemd setup instead of a one-click GitHub deploy, plus the backend now needs its own reverse-proxy TLS (see Gotchas) since there's no platform-provided HTTPS.

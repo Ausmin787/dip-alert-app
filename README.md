@@ -40,7 +40,7 @@ daily_change% = (current - previous_close) / previous_close x 100
 Alert fires once per UTC day per direction when abs(daily_change%) >= threshold
 ```
 
-- Weekday monitoring for global assets without the NSE-hours gate.
+- Continuous scheduler evaluation for global and weekend-traded assets without the NSE-hours gate.
 - Directional up/down WhatsApp alerts are de-duplicated separately.
 - Default seeded global assets use a +/-2% threshold.
 
@@ -55,7 +55,7 @@ Alert fires once per UTC day per direction when abs(daily_change%) >= threshold
 
 ## Interface
 
-The frontend is a mobile-first, four-tab **Liquid Glass** dashboard: **Watch**, **Alerts**, **History**, and **Manage**. The floating bottom navigation uses the web-compatible refraction technique documented by Aave: a generated SVG displacement map and RGB channel offsets appear only while the selector moves. At rest, the filtered duplicate is hidden so the selected icon and label remain crisp. GSAP owns the selector position and motion envelope; reduced-motion users get an immediate, non-refracting transition.
+The frontend is a mobile-first, four-tab **Liquid Glass** dashboard: **Watch**, **Alerts**, **History**, and **Manage**. Watch includes an accessible 30-day closing-price chart for the selected asset; only that selected history is refreshed, limiting upstream Yahoo requests. The floating bottom navigation uses the web-compatible refraction technique documented by Aave: a generated SVG displacement map and RGB channel offsets appear only while the selector moves. At rest, the filtered duplicate is hidden so the selected icon and label remain crisp. GSAP owns the selector position and motion envelope; reduced-motion users get an immediate, non-refracting transition.
 
 Chromium has been visually verified. Safari and Firefox retain a readable glass-selector fallback but still need physical-browser spot checks for exact SVG-filter rendering.
 
@@ -83,6 +83,7 @@ npm run dev
 ```powershell
 backend\.venv\Scripts\python backend\test_logic.py
 backend\.venv\Scripts\python backend\test_security.py
+backend\.venv\Scripts\python backend\test_migrations.py
 backend\.venv\Scripts\python deploy\test_deploy_safety.py
 
 cd frontend

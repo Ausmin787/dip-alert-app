@@ -33,13 +33,16 @@ DEFAULT_ASSETS = [
 
 def seed_defaults() -> None:
     with Session(engine) as session:
-        if not session.exec(select(Settings)).first():
-            session.add(Settings())
-        # Add any DEFAULT_ASSETS not yet in the DB (safe to run on existing installs)
-        existing = {item.ticker for item in session.exec(select(Watchlist)).all()}
-        for asset in DEFAULT_ASSETS:
-            if asset.ticker not in existing:
-                session.add(asset)
+        settings = session.exec(select(Settings)).first()
+        if settings is None:
+            settings = Settings()
+            session.add(settings)
+        if not settings.defaults_seeded:
+            existing = {item.ticker for item in session.exec(select(Watchlist)).all()}
+            for asset in DEFAULT_ASSETS:
+                if asset.ticker not in existing:
+                    session.add(asset)
+            settings.defaults_seeded = True
         session.commit()
 
 
@@ -75,6 +78,16 @@ def migrate_db() -> None:
         al_cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(alert_log)")]
         if al_cols and "alert_direction" not in al_cols:
             conn.exec_driver_sql("ALTER TABLE alert_log ADD COLUMN alert_direction VARCHAR")
+        if al_cols and "invest_amount" not in al_cols:
+            conn.exec_driver_sql("ALTER TABLE alert_log ADD COLUMN invest_amount INTEGER")
+
+        settings_cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(settings)")]
+        if settings_cols and "defaults_seeded" not in settings_cols:
+            # Existing installations have already had defaults seeded. Marking
+            # them complete preserves any assets the owner deliberately deleted.
+            conn.exec_driver_sql(
+                "ALTER TABLE settings ADD COLUMN defaults_seeded BOOLEAN NOT NULL DEFAULT 1"
+            )
 
         conn.commit()
 

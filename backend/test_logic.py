@@ -111,16 +111,43 @@ with Session(engine) as s:
           a is not None and a.alert_level == 2 and a.whatsapp_sent)
     check("retry level_pct = 4.0", a.level_pct == 4.0)
 
-    # 12. Unconfigured credentials: alert still logged (dashboard is the record), level advances
+    # 12. Unconfigured credentials: leave the alert pending so delivery can retry
     settings_row = s.exec(select(Settings)).first()
     settings_row.whatsapp_phone = ""
     s.commit()
     PRICE["value"] = 939.0  # 6.1% below 1000 => level 3
     a = ath_logic.check_asset(s, item2)
-    check("unconfigured creds still logs alert", a is not None and a.whatsapp_sent is False)
-    check("unconfigured creds advances level", tracker2().last_alerted_level == 3)
+    check("unconfigured creds do not log alert", a is None)
+    check("unconfigured creds do not advance level", tracker2().last_alerted_level == 2)
 
-    # 13. Scheduler pass survives a DB error mid-loop (handler must rollback,
+    # 13. Momentum: threshold crossing, direction de-duplication, failed-send retry
+    settings_row.whatsapp_phone = "+910000000000"
+    s.commit()
+    momentum = Watchlist(
+        ticker="GC=F",
+        display_name="Gold",
+        threshold_pct=2.0,
+        invest_amount=0,
+        alert_mode="momentum",
+    )
+    s.add(momentum)
+    s.commit()
+    s.refresh(momentum)
+    ath_logic.get_prev_close = lambda ticker: 100.0
+    PRICE["value"] = 103.0
+    a = ath_logic.check_momentum_asset(s, momentum)
+    check("momentum up alert fires", a is not None and a.alert_direction == "up")
+    check("momentum amount snapshot is zero", a is not None and a.invest_amount == 0)
+    check("momentum same direction de-duplicates", ath_logic.check_momentum_asset(s, momentum) is None)
+
+    PRICE["value"] = 97.0
+    ath_logic.send_whatsapp = lambda phone, key, msg: False
+    check("failed momentum send remains pending", ath_logic.check_momentum_asset(s, momentum) is None)
+    ath_logic.send_whatsapp = lambda phone, key, msg: True
+    a = ath_logic.check_momentum_asset(s, momentum)
+    check("momentum retries failed down send", a is not None and a.alert_direction == "down")
+
+    # 14. Scheduler pass survives a DB error mid-loop (handler must rollback,
     # or the poisoned session raises PendingRollbackError for every later asset)
     real_check_asset = ath_logic.check_asset
     loop_log = []

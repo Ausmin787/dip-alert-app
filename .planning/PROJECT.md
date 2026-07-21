@@ -1,6 +1,6 @@
 # Dip Alert
 
-**Current-state planning reference — verified 2026-07-15.** Historical split-pane plans under `.planning/phases/` are archived and are not the current frontend specification.
+**Current-state planning reference — verified 2026-07-21.** Historical split-pane plans under `.planning/phases/` are archived and are not the current frontend specification.
 
 ## What This Is
 
@@ -21,7 +21,7 @@ Deliver dependable, de-duplicated WhatsApp alerts while giving the owner a compa
 - React/Vite frontend with a bright Liquid Glass phone-shell design.
 - Four state-driven tabs in `frontend/src/App.jsx`; there is no router.
 - `GlassNav.jsx` provides the bottom navigation selector. The parked selection remains crisp; SVG displacement/specular/chromatic refraction appears only while the selector travels.
-- Global asset state lives in `AssetContext.jsx`, polls every 60 seconds, loads 30-day histories, and persists the selected ticker in `localStorage`.
+- Global asset state lives in `AssetContext.jsx`, polls status every 60 seconds, refreshes only the selected asset's 30-day history every five minutes, and persists that selection in `localStorage`.
 - Optional `APP_TOKEN` protects writes through the `X-App-Token` header.
 - Production target: Oracle Cloud Always Free VM for the backend and Vercel for the frontend. The Oracle deployment automation exists in `deploy/`; live infrastructure still requires independent verification.
 
@@ -62,4 +62,4 @@ Deliver dependable, de-duplicated WhatsApp alerts while giving the owner a compa
 | Oracle VM + Vercel target | Supports persistent SQLite and an always-on scheduler without a container free-tier mismatch | Current target; live status unverified |
 
 ---
-*Last updated: 2026-07-15 from the live repository*
+*Last updated: 2026-07-21 from the live repository*

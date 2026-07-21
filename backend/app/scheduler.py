@@ -29,9 +29,9 @@ def is_market_open(now: datetime | None = None) -> bool:
 
 def market_hours_check() -> None:
     now = datetime.now(IST)
-    if now.weekday() >= 5:  # weekend: nothing trades
-        return
-    # Dip-mode assets only run during NSE hours; momentum assets run any weekday hour.
+    # Dip assets remain NSE-gated. Momentum instruments can trade across the
+    # IST midnight/weekend boundary (for example late US Friday and futures),
+    # so they are checked on every scheduler tick.
     check_all_assets(market_open=is_market_open(now))
 
 
@@ -63,5 +63,11 @@ def start_scheduler() -> None:
 
 def reschedule_price_check(interval_min: int) -> None:
     """Called when the user changes the check interval in Settings."""
+    if not scheduler.running or scheduler.get_job("price_check") is None:
+        logger.info(
+            "Scheduler is disabled; saved %d min interval will apply on next start",
+            interval_min,
+        )
+        return
     scheduler.reschedule_job("price_check", trigger="interval", minutes=interval_min)
     logger.info("Price check rescheduled to every %d min", interval_min)

@@ -41,6 +41,14 @@ function AssetSheet({ initial, onClose, onSave }) {
   const isEdit = Boolean(initial?.id)
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
   const submit = async (e) => {
     e.preventDefault()
     setSaving(true)
@@ -53,7 +61,7 @@ function AssetSheet({ initial, onClose, onSave }) {
         active: form.active,
         alert_mode: form.alert_mode,
         threshold_pct: parseFloat(form.threshold_pct),
-        invest_amount: parseInt(form.invest_amount, 10),
+        invest_amount: form.alert_mode === 'momentum' ? 0 : parseInt(form.invest_amount, 10),
       })
       onClose()
     } catch (err) {
@@ -63,10 +71,10 @@ function AssetSheet({ initial, onClose, onSave }) {
   }
 
   return createPortal(
-    <div className="sheet-overlay" onClick={onClose}>
-      <GlassSurface variant="sheet" className="sheet" onClick={(e) => e.stopPropagation()}>
+    <div className="sheet-overlay" onClick={onClose} role="presentation">
+      <GlassSurface variant="sheet" className="sheet" role="dialog" aria-modal="true" aria-labelledby="asset-sheet-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-grip" />
-        <div className="sheet-title">{isEdit ? 'Edit asset' : 'Track a new asset'}</div>
+        <div className="sheet-title" id="asset-sheet-title">{isEdit ? 'Edit asset' : 'Track a new asset'}</div>
         <div className="sheet-sub">
           {isEdit
             ? 'Ticker is locked — delete and re-add to change it.'
@@ -74,16 +82,16 @@ function AssetSheet({ initial, onClose, onSave }) {
         </div>
         <form onSubmit={submit}>
           <div className="field-group">
-            <div className="field-row"><span className="flabel">Ticker</span></div>
-            <input className="field" placeholder="^NSEI" value={form.ticker} onChange={set('ticker')} required disabled={isEdit} />
+            <div className="field-row"><label className="flabel" htmlFor="asset-ticker">Ticker</label></div>
+            <input id="asset-ticker" className="field" placeholder="^NSEI" value={form.ticker} onChange={set('ticker')} required disabled={isEdit} autoFocus={!isEdit} />
           </div>
           <div className="field-group">
-            <div className="field-row"><span className="flabel">Display name</span></div>
-            <input className="field" placeholder="Nifty 50" value={form.display_name} onChange={set('display_name')} required />
+            <div className="field-row"><label className="flabel" htmlFor="asset-name">Display name</label></div>
+            <input id="asset-name" className="field" placeholder="Nifty 50" value={form.display_name} onChange={set('display_name')} required />
           </div>
           <div className="field-group">
-            <div className="field-row"><span className="flabel">Alert type</span></div>
-            <select className="field" value={form.alert_mode} onChange={set('alert_mode')}>
+            <div className="field-row"><label className="flabel" htmlFor="asset-mode">Alert type</label></div>
+            <select id="asset-mode" className="field" value={form.alert_mode} onChange={set('alert_mode')}>
               <option value="dip">Dip Alert — buy on ATH dip levels</option>
               <option value="momentum">Momentum — ±% daily move notification</option>
             </select>
@@ -91,18 +99,20 @@ function AssetSheet({ initial, onClose, onSave }) {
           <div className="grid-2">
             <div className="field-group">
               <div className="field-row">
-                <span className="flabel">{form.alert_mode === 'momentum' ? 'Threshold (%)' : 'Alert every (%)'}</span>
+                <label className="flabel" htmlFor="asset-threshold">{form.alert_mode === 'momentum' ? 'Threshold (%)' : 'Alert every (%)'}</label>
               </div>
-              <input className="field" type="number" step="0.1" min="0.1" max="50" value={form.threshold_pct} onChange={set('threshold_pct')} required />
+              <input id="asset-threshold" className="field" type="number" step="0.1" min="0.1" max="50" value={form.threshold_pct} onChange={set('threshold_pct')} required />
             </div>
+            {form.alert_mode === 'dip' && (
             <div className="field-group">
-              <div className="field-row"><span className="flabel">Amount (₹)</span></div>
-              <input className="field" type="number" step="1000" min="0" value={form.invest_amount} onChange={set('invest_amount')} required />
+              <div className="field-row"><label className="flabel" htmlFor="asset-amount">Amount (₹)</label></div>
+              <input id="asset-amount" className="field" type="number" step="1000" min="0" max="1000000000" value={form.invest_amount} onChange={set('invest_amount')} required />
             </div>
+            )}
           </div>
           <div className="field-group">
-            <div className="field-row"><span className="flabel">Broker URL (buy button)</span></div>
-            <input className="field" type="url" placeholder="https://groww.in/etfs/sbietf-nifty" value={form.broker_url} onChange={set('broker_url')} />
+            <div className="field-row"><label className="flabel" htmlFor="asset-broker">Broker URL (buy button)</label></div>
+            <input id="asset-broker" className="field" type="url" placeholder="https://groww.in/etfs/sbietf-nifty" value={form.broker_url} onChange={set('broker_url')} />
           </div>
           {error && <div className="status-msg err">{error}</div>}
           <div className="btn-row">
@@ -214,6 +224,7 @@ function WhatsAppCard() {
     e.preventDefault()
     setBusy(true)
     setStatus(null)
+    const previousToken = getAppToken()
     setAppToken((form.app_token ?? '').trim())
     try {
       const s = await updateSettings({
@@ -225,7 +236,32 @@ function WhatsAppCard() {
       setForm({ ...blankSettings, check_interval_min: s.check_interval_min, app_token: getAppToken() })
       setStatus({ kind: 'ok', msg: 'Settings saved.' })
     } catch (err) {
+      setAppToken(previousToken)
+      setForm((current) => ({ ...current, app_token: previousToken }))
       setStatus({ kind: 'err', msg: err.response?.data?.detail ?? 'Failed to save settings.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const clearCredentials = async () => {
+    if (!window.confirm('Clear the saved WhatsApp phone number and API key? Alerts will remain pending until new credentials are saved.')) return
+    setBusy(true)
+    setStatus(null)
+    const previousToken = getAppToken()
+    setAppToken((form.app_token ?? '').trim())
+    try {
+      const s = await updateSettings({
+        check_interval_min: parseInt(form.check_interval_min, 10),
+        clear_credentials: true,
+      })
+      setSaved(s)
+      setForm((current) => ({ ...current, whatsapp_phone: '', callmebot_apikey: '' }))
+      setStatus({ kind: 'ok', msg: 'Saved WhatsApp credentials cleared.' })
+    } catch (err) {
+      setAppToken(previousToken)
+      setForm((current) => ({ ...current, app_token: previousToken }))
+      setStatus({ kind: 'err', msg: err.response?.data?.detail ?? 'Failed to clear credentials.' })
     } finally {
       setBusy(false)
     }
@@ -258,10 +294,11 @@ function WhatsAppCard() {
 
       <div className="field-group">
         <div className="field-row">
-          <span className="flabel">WhatsApp phone (with country code)</span>
+          <label className="flabel" htmlFor="whatsapp-phone">WhatsApp phone (with country code)</label>
           {saved?.whatsapp_phone_masked && <span className="fhint ok">✓ {saved.whatsapp_phone_masked}</span>}
         </div>
         <input
+          id="whatsapp-phone"
           className="field"
           type="tel"
           placeholder={saved?.whatsapp_phone_masked ? 'Leave blank to keep saved number' : '+919876543210'}
@@ -273,10 +310,11 @@ function WhatsAppCard() {
 
       <div className="field-group">
         <div className="field-row">
-          <span className="flabel">CallMeBot API key</span>
+          <label className="flabel" htmlFor="callmebot-key">CallMeBot API key</label>
           {saved?.apikey_set && <span className="fhint ok">✓ key saved</span>}
         </div>
         <input
+          id="callmebot-key"
           className="field"
           type="password"
           placeholder={saved?.apikey_set ? 'Leave blank to keep saved key' : '123456'}
@@ -285,23 +323,24 @@ function WhatsAppCard() {
           disabled={!ready}
           autoComplete="off"
         />
-        <div className="fhint">Secrets never leave the server — only a masked preview is shown here.</div>
+        <div className="fhint">Stored secrets are never returned to the browser — only a masked preview is shown here.</div>
       </div>
 
       <div className="field-group">
-        <div className="field-row"><span className="flabel">Check interval (minutes, market hours)</span></div>
-        <input className="field" type="number" min="1" max="60" value={form.check_interval_min} onChange={set('check_interval_min')} disabled={!ready} />
+        <div className="field-row"><label className="flabel" htmlFor="check-interval">Check interval (minutes)</label></div>
+        <input id="check-interval" className="field" type="number" min="1" max="60" value={form.check_interval_min} onChange={set('check_interval_min')} disabled={!ready} />
       </div>
 
       {saved?.write_protected && (
         <div className="field-group">
           <div className="field-row">
-            <span className="flabel">Access token (write protection)</span>
+            <label className="flabel" htmlFor="app-token">Access token (write protection)</label>
             {form.app_token
               ? <span className="fhint ok">✓ stored in this browser</span>
               : <span className="fhint" style={{ color: 'var(--rose)' }}>required</span>}
           </div>
           <input
+            id="app-token"
             className="field"
             type="password"
             placeholder="The APP_TOKEN value set on the backend server"
@@ -316,6 +355,9 @@ function WhatsAppCard() {
       {status && <div className={`status-msg ${status.kind}`}>{status.msg}</div>}
 
       <div className="btn-row">
+        {(saved?.apikey_set || saved?.whatsapp_phone_masked) && (
+          <button type="button" className="btn btn-danger" onClick={clearCredentials} disabled={busy || !ready}>Clear credentials</button>
+        )}
         <button type="button" className="btn btn-ghost" onClick={test} disabled={busy || !ready}>Send test</button>
         <button type="submit" className="btn btn-primary" disabled={busy || !ready}>{busy ? 'Working…' : 'Save'}</button>
       </div>

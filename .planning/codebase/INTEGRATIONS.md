@@ -1,6 +1,6 @@
 # External Integrations
 
-**Verified:** 2026-07-15 from live source and deployment assets.
+**Verified:** 2026-07-21 from live source and deployment assets.
 
 ## Market Data
 
