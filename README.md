@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/banner.png" alt="dip-alert-app banner" width="100%"/>
+  <img src="docs/banner-original.png" alt="dip-alert-app banner" width="100%"/>
 </p>
 
 # Dip Alert — Market Alert Dashboard
