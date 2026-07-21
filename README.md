@@ -15,7 +15,7 @@ The original dip strategy is still supported: *"Buy ₹1L of Nifty 50 ETF for ev
   <img
     src="docs/screenshots/dashboard-desktop.png"
     alt="Dip Alert Liquid Glass dashboard — Watch tab with the floating bottom navigation"
-    width="360"
+    width="720"
   />
 </p>
 
