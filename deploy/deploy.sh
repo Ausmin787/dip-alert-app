@@ -135,7 +135,8 @@ backup_db() {
     "$VENV_PY" "$REPO_DIR/deploy/backup_sqlite.py" "$DB_PATH" "$dest"
     log "DB backed up -> $dest"
     # prune to the most recent $KEEP_BACKUPS
-    ls -1t "$BACKUP_DIR"/dip_alert.*.db 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm -f
+    find "$BACKUP_DIR" -maxdepth 1 -name 'dip_alert.*.db' -printf '%T@ %p\0' 2>/dev/null \
+      | sort -znr | cut -z -d' ' -f2- | tail -z -n +$((KEEP_BACKUPS + 1)) | xargs -0 -r rm -f
   else
     log "no DB at $DB_PATH yet (first run?), skipping backup"
   fi

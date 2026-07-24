@@ -1,23 +1,6 @@
 export const fmtPrice = (n) =>
   n == null ? '—' : n.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 })
 
-export const fmtAmount = (n) => (n == null ? '—' : `₹${n.toLocaleString('en-IN')}`)
-
-export const fmtDate = (iso) =>
-  iso
-    ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-    : '—'
-
-export const fmtDateTime = (iso) =>
-  iso
-    ? new Date(iso + (iso.endsWith('Z') ? '' : 'Z')).toLocaleString('en-IN', {
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : '—'
-
 // "-2%" not "-2.0%", but "-1.5%" keeps its decimal
 export const fmtLevel = (pct) => (pct == null ? '—' : pct % 1 === 0 ? `${pct}` : pct.toFixed(1))
 
@@ -61,18 +44,6 @@ export const isMarketOpenIST = (now = new Date()) => {
   const mins = ist.getHours() * 60 + ist.getMinutes()
   return mins >= 9 * 60 + 15 && mins <= 15 * 60 + 30
 }
-
-export const istClock = (now = new Date()) =>
-  now.toLocaleTimeString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  })
-
-export const todayLine = () =>
-  new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
 
 // Backend timestamps are naive UTC (datetime.utcnow); add 'Z' so the browser
 // converts to local/IST instead of treating them as local.

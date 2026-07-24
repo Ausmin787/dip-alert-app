@@ -21,7 +21,6 @@ export const getStatus = () => client.get('/status').then((r) => r.data)
 export const getHistory = (ticker, days = 30) =>
   client.get(`/history/${encodeURIComponent(ticker)}`, { params: { days } }).then((r) => r.data)
 
-export const getWatchlist = () => client.get('/watchlist').then((r) => r.data)
 export const addAsset = (body) => client.post('/watchlist', body).then((r) => r.data)
 export const updateAsset = (id, body) => client.put(`/watchlist/${id}`, body).then((r) => r.data)
 export const deleteAsset = (id) => client.delete(`/watchlist/${id}`)

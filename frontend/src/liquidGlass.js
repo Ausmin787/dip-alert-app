@@ -12,7 +12,7 @@
  *   B — specular highlight mask (0.5 = none)
  */
 
-export const REFRACTION_ENABLED = true
+const REFRACTION_ENABLED = true
 
 /* The red displacement pass runs DISPERSION_SPREAD stronger than green, blue
    the same amount weaker — the staggered scales make the chromatic fringe. */
