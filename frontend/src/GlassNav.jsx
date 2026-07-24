@@ -1,4 +1,4 @@
-import { memo, useId, useRef, useState } from 'react'
+import { memo, useEffect, useId, useRef, useState } from 'react'
 import { glassSpringEase, gsap, prefersReducedMotion, useGSAP } from './gsap.js'
 import { supportsRefraction } from './liquidGlass.js'
 
@@ -146,10 +146,17 @@ export default function GlassNav({ tabs, activeTab, onSelect }) {
   const specularAlphaRef = useRef(null)
   const geometryRef = useRef({ lensWidth: 0, lensHeight: 0 })
   const positionRef = useRef({ x: 0 })
+  const visualRef = useRef({ scaleX: 1, scaleY: 1, strength: 0 })
+  const dragRef = useRef(null)
   const refractionRef = useRef(0)
   const motionFrameRef = useRef({ x: 0, time: 0 })
   const setIndicatorXRef = useRef(null)
   const moveToRef = useRef(null)
+  const startDragRef = useRef(null)
+  const moveDragRef = useRef(null)
+  const endDragRef = useRef(null)
+  const suppressClickUntilRef = useRef(0)
+  const onSelectRef = useRef(onSelect)
   const destinationRef = useRef(activeTab)
   const filterVersionRef = useRef(0)
   const filterSizeRef = useRef('')
@@ -162,6 +169,10 @@ export default function GlassNav({ tabs, activeTab, onSelect }) {
     lensHeight: 0,
   })
 
+  useEffect(() => {
+    onSelectRef.current = onSelect
+  }, [onSelect])
+
   const getTabX = (tabId) => {
     const button = buttonRefs.current[tabId]
     const firstButton = buttonRefs.current[tabs[0]?.id]
@@ -169,19 +180,46 @@ export default function GlassNav({ tabs, activeTab, onSelect }) {
     return button.getBoundingClientRect().left - firstButton.getBoundingClientRect().left
   }
 
-  const paintLens = (x) => {
+  const getNearestTab = (x) => {
+    const { lensWidth, tabPositions = [] } = geometryRef.current
+    const centre = x + lensWidth / 2
+    let nearest = tabPositions[0]
+    let nearestDistance = Number.POSITIVE_INFINITY
+
+    tabPositions.forEach((position) => {
+      const distance = Math.abs(centre - (position.x + lensWidth / 2))
+      if (distance < nearestDistance) {
+        nearest = position
+        nearestDistance = distance
+      }
+    })
+
+    return nearest?.id
+  }
+
+  const paintLens = (x, scaleX = 1, scaleY = 1) => {
     const { lensWidth, lensHeight } = geometryRef.current
     if (!lensWidth || !lensHeight) return
 
+    const renderedWidth = lensWidth * scaleX
+    const renderedHeight = lensHeight * scaleY
+    const filterX = x + (lensWidth - renderedWidth) / 2
+    const filterY = (lensHeight - renderedHeight) / 2
+
     positionRef.current.x = x
     setIndicatorXRef.current?.(x)
-    filterRef.current?.setAttribute('x', String(x))
-    filterRef.current?.setAttribute('width', String(lensWidth))
-    mapRef.current?.setAttribute('x', String(x))
+    filterRef.current?.setAttribute('x', String(filterX))
+    filterRef.current?.setAttribute('y', String(filterY))
+    filterRef.current?.setAttribute('width', String(renderedWidth))
+    filterRef.current?.setAttribute('height', String(renderedHeight))
+    mapRef.current?.setAttribute('x', String(filterX))
+    mapRef.current?.setAttribute('y', String(filterY))
+    mapRef.current?.setAttribute('width', String(renderedWidth))
+    mapRef.current?.setAttribute('height', String(renderedHeight))
   }
 
   const paintRefraction = (amount) => {
-    const strength = Math.max(0, Math.min(1, amount))
+    const strength = Math.max(0, Math.min(1.35, amount))
     refractionRef.current = strength
     // Strong lensing with tight channel spacing keeps the small glyphs crisp.
     redShiftRef.current?.setAttribute('scale', String(-32 * strength))
@@ -193,6 +231,8 @@ export default function GlassNav({ tabs, activeTab, onSelect }) {
   const settleIndicator = () => {
     const indicator = indicatorRef.current
     if (!indicator) return
+    visualRef.current = { scaleX: 1, scaleY: 1, strength: 0 }
+    paintLens(positionRef.current.x, 1, 1)
     paintRefraction(0)
     targetRef.current?.classList.remove('moving')
     gsap.to(indicator, {
@@ -219,9 +259,17 @@ export default function GlassNav({ tabs, activeTab, onSelect }) {
     const x = getTabX(destinationRef.current || activeTab)
     const filterSize = `${Math.round(lensWidth * 10)}x${Math.round(lensHeight * 10)}`
 
-    geometryRef.current = { lensWidth, lensHeight }
+    const tabPositions = tabs.map(({ id }) => ({ id, x: getTabX(id) }))
+    geometryRef.current = {
+      lensWidth,
+      lensHeight,
+      tabPositions,
+      minX: tabPositions[0]?.x || 0,
+      maxX: tabPositions[tabPositions.length - 1]?.x || 0,
+    }
     navSizeRef.current = `${Math.round(navRect.width * 10)}x${Math.round(navRect.height * 10)}`
     gsap.set(indicator, { width: lensWidth, height: lensHeight, scaleX: 1, scaleY: 1, rotation: 0 })
+    visualRef.current = { scaleX: 1, scaleY: 1, strength: 0 }
 
     if (filterSize !== filterSizeRef.current) {
       filterSizeRef.current = filterSize
@@ -249,6 +297,181 @@ export default function GlassNav({ tabs, activeTab, onSelect }) {
 
     setIndicatorXRef.current = gsap.quickSetter(indicatorRef.current, 'x', 'px')
     measure()
+
+    startDragRef.current = contextSafe((event, tabId) => {
+      const nav = navRef.current
+      const indicator = indicatorRef.current
+      if (
+        !nav ||
+        !indicator ||
+        prefersReducedMotion() ||
+        event.isPrimary === false ||
+        (event.pointerType === 'mouse' && event.button !== 0)
+      ) return
+
+      event.preventDefault()
+      gsap.killTweensOf(positionRef.current)
+      gsap.killTweensOf(visualRef.current)
+      gsap.killTweensOf(indicator)
+
+      const navRect = nav.getBoundingClientRect()
+      const now = performance.now()
+      dragRef.current = {
+        pointerId: event.pointerId,
+        captureElement: event.currentTarget,
+        originTab: tabId,
+        candidateTab: tabId,
+        startClientX: event.clientX,
+        startPositionX: positionRef.current.x,
+        lastClientX: event.clientX,
+        lastTime: now,
+        lastClientY: event.clientY,
+        navTop: navRect.top,
+        navBottom: navRect.bottom,
+        moved: false,
+        renderScaleX: 1,
+        renderScaleY: 1,
+      }
+
+      event.currentTarget.setPointerCapture?.(event.pointerId)
+      destinationRef.current = tabId
+      nav.classList.add('dragging')
+      nav.dataset.dragTarget = tabId
+      targetRef.current?.classList.add('moving')
+      indicator.classList.add('moving', 'dragging')
+
+      gsap.to(visualRef.current, {
+        scaleX: 1.38,
+        scaleY: 1.28,
+        strength: 1.18,
+        duration: 0.16,
+        ease: 'power2.out',
+        overwrite: true,
+        onUpdate: () => {
+          const { scaleX, scaleY, strength } = visualRef.current
+          const activeDrag = dragRef.current
+          if (activeDrag) {
+            activeDrag.renderScaleX = scaleX
+            activeDrag.renderScaleY = scaleY
+          }
+          paintLens(positionRef.current.x, scaleX, scaleY)
+          paintRefraction(strength)
+          gsap.set(indicator, { scaleX, scaleY, rotation: 0 })
+        },
+      })
+    })
+
+    moveDragRef.current = contextSafe((event) => {
+      const drag = dragRef.current
+      const indicator = indicatorRef.current
+      const nav = navRef.current
+      if (!drag || !indicator || !nav || event.pointerId !== drag.pointerId) return
+
+      event.preventDefault()
+      const { minX = 0, maxX = 0 } = geometryRef.current
+      const delta = event.clientX - drag.startClientX
+      const nextX = Math.max(minX, Math.min(maxX, drag.startPositionX + delta))
+      const now = performance.now()
+      const elapsed = Math.max(1, now - drag.lastTime)
+      const velocity = Math.abs(event.clientX - drag.lastClientX) / elapsed
+      const direction = Math.sign(event.clientX - drag.lastClientX)
+      const stretch = Math.min(0.07, velocity * 0.12)
+      const scaleX = Math.max(1.38, visualRef.current.scaleX) + stretch
+      const scaleY = Math.max(1.28, visualRef.current.scaleY) - stretch * 0.22
+      const strength = 1.14 + Math.min(0.18, velocity * 0.22)
+      const rotation = direction * Math.min(1.8, velocity * 1.4)
+      const candidateTab = getNearestTab(nextX) || drag.originTab
+
+      if (!drag.moved && Math.abs(delta) > 3) {
+        gsap.killTweensOf(visualRef.current)
+        visualRef.current.scaleX = 1.38
+        visualRef.current.scaleY = 1.28
+      }
+
+      drag.moved ||= Math.abs(delta) > 3
+      drag.candidateTab = candidateTab
+      drag.lastClientX = event.clientX
+      drag.lastClientY = event.clientY
+      drag.lastTime = now
+      drag.renderScaleX = scaleX
+      drag.renderScaleY = scaleY
+      positionRef.current.x = nextX
+      visualRef.current.strength = strength
+      nav.dataset.dragTarget = candidateTab
+
+      paintLens(nextX, scaleX, scaleY)
+      paintRefraction(strength)
+      gsap.set(indicator, { x: nextX, scaleX, scaleY, rotation })
+    })
+
+    endDragRef.current = contextSafe((event, cancelled = false) => {
+      const drag = dragRef.current
+      const indicator = indicatorRef.current
+      const nav = navRef.current
+      if (!drag || !indicator || !nav || event.pointerId !== drag.pointerId) return
+
+      event.preventDefault()
+      const capture = drag.captureElement
+      if (capture?.hasPointerCapture?.(drag.pointerId)) capture.releasePointerCapture(drag.pointerId)
+      suppressClickUntilRef.current = performance.now() + 450
+
+      const releaseY = Number.isFinite(event.clientY) ? event.clientY : drag.lastClientY
+      const insideReleaseBand = releaseY >= drag.navTop - 42 && releaseY <= drag.navBottom + 42
+      const nextTab = cancelled || !insideReleaseBand ? drag.originTab : drag.candidateTab
+      const destination = getTabX(nextTab)
+      const releaseState = {
+        x: positionRef.current.x,
+        scaleX: drag.renderScaleX || visualRef.current.scaleX,
+        scaleY: drag.renderScaleY || visualRef.current.scaleY,
+        strength: refractionRef.current,
+        rotation: Number(gsap.getProperty(indicator, 'rotation')) || 0,
+      }
+
+      dragRef.current = null
+      destinationRef.current = nextTab
+      gsap.killTweensOf(visualRef.current)
+      gsap.killTweensOf(positionRef.current)
+      gsap.killTweensOf(indicator)
+
+      gsap.to(releaseState, {
+        x: destination,
+        scaleX: 1,
+        scaleY: 1,
+        strength: 0,
+        rotation: 0,
+        duration: cancelled ? 0.24 : 0.3,
+        ease: glassSpringEase,
+        overwrite: true,
+        onUpdate: () => {
+          positionRef.current.x = releaseState.x
+          visualRef.current = {
+            scaleX: releaseState.scaleX,
+            scaleY: releaseState.scaleY,
+            strength: releaseState.strength,
+          }
+          paintLens(releaseState.x, releaseState.scaleX, releaseState.scaleY)
+          paintRefraction(releaseState.strength)
+          gsap.set(indicator, {
+            x: releaseState.x,
+            scaleX: releaseState.scaleX,
+            scaleY: releaseState.scaleY,
+            rotation: releaseState.rotation,
+          })
+        },
+        onComplete: () => {
+          positionRef.current.x = destination
+          visualRef.current = { scaleX: 1, scaleY: 1, strength: 0 }
+          paintLens(destination, 1, 1)
+          paintRefraction(0)
+          gsap.set(indicator, { x: destination, scaleX: 1, scaleY: 1, rotation: 0 })
+          targetRef.current?.classList.remove('moving')
+          indicator.classList.remove('moving', 'dragging')
+          nav.classList.remove('dragging')
+          delete nav.dataset.dragTarget
+          if (!cancelled && nextTab !== drag.originTab) onSelectRef.current(nextTab)
+        },
+      })
+    })
 
     moveToRef.current = contextSafe((tabId, animate = true) => {
       const indicator = indicatorRef.current
@@ -320,11 +543,18 @@ export default function GlassNav({ tabs, activeTab, onSelect }) {
     return () => {
       observer.disconnect()
       gsap.killTweensOf(positionRef.current)
+      gsap.killTweensOf(visualRef.current)
       if (indicatorRef.current) gsap.killTweensOf(indicatorRef.current)
       setIndicatorXRef.current = null
       moveToRef.current = null
+      startDragRef.current = null
+      moveDragRef.current = null
+      endDragRef.current = null
+      dragRef.current = null
       paintRefraction(0)
       targetRef.current?.classList.remove('moving')
+      navRef.current?.classList.remove('dragging')
+      if (navRef.current) delete navRef.current.dataset.dragTarget
     }
   }, { scope: navRef })
 
@@ -335,7 +565,14 @@ export default function GlassNav({ tabs, activeTab, onSelect }) {
   }, { dependencies: [activeTab], scope: navRef })
 
   return (
-    <nav className="nav" ref={navRef} aria-label="Primary">
+    <nav
+      className="nav"
+      ref={navRef}
+      aria-label="Primary"
+      onPointerMove={(event) => moveDragRef.current?.(event)}
+      onPointerUp={(event) => endDragRef.current?.(event, false)}
+      onPointerCancel={(event) => endDragRef.current?.(event, true)}
+    >
       <SelectorFilter
         filter={filter}
         filterRef={filterRef}
@@ -369,7 +606,11 @@ export default function GlassNav({ tabs, activeTab, onSelect }) {
           className={activeTab === id ? 'active' : ''}
           type="button"
           aria-current={activeTab === id ? 'page' : undefined}
+          onPointerDown={(event) => {
+            if (activeTab === id) startDragRef.current?.(event, id)
+          }}
           onClick={() => {
+            if (performance.now() < suppressClickUntilRef.current) return
             moveToRef.current?.(id, true)
             onSelect(id)
           }}
