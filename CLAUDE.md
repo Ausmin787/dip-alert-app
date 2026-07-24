@@ -216,3 +216,34 @@ The friend deploys on **their own** Oracle Cloud Always Free VM (backend, SSH + 
 **Backend auto-deploy (pull-based, in `deploy/`):** a `dip-alert-deploy.timer` on the VM polls `master` every ~5 min and runs `deploy/deploy.sh` (transactionally consistent DB backup → `git pull --ff-only` → conditional `pip install` → compile/`pip check`/logic/security/migration regression gate → `systemctl restart` → health check on `GET /` at `127.0.0.1:8000` → **auto-rollback to the previous commit on any post-update failure**). Failed commits are quarantined until `master` advances, preventing an endless five-minute retry/restart loop. Chosen over GitHub-Actions-over-SSH so **no secrets ever leave the friend's VM** (fits the ownership model). Key facts: runs as unprivileged user `dipalert`; backend binds `127.0.0.1` (Caddy/nginx terminates TLS in front); DB lives at `/var/lib/dip-alert/dip_alert.db` (env `DATABASE_URL`, 4 slashes) and the env file at `/etc/dip-alert/dip-alert.env` (`APP_TOKEN`/`DATABASE_URL`/`FRONTEND_ORIGIN`), both **outside** the checkout; the only sudo grant is `systemctl restart/is-active dip-alert.service` via a `/etc/sudoers.d/` drop-in. Rollback reverts **code only** (additive migrations are backward-compatible); DB backups under `/var/lib/dip-alert/backups/` are for manual recovery. Changes to copied systemd/sudoers files require a deliberate SSH maintenance step. Full runbook: `deploy/README.md`. **Status (2026-06-21):** built, committed, and pushed to public `master` (exact revision tracked in `docs/SECURITY_AUDIT_PLAN.md` rather than hard-coded here); the full local gate is green, but it has **not** been installed on a VM yet — VM install, `visudo -c`/unit validation, a live timer-deploy, a rollback/quarantine drill, a backup restore drill, and reverse-proxy/TLS/firewall/Vercel checks are all still pending (tracked in `docs/SECURITY_AUDIT_PLAN.md`, SEC-001..004). Deployment-failure alerting **is** built and opt-in: set `DEPLOY_ALERT_PHONE`/`DEPLOY_ALERT_APIKEY` (the developer's own CallMeBot creds, distinct from the friend's app-alert creds in the DB) in `/etc/dip-alert/deploy-alert.env` — a **deploy-only** file (loaded only by `dip-alert-deploy.service`, never by the app, so the internet-facing process can't leak them) — and `deploy.sh`'s `notify_failure()` sends one best-effort WhatsApp ping per rolled-back commit; left unset it's silent (journalctl only). Pre-update refusals (dirty checkout / non-ff / failed fetch) are intentionally not alerted.
 
 Switched from Railway to Oracle Cloud Always Free (2026-06-21): Railway's $5 one-time trial credit isn't a recurring free tier — past it, the only ongoing free allowance is $1/month, far short of what an always-on backend with a persistent SQLite file + in-process APScheduler needs. Render's free tier has no persistent disk and spins down after 15 min idle (kills both the DB and the scheduler); Fly.io dropped its free tier entirely (Oct 2024). Oracle's Always Free tier is the one host that's genuinely free forever **and** matches this app's existing architecture (real VM, persistent disk, always-on process) with zero code changes — the tradeoff is manual VM/systemd setup instead of a one-click GitHub deploy, plus the backend now needs its own reverse-proxy TLS (see Gotchas) since there's no platform-provided HTTPS.
+
+## Health Stack
+
+- typecheck: `npx tsc --noEmit` (frontend) — `tsconfig.json` added with `allowJs`/`checkJs` against plain JS/JSX; this surfaces "untyped JS" findings (missing prop shapes, implicit any), not necessarily real bugs. `src/lib.test.js` is excluded (Node test script, not part of the app bundle).
+- lint: `npm run lint` (frontend, `eslint .`)
+- test: `.venv\Scripts\python.exe test_logic.py && .venv\Scripts\python.exe test_security.py && .venv\Scripts\python.exe test_migrations.py` (backend, run from `backend/`) + `node src/lib.test.js` (frontend, run from `frontend/`)
+- deadcode: `npx knip` (frontend)
+- shell: `./.tools/shellcheck.exe deploy/deploy.sh` (project-local Windows binary, gitignored — no system package manager available; downloaded from the official koalaman/shellcheck GitHub releases)
+- build (bonus, not scored): `npm run build` (frontend)
+
+## GBrain Configuration (configured by /setup-gbrain)
+- Mode: local-stdio
+- Engine: pglite
+- Config file: ~/.gbrain/config.json (mode 0600)
+- Setup date: 2026-07-24
+- MCP registered: yes (user scope)
+- Embeddings: deferred (no API key) — keyword/FTS search only, doctor reports `warnings` by design
+- Repo policy: read-write (this repo's markdown files are imported)
+- Artifacts sync: off (kept local-only, no cross-machine/cloud sync)
+
+## GBrain Search Guidance (configured by /sync-gbrain)
+<!-- gstack-gbrain-search-guidance:start -->
+
+GBrain is set up locally (PGLite, no embeddings) for this repo. Since there's
+no embedding provider configured, search is keyword/FTS only — treat `gbrain
+search`/`gbrain query` as a secondary option to Grep, not a semantic-first
+replacement, until an embedding provider is added. Grep remains the primary
+tool for known exact strings, regex, multiline patterns, and file globs in
+this codebase.
+
+<!-- gstack-gbrain-search-guidance:end -->
