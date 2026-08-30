@@ -12,3 +12,9 @@ dist/
 .claude/
 .tools/
 .gbrain-source
+
+# Design reference captures are third-party product screenshots (Mobbin exports
+# of other companies' apps). Kept locally for reference; docs/design-refs/README.md
+# records what each one is and the exact filter that finds it again.
+docs/design-refs/*.png
+docs/design-refs/*.jpg

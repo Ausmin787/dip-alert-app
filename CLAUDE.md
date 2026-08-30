@@ -136,7 +136,10 @@ The frontend is a **mobile-first single-page app** on the **Liquid Glass** desig
   - `wallpaperImage.js` — `getWallpaperBitmap()`: serializes the LIVE wallpaper DOM + its CSS into an SVG foreignObject, rasterizes once per shell size into a pre-blurred half-res PNG shared by all surfaces via feImage.
   - `useLiquidGlass.jsx` — `useLiquidGlass(ref, variant)` → `{ defs, layer }`: per-surface SVG filter (3-pass RGB displacement + specular, versioned ids, ResizeObserver + debounced scroll re-align via transform-free offsetParent-chain measurement) and the `.glass-refract` layer.
   - `GlassSurface.jsx` — `<GlassSurface as variant className>` wrapper used by all swapped cards; cards owning a GSAP ref (TodaysAlerts, AlertsTab list) use the hook directly.
-- `AssetContext.jsx` — `AssetProvider`: 60-second `/api/status` polling with an in-flight guard, selected-asset-only 30-day history refreshed every five minutes, active selection memory (localStorage), and `refresh()`. `useAssets` lives in `useAssets.js`.
+- `AssetContext.jsx` — `AssetProvider`: 60-second `/api/status` polling with an in-flight guard, selected-asset-only 30-day history refreshed every five minutes, active selection memory (localStorage), `lastUpdated` (client epoch of the last successful poll — `/api/status` carries **no** server timestamp, prices are fetched live per request), and `refresh()`. `useAssets` lives in `useAssets.js`.
+- `Toast.jsx` — `ToastProvider` + `useToast()` + `ToastViewport`. App-wide action feedback using the same `{kind: 'ok'|'err', msg}` shape as the inline `.status-msg` state in `WhatsAppCard`. Portaled to `#phone-shell` at **z-index 40** (above the nav's 10, below an open sheet's 50); auto-dismisses after 3.2s. **`ToastViewport` is rendered inside `AppShell`, not beside the provider** — `#phone-shell` does not exist on the provider's first render, so a portal mounted there would find `null`. Success is **gold**, not green: green already means "price up" (`.chg-up`) and reusing it for "saved" collides with the financial colours.
+- `Skeleton.jsx` — `WatchSkeleton` / `ListSkeleton` cold-start placeholders shaped like the real cards, replacing the old bare "Loading market…" / "Loading…" strings. The `skel-sweep` shimmer is pure CSS, so the global `prefers-reduced-motion` block freezes it and the skeleton correctly degrades to static blocks.
+- `ErrorCard.jsx` — shared error surface with a Retry button, used by Watch/Alerts/History. Carries its own `busy` flag because `AssetContext.refresh()`'s in-flight guard makes a concurrent call resolve immediately as a no-op — without a visible busy state the button looks broken when a poll happens to be running.
 - `tabs/WatchTab.jsx` — hero price card, **mode-aware display**:
   - **Dip mode**: `Tracker` (5 dip-level pills, windowed) + `NextAlert` (next trigger price + distance)
   - **Momentum mode**: `MomentumCard` (daily change % in green/rose, threshold reminder) — replaces Tracker+NextAlert
@@ -144,7 +147,10 @@ The frontend is a **mobile-first single-page app** on the **Liquid Glass** desig
   - `PriceHistory` renders an accessible selected-asset 30-day closing-price SVG chart.
   - `TodaysAlerts` shows directional badge (`.badge-up` green / `.badge-dn` rose) for momentum alerts vs `.badge` gold for dip alerts
   - `WatchlistMini` shows signed daily % for momentum assets, drop % for dip assets
+  - `SetupBanner` appears above the hero when WhatsApp credentials aren't saved (`getSettings()` on tab activation), because the app otherwise looks fully operational while no alert can fire. Dismissible per session; "Set up" routes to Manage via the `onManage` prop threaded from `App.jsx`.
+  - `Hero`'s `.upd-time` slot shows `timeAgo(lastUpdated)` — freshness, not status. Live/paused is already carried by `.open-lbl` and the dot. A local `useTick(30s)` re-renders it between the 60s polls, following the hand-rolled interval pattern in `StatusBar`/`AppHeader`.
   - **Animations**: the four cards share a `.dash-card` class. Tab switches stay mounted and use CSS `panel-enter` / `card-enter` animations through `.panel.active.animating`; asset switches still use a scoped `useGSAP` timeline (`autoAlpha` + `y`). `Tracker` pulses the pill that just flipped to "done". `TodaysAlerts` slides a new alert in when the top alert id changes (not on initial load).
+  - **`.dash-card` stagger trap**: `.panel.active.animating > .dash-card:nth-child(N)` counts **all** panel children, not just `.dash-card`s — inserting anything above the hero (the setup banner, and the planned chip strip) shifts every delay below it. The `nth-child` rules therefore run to 7 with an `:nth-child(n + 8)` catch-all. `lib.test.js` regex-asserts the base `.dash-card` rule and `@keyframes card-enter`; the delay lines beside them are free to edit, those two are not.
 - `tabs/AlertsTab.jsx` — read-only config summary rows → jump to Manage; recent alerts (same new-alert slide-in as Watch); market-hours card.
 - `tabs/HistoryTab.jsx` — deployment history by IST month (primarily useful for dip-mode assets that have invest_amount).
 - `tabs/ManageTab.jsx` — `WatchlistManager` (CRUD); `AssetSheet` now has **Alert type selector** (Dip Alert / Momentum), threshold label adapts to mode, hint text shows global ticker examples; `WhatsAppCard`; `SetupCard`.
@@ -154,6 +160,7 @@ The frontend is a **mobile-first single-page app** on the **Liquid Glass** desig
   - `^NDX` → `{ exchange: 'NASDAQ', type: 'Index', currency: 'pts' }`
   - Default Indian → `{ ..., currency: '₹' }`
   - `severity()` kept — `lib.test.js` depends on it. **Do not use severity colors in the UI.**
+  - `timeAgo(ms, now)` — freshness label for `lastUpdated`. Takes a **client epoch** (`Date.now()`), not a backend ISO string, so `asUTC` is deliberately not involved. Guards against negative durations from clock skew. Covered by `lib.test.js`.
   - **Backend timestamps are naive UTC** (`datetime.utcnow`) — `asUTC` helper appends `Z`, don't strip it.
 
 ### Design system: Liquid Glass phone shell (don't regress these)
