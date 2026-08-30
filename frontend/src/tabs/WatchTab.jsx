@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { getAlerts } from '../api.js'
+import { getAlerts, getSettings } from '../api.js'
 import { useAssets } from '../useAssets.js'
 import { gsap, useGSAP, prefersReducedMotion } from '../gsap.js'
 import GlassSurface from '../GlassSurface.jsx'
 import { useLiquidGlass } from '../useLiquidGlass.jsx'
+import { WatchSkeleton } from '../Skeleton.jsx'
+import ErrorCard from '../ErrorCard.jsx'
 import {
   fmtLakh,
   fmtLevel,
@@ -13,7 +15,18 @@ import {
   isTodayIST,
   splitPrice,
   tickerMeta,
+  timeAgo,
 } from '../lib.js'
+
+// Re-render on an interval so relative timestamps stay honest between the 60s
+// status polls. Mirrors the hand-rolled interval pattern in StatusBar/AppHeader.
+function useTick(ms) {
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), ms)
+    return () => clearInterval(id)
+  }, [ms])
+}
 
 // Five dip-level pills, windowed so the next level to fire is always visible.
 function dipLevels(item) {
@@ -29,7 +42,8 @@ function dipLevels(item) {
   })
 }
 
-function Hero({ item }) {
+function Hero({ item, lastUpdated }) {
+  useTick(30_000)
   const { whole, frac } = splitPrice(item.current_price)
   const { exchange, currency } = tickerMeta(item.ticker)
   const isMomentum = item.alert_mode === 'momentum'
@@ -76,7 +90,11 @@ function Hero({ item }) {
         <span className="open-lbl">
           {isMomentum ? (open ? 'Momentum monitoring' : 'Monitoring paused') : (open ? 'Market open' : 'Market closed')}
         </span>
-        <span className="upd-time">{item.active ? 'Live' : 'Paused'}</span>
+        {/* Freshness, not status — a price-watching app has to say how old the
+            number is. Live/paused is already carried by open-lbl and the dot. */}
+        <span className="upd-time" title="Time since the last successful price update">
+          {item.active ? timeAgo(lastUpdated) : 'Paused'}
+        </span>
       </div>
     </GlassSurface>
   )
@@ -310,9 +328,69 @@ function WatchlistMini({ items, selectedAsset, setSelectedAsset }) {
   )
 }
 
-export default function WatchTab({ active, activeKey }) {
-  const { items, selectedItem, selectedAsset, setSelectedAsset, history, loading, error } = useAssets()
+/* Fast asset switching without scrolling to the bottom of the tab. Modelled on
+   docs/design-refs/asset-switcher-okx.png — the scrolling text-tab pattern, not
+   the equal-width filled pill, because our labels are very uneven ("Nifty 50"
+   vs "Gold (COMEX)"). Selection is marked by weight AND colour: gold is already
+   the accent everywhere else, so colour alone would be ambiguous. */
+function AssetChips({ items, selectedAsset, setSelectedAsset }) {
+  const stripRef = useRef(null)
+
+  // A selection restored from localStorage can sit off-screen on mount.
+  useEffect(() => {
+    const el = stripRef.current?.querySelector('.chip-a.sel')
+    if (!el) return
+    el.scrollIntoView({
+      inline: 'center',
+      block: 'nearest',
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+    })
+  }, [selectedAsset])
+
+  if (items.length < 2) return null
+
+  return (
+    <div className="chips dash-card" ref={stripRef} role="tablist" aria-label="Select asset">
+      {items.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          role="tab"
+          aria-selected={selectedAsset === item.ticker}
+          className={`chip-a ${selectedAsset === item.ticker ? 'sel' : ''}`}
+          onClick={() => setSelectedAsset(item.ticker)}
+        >
+          {!item.active && <span className="chip-dot off" aria-hidden="true" />}
+          {item.display_name}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/* Until CallMeBot credentials are saved the app looks fully operational — live
+   prices, populated watchlist — but no alert can ever fire. The Alerts tab was
+   the only place that said so, and only if you went looking. */
+function SetupBanner({ onManage, onDismiss }) {
+  return (
+    <div className="setup-banner dash-card" role="status">
+      <div className="setup-banner-body">
+        <div className="setup-banner-title">Alerts aren't switched on yet</div>
+        <div className="setup-banner-sub">Prices are live, but WhatsApp delivery needs a one-time setup.</div>
+      </div>
+      <div className="setup-banner-actions">
+        <button type="button" className="btn btn-primary btn-xs" onClick={onManage}>Set up</button>
+        <button type="button" className="setup-banner-x" onClick={onDismiss} aria-label="Dismiss">×</button>
+      </div>
+    </div>
+  )
+}
+
+export default function WatchTab({ active, activeKey, onManage }) {
+  const { items, selectedItem, selectedAsset, setSelectedAsset, history, loading, error, lastUpdated, refresh } = useAssets()
   const [alerts, setAlerts] = useState([])
+  const [needsSetup, setNeedsSetup] = useState(false)
+  const [setupDismissed, setSetupDismissed] = useState(false)
   const panelRef = useRef(null)
   const panelClass = `panel ${active ? 'active animating' : ''}`
   const selectedItemId = selectedItem?.id
@@ -327,6 +405,13 @@ export default function WatchTab({ active, activeKey }) {
     return () => clearInterval(interval)
   }, [active])
 
+  useEffect(() => {
+    if (!active) return
+    getSettings()
+      .then((s) => setNeedsSetup(!(s?.apikey_set && s?.whatsapp_phone_masked)))
+      .catch(() => setNeedsSetup(false)) // Never nag on a failed settings read.
+  }, [active])
+
   // Stagger the dashboard cards in whenever the selected asset changes (incl.
   // first mount) — not on every 60s poll, since selectedAsset is a stable string.
   useGSAP(() => {
@@ -335,8 +420,13 @@ export default function WatchTab({ active, activeKey }) {
       .fromTo('.dash-card', { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, stagger: 0.08 })
   }, { scope: panelRef, dependencies: [selectedAsset, loading, error, selectedItemId] })
 
-  if (loading) return <div className={panelClass} data-active-key={activeKey}><div className="empty">Loading market…</div></div>
-  if (error) return <div className={panelClass} data-active-key={activeKey}><div className="empty">{error}</div></div>
+  if (loading) return <div className={panelClass} data-active-key={activeKey}><WatchSkeleton /></div>
+  if (error)
+    return (
+      <div className={panelClass} data-active-key={activeKey}>
+        <ErrorCard message={error} onRetry={refresh} />
+      </div>
+    )
   if (!selectedItem)
     return (
       <div className={panelClass} data-active-key={activeKey}>
@@ -345,9 +435,12 @@ export default function WatchTab({ active, activeKey }) {
     )
 
   const isMomentum = selectedItem.alert_mode === 'momentum'
+  const showSetup = needsSetup && !setupDismissed
   return (
     <div className={panelClass} ref={panelRef} data-active-key={activeKey}>
-      <Hero item={selectedItem} />
+      {showSetup && <SetupBanner onManage={onManage} onDismiss={() => setSetupDismissed(true)} />}
+      <Hero item={selectedItem} lastUpdated={lastUpdated} />
+      <AssetChips items={items} selectedAsset={selectedAsset} setSelectedAsset={setSelectedAsset} />
       <PriceHistory history={history} item={selectedItem} />
       {isMomentum ? (
         <MomentumCard item={selectedItem} />

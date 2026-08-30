@@ -1,29 +1,49 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getAlerts } from '../api.js'
 import { useAssets } from '../useAssets.js'
 import { fmtDayIST, fmtLakh, fmtLevel, fmtPrice, fmtTimeIST, isTodayIST, monthLabelIST, tickerMeta } from '../lib.js'
 import GlassSurface from '../GlassSurface.jsx'
+import { ListSkeleton } from '../Skeleton.jsx'
+import ErrorCard from '../ErrorCard.jsx'
 
 export default function HistoryTab({ active }) {
   const { selectedItem } = useAssets()
   const [alerts, setAlerts] = useState(null)
+  const [error, setError] = useState(null)
   const panelClass = `panel ${active ? 'active animating' : ''}`
+
+  // A failed fetch used to be swallowed into an empty list, which rendered as
+  // "No deployment history yet" — indistinguishable from a genuinely empty log.
+  const load = useCallback(
+    () => getAlerts(1, 100)
+      .then((d) => {
+        setAlerts(d.alerts)
+        setError(null)
+      })
+      .catch((err) => {
+        console.error('Failed to load deployment history', err)
+        setError('Deployment history is unavailable — the API server may be down.')
+      }),
+    [],
+  )
 
   useEffect(() => {
     if (!active) return undefined
-    const load = () => getAlerts(1, 100)
-      .then((d) => setAlerts(d.alerts))
-      .catch((err) => {
-        console.error('Failed to load deployment history', err)
-        setAlerts([])
-      })
     load()
     const interval = setInterval(load, 60_000)
     return () => clearInterval(interval)
-  }, [active])
+  }, [active, load])
+
+  if (error && alerts === null)
+    return (
+      <div className={panelClass}>
+        <div className="tab-title">History</div>
+        <ErrorCard message={error} onRetry={load} />
+      </div>
+    )
 
   if (alerts === null)
-    return <div className={panelClass}><div className="tab-title">History</div><div className="empty">Loading…</div></div>
+    return <div className={panelClass}><div className="tab-title">History</div><ListSkeleton rows={3} label="Loading deployment history…" /></div>
 
   const dipAlerts = alerts.filter((alert) => alert.alert_direction == null)
   const investFor = (alert) => alert.invest_amount ?? 0

@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getAlerts, getSettings } from '../api.js'
 import { useAssets } from '../useAssets.js'
 import { gsap, useGSAP, prefersReducedMotion } from '../gsap.js'
 import { fmtLakh, fmtLevel, fmtPrice, fmtTimeIST, isMarketOpenIST, tickerMeta } from '../lib.js'
 import GlassSurface from '../GlassSurface.jsx'
 import { useLiquidGlass } from '../useLiquidGlass.jsx'
+import ErrorCard from '../ErrorCard.jsx'
 
 function ConfigRow({ label, sub, value, toggle, onManage }) {
   return (
@@ -26,18 +27,28 @@ export default function AlertsTab({ active, onManage }) {
   const { selectedItem } = useAssets()
   const [settings, setSettings] = useState(null)
   const [alerts, setAlerts] = useState([])
+  const [error, setError] = useState(null)
   const open = isMarketOpenIST()
+
+  // Both fetches used to fail silently into console.error, leaving the tab
+  // showing stale config and "No alerts logged yet" with no hint of a problem.
+  const load = useCallback(() => {
+    const settingsReq = getSettings().then(setSettings)
+    const alertsReq = getAlerts(1, 100).then((d) => setAlerts(d.alerts))
+    return Promise.all([settingsReq, alertsReq])
+      .then(() => setError(null))
+      .catch((err) => {
+        console.error('Failed to load alerts tab', err)
+        setError('Alert settings and history are unavailable — the API server may be down.')
+      })
+  }, [])
 
   useEffect(() => {
     if (!active) return undefined
-    const load = () => {
-      getSettings().then(setSettings).catch((err) => console.error('Failed to load settings', err))
-      getAlerts(1, 100).then((d) => setAlerts(d.alerts)).catch((err) => console.error('Failed to load alerts', err))
-    }
     load()
     const interval = setInterval(load, 60_000)
     return () => clearInterval(interval)
-  }, [active])
+  }, [active, load])
 
   const configured = Boolean(settings?.apikey_set && settings?.whatsapp_phone_masked)
   const isMomentum = selectedItem?.alert_mode === 'momentum'
@@ -57,6 +68,8 @@ export default function AlertsTab({ active, onManage }) {
   return (
     <div className={`panel ${active ? 'active animating' : ''}`}>
       <div className="tab-title">Alerts</div>
+
+      {error && <ErrorCard message={error} onRetry={load} />}
 
       <GlassSurface className="g">
         <ConfigRow

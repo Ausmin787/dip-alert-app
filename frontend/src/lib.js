@@ -103,6 +103,21 @@ export const fmtDayIST = (iso) =>
       })
     : '—'
 
+// Freshness label for the last successful /api/status poll. Takes a client-side
+// epoch (Date.now()), not a backend timestamp, so asUTC is deliberately not
+// involved here. Prices poll every 60s, so minute resolution is enough.
+export const timeAgo = (ms, now = Date.now()) => {
+  if (ms == null) return '—'
+  const secs = Math.floor((now - ms) / 1000)
+  if (secs < 0) return 'just now'
+  if (secs < 45) return 'just now'
+  const mins = Math.round(secs / 60)
+  if (mins < 60) return `${mins} min ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs} hr ago`
+  return `${Math.floor(hrs / 24)}d ago`
+}
+
 // "June 2025" month bucket key/label in IST
 export const monthLabelIST = (iso) =>
   asUTC(iso).toLocaleDateString('en-IN', {

@@ -11,8 +11,13 @@ import {
   updateSettings,
 } from '../api.js'
 import { useAssets } from '../useAssets.js'
+import { useToast } from '../Toast.jsx'
+import { useConfirm } from '../ConfirmDialog.jsx'
 import { fmtLakh, fmtLevel, tickerMeta } from '../lib.js'
 import GlassSurface from '../GlassSurface.jsx'
+
+// Every call site already used this shape; keep it in one place.
+const apiError = (err, fallback) => err.response?.data?.detail ?? fallback
 
 const Icon = ({ d, ...p }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
@@ -130,28 +135,42 @@ function AssetSheet({ initial, onClose, onSave }) {
 
 function WatchlistManager() {
   const { items, refresh } = useAssets()
+  const toast = useToast()
+  const { confirm } = useConfirm()
   const [sheet, setSheet] = useState(null) // null | 'new' | item
 
   const save = async (form) => {
-    if (sheet === 'new') await addAsset(form)
+    const isNew = sheet === 'new'
+    if (isNew) await addAsset(form)
     else await updateAsset(sheet.id, form)
     refresh()
+    // Thrown errors are caught by AssetSheet and shown inline in the form, so
+    // only the success path reaches here.
+    toast.ok(isNew ? `Now tracking ${form.display_name}` : `${form.display_name} updated`)
   }
   const togglePause = async (item) => {
     try {
       await updateAsset(item.id, { ...item, active: !item.active })
       refresh()
+      toast.ok(item.active ? `${item.display_name} paused` : `${item.display_name} resumed`)
     } catch (err) {
-      window.alert(err.response?.data?.detail ?? 'Update failed')
+      toast.err(apiError(err, 'Update failed'))
     }
   }
   const remove = async (item) => {
-    if (!window.confirm(`Stop tracking ${item.display_name}? Alert history is kept.`)) return
+    const ok = await confirm({
+      title: `Stop tracking ${item.display_name}?`,
+      body: 'Alert history is kept, and you can add it back any time.',
+      confirmLabel: 'Stop tracking',
+      cancelLabel: 'Go back',
+    })
+    if (!ok) return
     try {
       await deleteAsset(item.id)
       refresh()
+      toast.ok(`Stopped tracking ${item.display_name}`)
     } catch (err) {
-      window.alert(err.response?.data?.detail ?? 'Delete failed')
+      toast.err(apiError(err, 'Delete failed'))
     }
   }
 
@@ -199,6 +218,7 @@ function WatchlistManager() {
 const blankSettings = { whatsapp_phone: '', callmebot_apikey: '', check_interval_min: 5 }
 
 function WhatsAppCard() {
+  const { confirm } = useConfirm()
   const [loadState, setLoadState] = useState('loading')
   const [saved, setSaved] = useState(null)
   const [form, setForm] = useState(() => ({ ...blankSettings, app_token: getAppToken() }))
@@ -245,7 +265,13 @@ function WhatsAppCard() {
   }
 
   const clearCredentials = async () => {
-    if (!window.confirm('Clear the saved WhatsApp phone number and API key? Alerts will remain pending until new credentials are saved.')) return
+    const ok = await confirm({
+      title: 'Clear WhatsApp credentials?',
+      body: 'Alerts stay pending until you save a new number and key. Nothing else changes.',
+      confirmLabel: 'Clear credentials',
+      cancelLabel: 'Go back',
+    })
+    if (!ok) return
     setBusy(true)
     setStatus(null)
     const previousToken = getAppToken()

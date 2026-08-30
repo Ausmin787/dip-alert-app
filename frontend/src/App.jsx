@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AssetProvider } from './AssetContext.jsx'
+import { ToastProvider, ToastViewport } from './Toast.jsx'
+import { ConfirmProvider, ConfirmViewport } from './ConfirmDialog.jsx'
 import { isMarketOpenIST } from './lib.js'
 import GlassNav from './GlassNav.jsx'
 import Wallpaper from './Wallpaper.jsx'
@@ -117,13 +119,17 @@ function AppShell() {
         <StatusBar />
         <AppHeader />
         <div className="panels">
-          <WatchTab active={tab === 'watch'} activeKey={tabMotionKey} />
+          <WatchTab active={tab === 'watch'} activeKey={tabMotionKey} onManage={() => switchTab('manage')} />
           <AlertsTab active={tab === 'alerts'} onManage={() => switchTab('manage')} />
           <HistoryTab active={tab === 'history'} />
           <ManageTab active={tab === 'manage'} />
         </div>
         <div className="nav-scrim" aria-hidden="true" />
         <GlassNav tabs={TABS} activeTab={tab} onSelect={switchTab} />
+        {/* Mounted here, not beside the providers: the portal target
+            #phone-shell does not exist until this tree has rendered. */}
+        <ToastViewport />
+        <ConfirmViewport />
       </div>
     </div>
   )
@@ -132,7 +138,11 @@ function AppShell() {
 export default function App() {
   return (
     <AssetProvider>
-      <AppShell />
+      <ToastProvider>
+        <ConfirmProvider>
+          <AppShell />
+        </ConfirmProvider>
+      </ToastProvider>
     </AssetProvider>
   )
 }
