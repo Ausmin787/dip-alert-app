@@ -242,9 +242,17 @@ body {
 .panel.active.animating > .dash-card {
   animation: card-enter 0.45s 0.02s ease-out both;
 }
+/* nth-child counts ALL panel children, not just .dash-cards — inserting
+   anything above the hero (e.g. the setup banner) shifts every delay below it.
+   Extended past 4 so the lower cards stagger instead of sharing the base
+   delay, and so a conditional banner can't leave a card un-delayed. */
 .panel.active.animating > .dash-card:nth-child(2) { animation-delay: 0.10s; }
 .panel.active.animating > .dash-card:nth-child(3) { animation-delay: 0.18s; }
 .panel.active.animating > .dash-card:nth-child(4) { animation-delay: 0.26s; }
+.panel.active.animating > .dash-card:nth-child(5) { animation-delay: 0.32s; }
+.panel.active.animating > .dash-card:nth-child(6) { animation-delay: 0.37s; }
+.panel.active.animating > .dash-card:nth-child(7) { animation-delay: 0.41s; }
+.panel.active.animating > .dash-card:nth-child(n + 8) { animation-delay: 0.44s; }
 @keyframes panel-enter {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1129,6 +1137,281 @@ button.g {
 }
 
 .nav button.active svg { filter: drop-shadow(0 1px 5px rgba(255, 255, 255, 0.26)); }
+
+/* ---------------------------------------------------------------------------
+   Feedback, loading and error surfaces.
+   All flat tint, no refraction: the tiering rule keeps refraction on cards and
+   the sheet only. Nothing here uses backdrop-filter: url().
+   --------------------------------------------------------------------------- */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- Toast -------------------------------------------------------------- */
+/* z-index 40: above the nav (10), below an open sheet (50). Absolute, not
+   fixed — .wrap is a clipped 375px shell, not the viewport. */
+.toast-layer {
+  position: absolute;
+  right: 15px;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  left: 15px;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 11px 16px;
+  border-radius: 100px;
+  border: 1px solid var(--gb);
+  background: rgba(3, 10, 34, 0.86);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34), 0 14px 34px rgba(0, 4, 24, 0.5);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  pointer-events: auto;
+  animation: toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.toast-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+}
+/* Success is gold, not green: green already means "price up" here. */
+.toast-ok .toast-icon {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-glow);
+  color: var(--accent);
+}
+.toast-err .toast-icon {
+  background: rgba(255, 94, 108, 0.14);
+  border: 1px solid rgba(255, 94, 108, 0.34);
+  color: var(--rose);
+}
+.toast-err { border-color: rgba(255, 94, 108, 0.34); }
+.toast-msg { min-width: 0; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* --- Skeletons ---------------------------------------------------------- */
+/* The sweep is pure CSS, so the reduced-motion block below freezes it and the
+   skeleton correctly degrades to static blocks. */
+.skel-line {
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.07) 100%
+  );
+  background-size: 220% 100%;
+  animation: skel-sweep 1.5s ease-in-out infinite;
+}
+.skel { padding: 22px 22px 20px; }
+.skel-row { display: flex; gap: 6px; }
+.skel-ai {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--faint);
+}
+.skel-ai:last-of-type { border-bottom: none; }
+@keyframes skel-sweep {
+  from { background-position: 120% 0; }
+  to { background-position: -120% 0; }
+}
+
+/* --- Error card --------------------------------------------------------- */
+.err-card { padding: 20px 20px 18px; }
+.err-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--fg);
+  letter-spacing: -0.02em;
+}
+.err-msg {
+  font-size: 12px;
+  color: var(--dim);
+  line-height: 1.6;
+  margin-top: 6px;
+}
+.err-card .btn-row { margin-top: 14px; }
+.err-card .btn { flex: none; padding: 9px 18px; font-size: 13px; }
+
+/* --- Confirm dialog ------------------------------------------------------ */
+/* Bottom sheet, per docs/design-refs/confirm-destructive-sheet-wise.png:
+   question, one-line consequence, filled destructive, outlined escape below.
+   z-index 60 clears an open AssetSheet (50) and the toast layer (40). */
+.sheet-overlay-confirm { z-index: 60; }
+.sheet-confirm {
+  padding: 24px 20px calc(22px + env(safe-area-inset-bottom));
+  border-radius: var(--r) var(--r) 0 0;
+}
+.sheet-confirm .sheet-title { font-size: 19px; }
+.confirm-body {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+  margin-top: 8px;
+}
+.confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 22px;
+}
+.confirm-actions .btn { flex: none; width: 100%; }
+
+/* .btn-danger is text-colour only and is used on icon buttons; the confirm
+   sheet needs a filled destructive, so it gets its own recipe. */
+.btn-danger-solid {
+  background: #a32218;
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 8px 20px -8px rgba(163, 34, 24, 0.7);
+}
+.btn-danger-solid:hover { filter: brightness(1.1); }
+.btn-outline {
+  background: transparent;
+  border-color: var(--gb);
+  color: var(--fg);
+}
+.btn-outline:hover { background: rgba(255, 255, 255, 0.07); }
+
+/* --- Asset chip strip ---------------------------------------------------- */
+/* Scrolling text tabs, per docs/design-refs/asset-switcher-okx.png. Flat tint,
+   no refraction — the tiering rule keeps that on cards and the sheet. */
+.chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  padding: 2px 2px 4px;
+  flex-shrink: 0;
+}
+.chips::-webkit-scrollbar { display: none; }
+.chip-a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  scroll-snap-align: center;
+  padding: 7px 13px;
+  border: 1px solid transparent;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--dim);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+.chip-a:hover { color: var(--muted); }
+/* Weight AND colour, never colour alone. */
+.chip-a.sel {
+  color: var(--accent);
+  font-weight: 800;
+  background: var(--accent-dim);
+  border-color: var(--accent-glow);
+}
+.chip-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--dim);
+}
+.chip-dot.off { background: var(--rose); }
+
+/* --- First-run setup banner --------------------------------------------- */
+.setup-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--rs);
+  border: 1px solid var(--accent-glow);
+  border-left: 3px solid var(--accent);
+  /* Needs a real dark base under the gold tint, not just the tint: over the
+     bright sky wallpaper a translucent fill leaves the gold title unreadable.
+     Same contrast rule the .g scrim opacity exists for. */
+  background:
+    linear-gradient(150deg, rgba(255, 207, 115, 0.13), rgba(255, 207, 115, 0.07)),
+    rgba(2, 10, 44, 0.82);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 8px 24px rgba(0, 4, 40, 0.3);
+}
+.setup-banner-body { flex: 1; min-width: 0; }
+.setup-banner-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+.setup-banner-sub {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+.setup-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.btn-xs {
+  flex: none;
+  padding: 7px 13px;
+  font-size: 12px;
+}
+.setup-banner-x {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--dim);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+.setup-banner-x:hover { color: var(--fg); background: rgba(255, 255, 255, 0.08); }
 
 @media (prefers-reduced-motion: reduce) {
   *,
