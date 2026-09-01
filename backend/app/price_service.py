@@ -96,6 +96,18 @@ def get_prev_close(ticker: str) -> Optional[float]:
     return _cached(("previous", ticker), 5 * 60, load)
 
 
+def get_usd_inr() -> Optional[float]:
+    """USD->INR spot, for showing dollar-quoted assets in rupees.
+
+    Display-only: it never feeds alert thresholds, which stay in the asset's own
+    quote currency. A 15-minute TTL is plenty — FX moves far slower than the
+    metals we convert, and this is read once per /api/status rather than per
+    asset. Returns None on failure so the UI can simply omit the rupee line
+    rather than render a stale or invented rate.
+    """
+    return _cached(("fx", "USDINR=X"), 15 * 60, lambda: get_current_price("USDINR=X"))
+
+
 def get_recent_history(ticker: str, days: int = 30) -> list[dict]:
     """Daily closes for the last `days` days, for the dashboard chart."""
     def load():

@@ -17,7 +17,7 @@ from sqlmodel import Session, desc, select
 from .ath_logic import refresh_ath
 from .db import get_session
 from .models import AlertLog, AthTracker, Settings, Watchlist
-from .price_service import get_current_price, get_prev_close, get_recent_history
+from .price_service import get_current_price, get_prev_close, get_recent_history, get_usd_inr
 from .scheduler import is_market_open, reschedule_price_check
 from .whatsapp import format_alert_message, send_whatsapp
 
@@ -98,7 +98,23 @@ def get_status(session: Session = Depends(get_session)):
                 "invest_amount": item.invest_amount,
                 "broker_url": item.broker_url,
             })
-    return {"market_open": is_market_open(), "items": result}
+    # Display-only USD->INR spot, always supplied. Deliberately unconditional:
+    # *which* assets get shown in rupees is a presentation decision owned solely
+    # by `isMetal()` in frontend/src/lib.js. An earlier version guarded this with
+    # a `needs_fx` ticker check that duplicated that rule in a second language,
+    # so adding a US stock later would have needed both edited in step. The
+    # backend now just states a fact and lets the UI decide what to do with it.
+    #
+    # The cost of dropping the guard is one Yahoo read per 15 minutes (the TTL in
+    # get_usd_inr) even for an all-Indian watchlist — negligible beside the
+    # per-asset price reads this same handler already performs on every request.
+    # Null when unavailable, in which case the UI falls back to each asset's own
+    # quote currency rather than guessing a rate.
+    return {
+        "market_open": is_market_open(),
+        "usd_inr": get_usd_inr(),
+        "items": result,
+    }
 
 
 TICKER_RE = re.compile(r"^[A-Z0-9.^=-]{1,24}$")
