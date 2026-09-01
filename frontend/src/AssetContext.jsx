@@ -17,6 +17,9 @@ export function AssetProvider({ children }) {
   // Client-side: /api/status carries no server timestamp (prices are fetched
   // live per request), so freshness is measured from the successful response.
   const [lastUpdated, setLastUpdated] = useState(null)
+  // Display-only USD->INR spot from /api/status; null when Yahoo didn't return
+  // one, in which case the rupee lines are omitted rather than guessed.
+  const [usdInr, setUsdInr] = useState(null)
 
   const selectedRef = useRef(selectedAsset)
   const statusInFlight = useRef(false)
@@ -34,6 +37,7 @@ export function AssetProvider({ children }) {
       const data = await getStatus()
       const fetched = data?.items || []
       setItems(fetched)
+      setUsdInr(data?.usd_inr ?? null)
       setError(null)
       setLastUpdated(Date.now())
 
@@ -110,6 +114,7 @@ export function AssetProvider({ children }) {
         loading,
         error,
         lastUpdated,
+        usdInr,
         refresh,
       }}
     >

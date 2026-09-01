@@ -10,7 +10,7 @@
     html, body {
       width: 1280px; height: 380px;
       overflow: hidden;
-      background: #0d0905;
+      background: #020a26;
       font-family: 'Inter', system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
@@ -22,14 +22,19 @@
       align-items: center;
       padding: 0 80px;
       /* Painterly layered background */
+      /* Mirrors the app wallpaper's own gradient family (index.css .wallpaper):
+         cool sky at top-left, a pale sage bloom, the deep #03176f base — with a
+         warm --accent glow where the hero sits. Navy + gold, not brown. */
       background:
-        radial-gradient(ellipse 55% 80% at 28% 58%, rgba(155, 88, 18, 0.92) 0%, transparent 58%),
-        radial-gradient(ellipse 36% 85% at 0%  50%, rgba(12, 52, 22, 0.95) 0%, transparent 54%),
-        radial-gradient(ellipse 40% 80% at 100% 50%, rgba(10, 48, 38, 0.90) 0%, transparent 54%),
-        radial-gradient(ellipse 65% 44% at 50% 0%,  rgba(52, 12, 68, 0.88) 0%, transparent 60%),
-        radial-gradient(ellipse 28% 36% at 46% 44%, rgba(210, 138, 28, 0.60) 0%, transparent 50%),
-        radial-gradient(ellipse 42% 55% at 92% 90%, rgba(10, 32, 75, 0.80) 0%, transparent 55%),
-        #0d0905;
+        /* warm --accent bloom behind the wordmark, the app's hero moment */
+        radial-gradient(ellipse 30% 46% at 40% 46%, rgba(255, 207, 115, 0.30) 0%, transparent 55%),
+        /* cool sky wash top-left, as in index.css .wallpaper */
+        radial-gradient(ellipse 46% 78% at 14% 22%, rgba(94, 177, 232, 0.42) 0%, transparent 60%),
+        radial-gradient(ellipse 34% 62% at 68% 6%,  rgba(59, 152, 214, 0.22) 0%, transparent 58%),
+        /* deep corners so the centre reads lit rather than flat */
+        radial-gradient(ellipse 50% 74% at 100% 62%, rgba(1, 6, 34, 0.94) 0%, transparent 58%),
+        radial-gradient(ellipse 44% 62% at 0% 96%,  rgba(1, 6, 34, 0.90) 0%, transparent 58%),
+        linear-gradient(160deg, #06246f 0%, #03176f 46%, #020c38 100%);
     }
     .bg-grid {
       position: absolute; inset: 0;
@@ -44,7 +49,7 @@
       position: absolute;
       top: 0; left: 0; right: 0;
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(210,138,28,0.65) 30%, rgba(34,197,94,0.45) 65%, transparent);
+      background: linear-gradient(90deg, transparent, rgba(255,207,115,0.70) 30%, rgba(94,177,232,0.45) 65%, transparent);
     }
 
     /* Light frosted glass icon mark */
@@ -82,7 +87,7 @@
       justify-content: center;
       z-index: 3;
       pointer-events: none;
-      background: rgba(18, 11, 4, 0.88);
+      background: rgba(2, 10, 40, 0.90);
       border-radius: 50%;
       border: 1px solid rgba(255, 255, 255, 0.14);
       box-shadow: 0 2px 8px rgba(0,0,0,0.40);
@@ -106,7 +111,7 @@
       margin-bottom: 14px;
       text-shadow: 0 2px 30px rgba(0,0,0,0.55);
     }
-    h1 em { font-style: normal; color: #fbbf24; }
+    h1 em { font-style: normal; color: #ffcf73; }
     .sub {
       font-size: 16px; font-weight: 400;
       color: rgba(255,255,255,0.50);
@@ -153,26 +158,26 @@
   <div class="icon-mark">
     <svg class="icon-chart" viewBox="0 0 84 84" fill="none" aria-hidden="true">
       <g transform="translate(1, 7)">
-        <line x1="31" y1="23" x2="31" y2="30" stroke="#4ade80" stroke-width="1.35" stroke-linecap="round" opacity="0.88"/>
-        <rect x="27.5" y="30" width="7" height="17" rx="1.2" fill="#4ade80" opacity="0.90"/>
-        <line x1="31" y1="47" x2="31" y2="50" stroke="#4ade80" stroke-width="1.35" stroke-linecap="round" opacity="0.88"/>
+        <line x1="31" y1="23" x2="31" y2="30" stroke="#22c55e" stroke-width="1.35" stroke-linecap="round" opacity="0.88"/>
+        <rect x="27.5" y="30" width="7" height="17" rx="1.2" fill="#22c55e" opacity="0.90"/>
+        <line x1="31" y1="47" x2="31" y2="50" stroke="#22c55e" stroke-width="1.35" stroke-linecap="round" opacity="0.88"/>
 
-        <line x1="42" y1="16" x2="42" y2="23" stroke="#4ade80" stroke-width="1.35" stroke-linecap="round"/>
-        <rect x="38.5" y="23" width="7" height="22" rx="1.2" fill="#4ade80"/>
-        <line x1="42" y1="45" x2="42" y2="48" stroke="#4ade80" stroke-width="1.35" stroke-linecap="round"/>
+        <line x1="42" y1="16" x2="42" y2="23" stroke="#22c55e" stroke-width="1.35" stroke-linecap="round"/>
+        <rect x="38.5" y="23" width="7" height="22" rx="1.2" fill="#22c55e"/>
+        <line x1="42" y1="45" x2="42" y2="48" stroke="#22c55e" stroke-width="1.35" stroke-linecap="round"/>
 
-        <line x1="53" y1="26" x2="53" y2="30" stroke="#f87171" stroke-width="1.35" stroke-linecap="round"/>
-        <rect x="49.5" y="30" width="7" height="20" rx="1.2" fill="#f87171"/>
-        <line x1="53" y1="50" x2="53" y2="53" stroke="#f87171" stroke-width="1.35" stroke-linecap="round"/>
+        <line x1="53" y1="26" x2="53" y2="30" stroke="#ff5e6c" stroke-width="1.35" stroke-linecap="round"/>
+        <rect x="49.5" y="30" width="7" height="20" rx="1.2" fill="#ff5e6c"/>
+        <line x1="53" y1="50" x2="53" y2="53" stroke="#ff5e6c" stroke-width="1.35" stroke-linecap="round"/>
 
-        <polyline points="25,47 33,39 41,41 49,30 57,37" fill="none" stroke="#fbbf24" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" opacity="0.72"/>
+        <polyline points="25,47 33,39 41,41 49,30 57,37" fill="none" stroke="#ffcf73" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" opacity="0.72"/>
       </g>
     </svg>
     <div class="icon-bell" aria-hidden="true">
       <svg width="22" height="22" viewBox="25 5 14 16" fill="none">
         <path d="M35 13.5A4 4 0 0 0 27 13.5C27 17.5 25.5 18.5 25.5 18.5h11S35 17.5 35 13.5z" stroke="rgba(255,255,255,0.85)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
         <path d="M29 18.5a1.5 1.5 0 0 0 2.9.2" stroke="rgba(255,255,255,0.85)" stroke-width="1.3" stroke-linecap="round"/>
-        <circle cx="35.5" cy="9.5" r="2.5" fill="#f87171"/>
+        <circle cx="35.5" cy="9.5" r="2.5" fill="#ff5e6c"/>
       </svg>
     </div>
   </div>
@@ -188,13 +193,13 @@
   <div class="pill-grid">
     <div class="pill">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-        <path d="M6.5 2v9M3 7.5l3.5 4L10 7.5" stroke="#f87171" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M6.5 2v9M3 7.5l3.5 4L10 7.5" stroke="#ff5e6c" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <span>Dip Alerts</span>
     </div>
     <div class="pill">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-        <polyline points="1,10 4,6.5 7,8.5 10,4.5 12,6.5" stroke="#4ade80" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <polyline points="1,10 4,6.5 7,8.5 10,4.5 12,6.5" stroke="#22c55e" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
       </svg>
       <span>Global Momentum</span>
     </div>

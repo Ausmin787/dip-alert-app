@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getAlerts } from '../api.js'
 import { useAssets } from '../useAssets.js'
-import { fmtDayIST, fmtLakh, fmtLevel, fmtPrice, fmtTimeIST, isTodayIST, monthLabelIST, tickerMeta } from '../lib.js'
-import GlassSurface from '../GlassSurface.jsx'
+import { fmtDayIST, fmtLakh, fmtLevel, fmtPrice, fmtTimeIST, isTodayIST, monthLabelIST, priceParts } from '../lib.js'
 import { ListSkeleton } from '../Skeleton.jsx'
 import ErrorCard from '../ErrorCard.jsx'
 
@@ -79,7 +78,7 @@ export default function HistoryTab({ active }) {
     <div className={panelClass}>
       <div className="tab-title">History</div>
 
-      <GlassSurface className="g" style={{ padding: 0 }}>
+      <div className="g" style={{ padding: 0 }}>
         <div className="summ-top">
           <div className="summ-val"><span>₹</span>{whole}</div>
           <div className="summ-sub">Deployed this month · {thisMonth}</div>
@@ -90,28 +89,35 @@ export default function HistoryTab({ active }) {
           <div className="stat-cell"><div className="stat-v">{maxDipToday > 0 ? `−${maxDipToday.toFixed(0)}%` : '—'}</div><div className="stat-l">Max dip today</div></div>
           <div className="stat-cell"><div className="stat-v">{nextTarget != null ? `−${fmtLevel(nextTarget)}%` : '—'}</div><div className="stat-l">Next target</div></div>
         </div>
-      </GlassSurface>
+      </div>
 
       {groups.length === 0 ? (
-        <GlassSurface className="g"><div className="empty">No deployment history yet.<br />Alerts land here as dip levels are crossed.</div></GlassSurface>
+        <div className="g"><div className="empty">No deployment history yet.<br />Alerts land here as dip levels are crossed.</div></div>
       ) : (
         groups.map((g) => (
-          <GlassSurface className="g alist" key={g.key}>
-            <div className="alist-hd">
+          <div className="sec alist" key={g.key}>
+            <div className="sec-hd">
               <span className="sec-lbl">{g.key}</span>
               <span style={{ fontSize: 11, color: 'var(--dim)' }}>{fmtLakh(g.total)} deployed</span>
             </div>
-            {g.rows.map((a) => (
+            {g.rows.map((a) => {
+              // Historical price — no FX conversion, see TodaysAlerts.
+              const p = priceParts(a.ticker, a.current_price, null)
+              return (
               <div className="ai" key={a.id}>
                 <div className="badge old">−{fmtLevel(a.level_pct ?? a.alert_level)}%</div>
                 <div className="ai-body">
-                  <div className="ai-price">{tickerMeta(a.ticker).currency === 'pts' ? '' : tickerMeta(a.ticker).currency}{fmtPrice(a.current_price)}</div>
+                  <div className="ai-price">
+                    {p.prefix}{fmtPrice(p.value)}
+                    {p.unit && <span className="wp-unit">{p.unit}</span>}
+                  </div>
                   <div className="ai-sub">{fmtDayIST(a.alerted_at)} · {fmtTimeIST(a.alerted_at)}</div>
                 </div>
                 <div className="ai-time">{a.invest_amount == null ? 'legacy amount unknown' : `+${fmtLakh(investFor(a))}`}</div>
               </div>
-            ))}
-          </GlassSurface>
+              )
+            })}
+          </div>
         ))
       )}
     </div>

@@ -24,7 +24,13 @@ export const DISPERSION_SPREAD = 0.22
    half-extent (kept low so card interiors stay essentially undistorted). */
 export const PRESETS = {
   card: { blur: 28, saturate: 1.8, contrast: 1.05, brightness: 1, scale: 16, edgeDepth: 22, domeStrength: 0.35 },
-  sheet: { blur: 28, saturate: 1.8, contrast: 1, brightness: 1, scale: 18, edgeDepth: 26, domeStrength: 0.3 },
+  /* The sheet runs a deliberately stronger lens than the hero: it is modal, it
+     appears one at a time over dimmed content, so a heavier displacement costs
+     nothing at 60fps and is the one place Apple explicitly sanctions the
+     material ("Modal views like sheets and action sheets adopt Liquid Glass").
+     Stepped up from scale 18 / edgeDepth 26 / dome 0.3, following the much
+     harder displacement in the reference lens study. */
+  sheet: { blur: 28, saturate: 1.8, contrast: 1, brightness: 1, scale: 34, edgeDepth: 36, domeStrength: 0.42 },
 }
 
 const MAP_LONG_SIDE = 320

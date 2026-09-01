@@ -11,7 +11,7 @@ const Line = ({ w = '100%', h = 12 }) => (
 export function WatchSkeleton() {
   return (
     <>
-      <div className="g hero skel" aria-hidden="true">
+      <div className="g glass hero skel" aria-hidden="true">
         <Line w="52%" h={11} />
         <div style={{ height: 14 }} />
         <Line w="68%" h={34} />

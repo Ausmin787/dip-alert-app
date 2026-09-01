@@ -15,11 +15,20 @@ rather than scroll. Filters that produced these:
 | `confirm-destructive-sheet-wise.png` | iOS → Screens → **Delete** |
 | `confirm-patterns-comparison.jpg` | same as above, the unblurred result row |
 | `asset-switcher-okx.png` | iOS → UI Elements → **Segmented Control** |
+| `gold-local-currency-treasury.png` | free-text search: **`gold price`** |
+| `content-cards-dark-moonpay.png` | free-text search: **`investment portfolio dashboard`** |
+| `watchlist-borderless-tokenized.png` | free-text search: **`stock watchlist alerts dark`** |
 
 URL shortcut (verified): `https://mobbin.com/search/apps/ios?content_type=ui-elements&sort=popularity&filter=screenElements.<Name>`.
 Swap `content_type` to `screens` with `filter=screenPatterns.<Name>`, or `flows` with
 `filter=flowActions.<Name>`. Use `/ios`, never `/web` — the web section is desktop SaaS dashboards
 and the wrong form factor for this app.
+
+**Free-text search works too, and the parameter is `q=`, not `query=`** —
+`https://mobbin.com/search/apps/ios?content_type=screens&q=gold+price`. A wrong or invented
+`filter=` value renders Mobbin's "Page not found", so if a filtered URL 404s, fall back to `q=`
+rather than assuming the pattern doesn't exist. Free text is the better tool when you're after a
+*domain* (gold, currency) rather than a *component*.
 
 **Sorting trap worth remembering:** sorting Dialog by "Most popular" returns permission and promo
 prompts (Venmo, Airbnb, Swiggy), not destructive confirms. The pattern-level filters above are what
@@ -86,3 +95,70 @@ change values (`.chg-up` / `.chg-dn`) and should stay consistent with the rest o
 
 **Also note:** OKX puts the change on the right edge of each row, same as our `WatchlistMini`
 already does. Confirms that layout rather than changing it.
+
+**Second take, added later — the currency lesson.** OKX prices BTC as **`Rp983,265,397`**. A
+globally-quoted asset shown in the *reader's* currency, not the asset's. That is the seed of the
+`priceParts` work below.
+
+## `gold-local-currency-treasury.png` — Indian-context metal pricing
+
+Treasury, an Indonesian gold-savings app. Prices gold as **`Rp2.301.436 / gram`**.
+
+**Take:** the whole idea. Gold is quoted globally in USD per *troy ounce*, and Treasury shows it in
+the local currency **and the local unit** — rupiah per gram, because that is how Indonesians buy
+gold. Our equivalent is ₹ per **10 g** for gold and ₹ per **kg** for silver, which is how Indian
+jewellers and MCX quote them. Converting to ₹/oz would have been a rupee number in a unit no Indian
+uses; converting the unit as well is what makes it read as a domestic price. Note also that the
+unit rides as a **muted suffix** after the bold value (`Rp2.301.436` + ` / gram`) — that is exactly
+`.hunit` / `.wp-unit`.
+
+**Leave:** Treasury's buy/sell spread and the "your gold in grams" holdings model. We are a price
+watcher, not a broker — we have no position to value.
+
+**The honesty constraint this reference does NOT solve.** Treasury is a dealer quoting its own real
+transactable price. Ours is a *derived* number: COMEX USD/oz × a Yahoo spot rate. Indian physical
+gold additionally carries ~6% import duty and 3% GST, so our figure sits roughly 10% below the
+actual counter price. Two rules follow, both implemented and both worth keeping:
+
+1. The exact rate used is printed next to the value (`@ ₹94.93/$`) — borrowed from Wise's
+   "Using this exchange rate ×1.1723" row in the `currency conversion rate` search.
+2. The caveat is stated in the card, not buried: *"International equivalent · excludes duty & GST."*
+   Never relabel these as MCX or jeweller rates.
+
+**Deliberately not converted:** `^GSPC` / `^NDX` are index *levels*, not prices. There is no
+meaningful rupee value for "29,448 points", so they show `pts` as a unit instead. Historical alert
+rows are also left in their native currency — converting a past price at today's rate would invent
+a number that was never true.
+
+## `content-cards-dark-moonpay.png` + `watchlist-borderless-tokenized.png` — the de-glassing references
+
+Five dark finance apps (MoonPay, an account dashboard, Tokenized Stocks, Alert Preferences, a
+search/watchlist screen). These are the evidence behind the 2026-09-01 material-tier rework, which
+cut the app from 14 glass cards to 4 glass surfaces.
+
+**The observation that drove it: not one of these uses glass for content.** Every one is
+(a) a calm flat background, (b) section headers as **plain text on that background**, not inside a
+card, (c) solid content cards for composed objects, (d) borderless rows for lists. Their "rich,
+modern" quality comes from typography, spacing and colour-coded icons — from *removing* material,
+not adding it.
+
+**Take, specifically:**
+- The hero figure sitting **directly on the background** with no card (MoonPay's "Total value /
+  $0.00"). We keep our hero card because the user asked for it, but this is why nothing *else*
+  gets a card by default.
+- Plain-text section headers → our `.sec-hd`.
+- The borderless watchlist row — icon, name, muted sub-line, right-aligned price with the change
+  beneath it — → our `.sec.wlist` / `.wr`. Tokenized Stocks is almost exactly our data shape.
+- The grouped-settings pattern (Alert Preferences: "Subscribed / Organizations" as a bare header
+  over solid rows with chevrons) → our AlertsTab `ConfigRow` card.
+
+**Leave:** their flat near-black backgrounds. We keep the wallpaper — it is the app's identity —
+and calm it with `.content-scrim` instead, so the hero still has something to refract.
+
+**The rule we derived (now in CLAUDE.md as the material tiers):** a group earns a *card* only when
+it is a single composed object you read as one unit; a homogeneous scannable list gets a bare
+section; glass is reserved for the functional/floating layer. This matches Apple's *Adopting Liquid
+Glass*: "This material forms a distinct functional layer for controls and navigation elements",
+"Avoid overusing Liquid Glass effects… Limit these effects to the most important functional
+elements in your app", and "avoid overcrowding or layering Liquid Glass elements on top of each
+other."

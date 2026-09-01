@@ -69,6 +69,55 @@ export const tickerMeta = (ticker = '') => {
   return { exchange, type: isIndex ? 'Index' : 'ETF', currency: '₹' }
 }
 
+/* ── Indian-context pricing for dollar-quoted metals ───────────────────────
+   COMEX quotes gold and silver in USD per *troy ounce*, which is not a unit
+   anyone in India prices metal in — jewellers and MCX quote gold per 10 grams
+   and silver per kilogram. Converting to plain ₹/oz would be a rupee number in
+   a foreign unit, so we convert the unit as well as the currency. Pattern taken
+   from docs/design-refs/gold-local-currency-treasury.png (Mobbin), which prices
+   the same global metal as "Rp2.301.436 /gram" for an Indonesian audience.
+
+   IMPORTANT — this is an *international-equivalent* price, not the Indian
+   retail or MCX rate. Indian physical gold additionally carries ~6% import duty
+   and 3% GST, so the real counter price runs roughly 10% above this. The UI must
+   keep saying so; do not quietly relabel these as "MCX" or "jeweller" rates. */
+const TROY_OUNCE_G = 31.1034768
+
+/* The USD-quoted family we convert. US indices are points, not prices, and are
+   deliberately excluded. This is the *only* place that decision lives — the
+   backend supplies `usd_inr` unconditionally rather than second-guessing which
+   tickers need it, so widening the rule (a US stock, say) is a one-line change
+   here with no backend edit to keep in step. */
+export const isMetal = (ticker = '') => ticker.endsWith('=F')
+
+// Indian quoting convention per metal: gold in 10g lots, silver by the kilo.
+export const metalUnit = (ticker = '') => {
+  if (ticker.startsWith('SI')) return { label: '/kg', grams: 1000 }
+  return { label: '/10g', grams: 10 }
+}
+
+/* USD per troy ounce -> INR per Indian unit. Returns null (not 0, not NaN) when
+   either input is missing so callers can drop the rupee line entirely rather
+   than render an invented number. */
+export const toIndianMetalPrice = (usdPerOz, ticker, usdInr) => {
+  if (usdPerOz == null || usdInr == null || !(usdPerOz > 0) || !(usdInr > 0)) return null
+  return (usdPerOz * usdInr * metalUnit(ticker).grams) / TROY_OUNCE_G
+}
+
+/* Single source of truth for "how is this asset's price written", used by the
+   hero, the watchlist rows and both alert lists so they can never disagree.
+   `unit` is a suffix the caller renders muted after the number; null when the
+   currency prefix already says everything (₹24,042 needs no trailing unit). */
+export const priceParts = (ticker, price, usdInr) => {
+  const inr = isMetal(ticker) ? toIndianMetalPrice(price, ticker, usdInr) : null
+  if (inr != null) return { prefix: '₹', value: inr, unit: metalUnit(ticker).label }
+  const { currency } = tickerMeta(ticker)
+  // An index level is not a price — show the unit so a bare number can't be
+  // mistaken for one, and never put a currency symbol in front of it.
+  if (currency === 'pts') return { prefix: '', value: price, unit: 'pts' }
+  return { prefix: currency, value: price, unit: null }
+}
+
 // Compact rupee deployment: ₹1L, ₹1.5L, ₹2L (≥1 lakh), else full ₹ amount
 export const fmtLakh = (n) => {
   if (n == null) return '—'

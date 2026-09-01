@@ -2,9 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { getAlerts, getSettings } from '../api.js'
 import { useAssets } from '../useAssets.js'
 import { gsap, useGSAP, prefersReducedMotion } from '../gsap.js'
-import { fmtLakh, fmtLevel, fmtPrice, fmtTimeIST, isMarketOpenIST, tickerMeta } from '../lib.js'
-import GlassSurface from '../GlassSurface.jsx'
-import { useLiquidGlass } from '../useLiquidGlass.jsx'
+import { fmtLakh, fmtLevel, fmtPrice, fmtTimeIST, isMarketOpenIST, priceParts } from '../lib.js'
 import ErrorCard from '../ErrorCard.jsx'
 
 function ConfigRow({ label, sub, value, toggle, onManage }) {
@@ -52,8 +50,8 @@ export default function AlertsTab({ active, onManage }) {
 
   const configured = Boolean(settings?.apikey_set && settings?.whatsapp_phone_masked)
   const isMomentum = selectedItem?.alert_mode === 'momentum'
+  // Plain div on purpose: GlassSurface can't forward the ref the slide-in needs.
   const listRef = useRef(null)
-  const { defs: listGlassDefs, layer: listGlassLayer } = useLiquidGlass(listRef, 'card')
   const topId = alerts[0]?.id
   const prevTopId = useRef(topId)
 
@@ -71,7 +69,7 @@ export default function AlertsTab({ active, onManage }) {
 
       {error && <ErrorCard message={error} onRetry={load} />}
 
-      <GlassSurface className="g">
+      <div className="g">
         <ConfigRow
           label="WhatsApp Alerts"
           sub={settings?.whatsapp_phone_masked || 'Not configured — tap to set up'}
@@ -96,12 +94,10 @@ export default function AlertsTab({ active, onManage }) {
           value={settings ? `${settings.check_interval_min} min` : '—'}
           onManage={onManage}
         />
-      </GlassSurface>
+      </div>
 
-      <div className="g alist" ref={listRef}>
-        {listGlassDefs}
-        {listGlassLayer}
-        <div className="alist-hd">
+      <div className="sec alist" ref={listRef}>
+        <div className="sec-hd">
           <span className="sec-lbl">Recent Alerts</span>
         </div>
         {alerts.length === 0 ? (
@@ -111,13 +107,17 @@ export default function AlertsTab({ active, onManage }) {
             const momentum = a.alert_direction != null
             const sign = momentum ? (a.alert_direction === 'up' ? '+' : '−') : '−'
             const badgeClass = momentum ? (a.alert_direction === 'up' ? 'badge-up' : 'badge-dn') : (idx === 0 ? '' : 'old')
-            const { currency } = tickerMeta(a.ticker)
-            const unit = currency === 'pts' ? '' : currency
+            // Historical price — no FX conversion, see the note in WatchTab's
+            // TodaysAlerts. The unit suffix is what index alerts were missing.
+            const p = priceParts(a.ticker, a.current_price, null)
             return (
               <div className="ai" key={a.id}>
                 <div className={`badge ${badgeClass}`}>{sign}{fmtLevel(a.level_pct ?? a.alert_level)}%</div>
                 <div className="ai-body">
-                  <div className="ai-price">{unit}{fmtPrice(a.current_price)}</div>
+                  <div className="ai-price">
+                    {p.prefix}{fmtPrice(p.value)}
+                    {p.unit && <span className="wp-unit">{p.unit}</span>}
+                  </div>
                   <div className="ai-sub">{a.ticker} · {momentum ? `${a.alert_direction} daily move` : `drop ${a.drop_pct.toFixed(2)}%`}</div>
                 </div>
                 <div className="ai-time">
@@ -133,7 +133,7 @@ export default function AlertsTab({ active, onManage }) {
         )}
       </div>
 
-      <GlassSurface className="g" style={{ padding: '16px 18px' }}>
+      <div className="g" style={{ padding: '16px 18px' }}>
         {isMomentum ? (
           <>
             <div className="sec-lbl" style={{ marginBottom: 12 }}>Momentum Monitoring</div>
@@ -158,7 +158,7 @@ export default function AlertsTab({ active, onManage }) {
         </div>
           </>
         )}
-      </GlassSurface>
+      </div>
     </div>
   )
 }

@@ -19,6 +19,16 @@
   --muted: rgba(255, 255, 255, 0.70);
   --dim: rgba(255, 255, 255, 0.52);
   --faint: rgba(255, 255, 255, 0.16);
+  /* Content-card surfaces (Tier 2). Solid, not translucent: a card must present
+     ONE constant fill top-to-bottom. The old translucent `.g` composited to
+     roughly #495567 over the pale wallpaper band and to near-navy over the dark
+     band, so secondary text swung between ~3.4:1 and comfortable within a
+     single card. --card is that constant; --card-2 is for wells nested inside
+     it (inputs, stat cells), which must be a real step darker now that they can
+     no longer rely on borrowing the wallpaper. */
+  --card: #0a1030;
+  --card-2: #060b24;
+  --card-bd: rgba(255, 255, 255, 0.09);
   --green: #22c55e;
   --rose: #ff5e6c;
   --r: 26px;
@@ -55,7 +65,10 @@ body {
   position: relative;
   z-index: 0;
   border-radius: 50px;
-  overflow: hidden;
+  /* `clip`, not `hidden`: the .ribbons wallpaper layer overhangs the shell by
+     ~90px, and `hidden` still makes .wrap a programmatically scrollable box —
+     any scrollIntoView/focus deep in the tree could slide the whole phone. */
+  overflow: clip;
   box-shadow:
     0 0 0 1.5px rgba(255, 255, 255, 0.1),
     0 0 0 2px rgba(0, 0, 0, 0.6),
@@ -117,6 +130,32 @@ body {
     radial-gradient(circle at 50% 20%, rgba(247, 252, 255, 0.32), transparent 30%),
     radial-gradient(ellipse 92% 34% at 54% 73%, rgba(7, 61, 219, 0.56), transparent 63%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 20%, rgba(0, 8, 48, 0.18) 100%);
+}
+
+/* Sits above the wallpaper layers (z −4…−1) and below `.app` (z 1). Stays clear
+   only across the status bar + title strip, which is the branding moment, then
+   deepens fast through the scroll area so bare sections read against a calm
+   field instead of moving ribbons.
+
+   The ramp has to start high because only Watch has a hero occupying the bright
+   band — Alerts/History/Manage put real content there, and an earlier version
+   that stayed clear to 28% left Manage's top rows sitting on the pale ribbon,
+   unreadable. The hero is unaffected in the way that matters: its visible
+   refraction comes from the pre-baked wallpaper bitmap, which this layer is not
+   part of, and its own 0.66→0.80 scrim already dominates its live backdrop. */
+.content-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(3, 10, 42, 0) 0%,
+    rgba(3, 10, 42, 0) 11%,
+    rgba(3, 10, 42, 0.58) 20%,
+    rgba(3, 10, 42, 0.90) 33%,
+    rgba(3, 10, 42, 0.96) 100%
+  );
 }
 
 /* ── App chrome ── */
@@ -303,23 +342,57 @@ body {
   position: absolute;
   inset: -40px; /* keep in sync with BLEED in useLiquidGlass.jsx */
 }
+/* ── CONTENT CARD (Tier 2) ────────────────────────────────────────────────
+   A solid surface, deliberately NOT glass. Apple: "Avoid overusing Liquid
+   Glass effects… overusing this material in multiple custom controls can
+   provide a subpar user experience by distracting from that content."
+
+   The old translucent recipe made every card a window onto a moving wallpaper,
+   so a single card ran dark grey at the top and bright blue at the bottom and
+   its own rows sat on different grounds. One flat fill fixes that and, as a
+   side effect, raises the worst-case contrast of `--dim` body text from about
+   3.4:1 (below AA) to about 5.1:1. Do NOT lighten this fill to "keep the glass
+   feel" — that spends the headroom straight back.
+
+   No backdrop-filter, no ::before sheen, no refraction layer. The glass
+   material lives in `.glass` below and is reserved for hero/nav/sheet/toast. */
 .g {
+  background: var(--card);
+  /* Softer than --gb (white@0.30): a hot rim reads as a glass meniscus. */
+  border: 1px solid var(--card-bd);
+  border-radius: var(--r);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 6px 20px rgba(0, 2, 20, 0.35);
+  position: relative;
+  /* Load-bearing: the History summary's .stat-grid corners clip against it. */
+  overflow: hidden;
+  flex-shrink: 0;
+}
+/* ── GLASS (Tier 1) ──────────────────────────────────────────────────────
+   The Liquid Glass material, applied ONLY to the functional/floating layer:
+   the hero, the nav, sheets and the toast. Apple: "This material forms a
+   distinct functional layer for controls and navigation elements… Limit these
+   effects to the most important functional elements in your app."
+
+   `.glass` must stay AFTER `.g` in source order — both are single-class
+   specificity, so the later block wins the properties they share. `.hero` then
+   overrides background/::before on top of this. Order: .g → .glass → .hero. */
+.glass {
   background: linear-gradient(150deg, rgba(0, 8, 36, 0.56) 0%, rgba(2, 14, 60, 0.68) 100%);
   backdrop-filter: blur(28px) saturate(180%) contrast(1.05);
   -webkit-backdrop-filter: blur(28px) saturate(180%) contrast(1.05);
-  border: 1px solid var(--gb);
-  border-radius: var(--r);
+  /* Restores the bright rim `.g` deliberately softened for solid cards. */
+  border-color: var(--gb);
   box-shadow:
     inset 0 1.5px 0 rgba(255, 255, 255, 0.85),
     inset 0 -2px 8px rgba(255, 255, 255, 0.10),
     inset 2px 0 8px rgba(255, 255, 255, 0.06),
     inset -2px 0 6px rgba(0, 10, 60, 0.12),
     0 8px 28px rgba(0, 4, 50, 0.30);
-  position: relative;
-  overflow: hidden;
-  flex-shrink: 0;
 }
-.g::before {
+/* The corner sheen is a property of the glass material, not of a card. */
+.glass::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -333,14 +406,6 @@ body {
     linear-gradient(0deg, rgba(0, 10, 60, 0.14) 0%, transparent 14%),
     linear-gradient(270deg, rgba(0, 10, 60, 0.10) 0%, transparent 12%);
   mix-blend-mode: screen;
-}
-button.g {
-  display: block;
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
 }
 
 /* ── HERO (deepest scrim — sits on the brightest part of the wallpaper) ── */
@@ -401,6 +466,47 @@ button.g {
   padding-bottom: 7px;
   letter-spacing: -0.02em;
 }
+/* Unit suffix on the hero number: "/10g", "/kg", "pts". Sits on the number's
+   baseline and stays quiet — it qualifies the figure, it isn't part of it. */
+.hunit {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.42);
+  align-self: flex-end;
+  padding-bottom: 10px;
+  margin-left: 5px;
+  letter-spacing: 0.01em;
+}
+
+/* Source quote + the exact rate used + the duty/GST caveat, under a rupee-led
+   metal price. Disclosing the rate is the Wise pattern (docs/design-refs) — a
+   converted number that hides its rate invites being read as an official one. */
+.hero-fx {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-top: 7px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.hfx-src { color: var(--muted); font-weight: 600; }
+.hfx-rate { color: var(--dim); }
+.hfx-note {
+  flex-basis: 100%;
+  font-size: 10.5px;
+  color: var(--dim);
+  letter-spacing: 0.01em;
+}
+
+/* Compact unit suffix for list rows (watchlist + alert lists). */
+.wp-unit {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--dim);
+  margin-left: 3px;
+}
+
 .hero-dip-row {
   display: flex;
   align-items: baseline;
@@ -450,6 +556,37 @@ button.g {
   letter-spacing: 0.15em;
   text-transform: uppercase;
 }
+/* ── BARE SECTION (Tier 3) ────────────────────────────────────────────────
+   Homogeneous, scannable lists whose rows are self-contained don't need a card
+   around them — the header sits directly on the background and the rows carry
+   their own hairlines. Pattern from docs/design-refs/watchlist-borderless-*.png
+   (Tokenized Stocks / MoonPay): hierarchy comes from type and spacing, not from
+   another translucent panel. Keeps `.dash-card` so the entrance stagger still
+   applies; it is a layout class, not a surface class. */
+.sec {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 2px 4px 0;
+  flex-shrink: 0;
+}
+/* Header on the background, not inside a card. Slightly brighter than the
+   in-card `.sec-lbl` because it no longer has a card fill lifting it. */
+.sec-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 2px 0 6px;
+  padding: 0 2px;
+}
+.sec-hd .sec-lbl { color: var(--muted); }
+/* Two-class specificity so a section beats the card padding those component
+   classes still carry for their non-section uses (e.g. `.mcard` on the
+   WhatsApp form, which is a real card). */
+.sec.alist,
+.sec.mcard,
+.sec.wlist { padding: 2px 4px 0; }
+
 .dep-note { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .dep-note strong { color: var(--accent); font-weight: 700; }
 .levels { display: flex; gap: 7px; }
@@ -513,13 +650,9 @@ button.g {
 .next-sub { font-size: 11px; color: var(--dim); margin-top: 3px; }
 
 /* ── ALERT LIST ── */
-.alist { padding: 16px 16px 14px; }
-.alist-hd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
+/* `.alist` is only ever a bare section now, so it carries no card padding.
+   (`.alist-hd` was removed with it — every list header is a `.sec-hd`.) */
+.alist { padding: 0; }
 .ai {
   display: flex;
   align-items: center;
@@ -616,8 +749,8 @@ button.g {
 .ai-sent { color: var(--accent); font-size: 10px; }
 
 /* ── WATCHLIST (read-only list on Watch tab) ── */
-.wlist { padding: 15px 16px 16px; }
-.wit { display: flex; flex-direction: column; margin-top: 11px; }
+.wlist { padding: 2px 4px 0; }
+.wit { display: flex; flex-direction: column; }
 .wr {
   display: flex;
   align-items: center;
@@ -677,7 +810,9 @@ button.g {
   height: 27px;
   border-radius: 14px;
   background: var(--accent);
-  box-shadow: 0 0 12px rgba(0, 228, 255, 0.35);
+  /* Was rgba(0,228,255,.35) — #00e4ff, a leftover from the old Open Design
+     mono-cyan pass, glowing cyan underneath a gold toggle. */
+  box-shadow: 0 0 12px var(--accent-glow);
   position: relative;
   flex-shrink: 0;
 }
@@ -727,7 +862,10 @@ button.g {
   border-bottom-right-radius: var(--r);
   overflow: hidden;
 }
-.stat-cell { background: rgba(4, 9, 22, 0.55); padding: 15px 18px; }
+/* Explicitly opaque, not a translucent well. On the old glass card this leaned
+   on the wallpaper underneath for its separation; on a solid card it has to
+   state its own tone or the 4-up grid flattens into one block. */
+.stat-cell { background: var(--card-2); padding: 15px 18px; }
 .stat-v {
   font-size: 20px;
   font-weight: 800;
@@ -770,11 +908,16 @@ button.g {
 .fhint { font-size: 10px; color: var(--dim); margin-top: 6px; line-height: 1.5; }
 .fhint.ok { color: var(--accent); }
 .fhint.warn { color: var(--green); }
+/* Stays translucent because it has to work on BOTH a solid card (the WhatsApp
+   form) and the still-glass AssetSheet — one value serves both. Deepened from
+   0.25: on a solid card, black-at-25% was barely a dip. The border comes off
+   `--gb` for the same reason `.btn-ghost` did — it was a glass token in a
+   non-glass context. */
 .field {
   width: 100%;
   border-radius: var(--rs);
-  border: 1px solid var(--gb);
-  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.34);
   padding: 11px 13px;
   font-size: 14px;
   color: var(--fg);
@@ -812,9 +955,13 @@ button.g {
   box-shadow: 0 0 18px -4px var(--accent-glow);
 }
 .btn-primary:hover { filter: brightness(1.08); }
+/* Deliberately NOT `var(--glass)` any more. Borrowing the glass fill + glass
+   border meant these buttons were a glass chip inside a glass card, and over
+   the bright half of the wallpaper they all but vanished. They now carry their
+   own tint, independent of the material tokens. */
 .btn-ghost {
-  background: var(--glass);
-  border-color: var(--gb);
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.18);
   color: var(--fg);
 }
 .btn-ghost:hover { background: rgba(255, 255, 255, 0.09); }
@@ -876,7 +1023,11 @@ button.g {
   position: absolute;
   inset: 0;
   z-index: 50;
-  background: rgba(4, 9, 22, 0.66);
+  /* Lightened from 0.66. With the content scrim now calming the wallpaper, an
+     overlay that dark left the sheet nothing to refract — glass needs contrast
+     behind it to bend. This keeps focus on the sheet while letting the cards
+     underneath still read through its rim. */
+  background: rgba(4, 9, 22, 0.48);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   display: flex;
@@ -893,7 +1044,14 @@ button.g {
   border-top: 1px solid var(--gb);
   border-radius: 26px 26px 0 0;
   padding: 18px 18px calc(20px + env(safe-area-inset-bottom));
-  box-shadow: 0 -24px 80px -12px rgba(0, 0, 0, 0.9);
+  /* Rim ladder from the reference lens study: a bright inner edge, a warm
+     top-left inner glow and a cool bottom-right inner shade read as thickness,
+     which is what separates a lens from a tinted panel. */
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.30),
+    inset 12px 14px 26px rgba(255, 255, 255, 0.11),
+    inset -16px -18px 26px rgba(0, 0, 0, 0.20),
+    0 -24px 80px -12px rgba(0, 0, 0, 0.9);
   animation: sheetup 0.26s cubic-bezier(0.22, 1, 0.36, 1);
   max-height: 92%;
   overflow-y: auto;
@@ -1320,6 +1478,14 @@ button.g {
   flex-shrink: 0;
 }
 .chips::-webkit-scrollbar { display: none; }
+/* The chip strip is the ONLY interactive surface that sits directly on bare
+   wallpaper with no `.g` card scrim beneath it. The original white tint
+   (rgba(255,255,255,0.07)) *lightened* an already-bright background, so over the
+   pale band of the gradient the unselected chips were white-on-white and
+   effectively invisible. Same rule as `.g`: a real dark scrim, not just a tint.
+   Measured against the palest wallpaper stop (#bfd0c1) this lands ~5.7:1 for the
+   unselected label and ~4.9:1 for the selected gold — and only gets better over
+   the navy end, so it holds across the whole gradient. */
 .chip-a {
   display: inline-flex;
   align-items: center;
@@ -1327,10 +1493,10 @@ button.g {
   flex: none;
   scroll-snap-align: center;
   padding: 7px 13px;
-  border: 1px solid transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 100px;
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--dim);
+  background: rgba(2, 12, 48, 0.62);
+  color: rgba(255, 255, 255, 0.85);
   font: inherit;
   font-size: 12.5px;
   font-weight: 600;
@@ -1338,13 +1504,20 @@ button.g {
   cursor: pointer;
   transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 }
-.chip-a:hover { color: var(--muted); }
-/* Weight AND colour, never colour alone. */
+.chip-a:hover {
+  color: #fff;
+  background: rgba(2, 12, 48, 0.74);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+/* Weight AND colour, never colour alone. The scrim stays (and deepens) rather
+   than being replaced by the gold tint — `--accent-dim` over the pale wallpaper
+   washed the selected chip out just as badly as the unselected ones. */
 .chip-a.sel {
   color: var(--accent);
   font-weight: 800;
-  background: var(--accent-dim);
+  background: rgba(2, 12, 48, 0.72);
   border-color: var(--accent-glow);
+  box-shadow: 0 0 0 1px var(--accent-dim), 0 2px 10px rgba(0, 0, 0, 0.28);
 }
 .chip-dot {
   width: 5px;

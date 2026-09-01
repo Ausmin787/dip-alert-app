@@ -3,7 +3,6 @@ import { getAlerts, getSettings } from '../api.js'
 import { useAssets } from '../useAssets.js'
 import { gsap, useGSAP, prefersReducedMotion } from '../gsap.js'
 import GlassSurface from '../GlassSurface.jsx'
-import { useLiquidGlass } from '../useLiquidGlass.jsx'
 import { WatchSkeleton } from '../Skeleton.jsx'
 import ErrorCard from '../ErrorCard.jsx'
 import {
@@ -12,7 +11,9 @@ import {
   fmtPrice,
   fmtTimeIST,
   isMarketOpenIST,
+  isMetal,
   isTodayIST,
+  priceParts,
   splitPrice,
   tickerMeta,
   timeAgo,
@@ -42,10 +43,19 @@ function dipLevels(item) {
   })
 }
 
-function Hero({ item, lastUpdated }) {
+function Hero({ item, lastUpdated, usdInr }) {
   useTick(30_000)
-  const { whole, frac } = splitPrice(item.current_price)
-  const { exchange, currency } = tickerMeta(item.ticker)
+  const { exchange } = tickerMeta(item.ticker)
+
+  /* Metals lead in Indian units (₹/10g, ₹/kg) with the COMEX dollar quote and
+     the exact rate used disclosed underneath — the Wise "using this exchange
+     rate ×1.1723" honesty pattern from docs/design-refs. If FX is unavailable
+     `priceParts` falls back to the plain dollar quote rather than showing a
+     stale or invented rupee figure. */
+  const { prefix, value, unit } = priceParts(item.ticker, item.current_price, usdInr)
+  const { whole, frac } = splitPrice(value)
+  const showFx = isMetal(item.ticker) && prefix === '₹'
+
   const isMomentum = item.alert_mode === 'momentum'
   const open = isMomentum ? item.active : isMarketOpenIST()
   const change = item.daily_change_pct
@@ -53,16 +63,28 @@ function Hero({ item, lastUpdated }) {
   const changeDown = change != null && change < 0
 
   return (
-    <GlassSurface className="g hero dash-card">
+    <GlassSurface className="g glass hero dash-card">
       <div className="hero-asset">
         <div className={`green-dot ${item.active ? '' : 'off'}`} />
         {item.display_name} · {exchange}
       </div>
       <div className="hero-price-row">
-        {currency !== 'pts' && <span className="hcur">{currency}</span>}
+        {prefix && <span className="hcur">{prefix}</span>}
         <span className="hnum">{whole}</span>
         <span className="hdec">{frac}</span>
+        {/* Unit rides as a muted suffix: "/10g" for metals, "pts" for indices.
+            A bare index number with no unit read as if it were a price. */}
+        {unit && <span className="hunit">{unit}</span>}
       </div>
+      {showFx && (
+        <div className="hero-fx">
+          <span className="hfx-src">${fmtPrice(item.current_price)}/oz</span>
+          <span className="hfx-rate">@ ₹{usdInr.toFixed(2)}/$</span>
+          {/* Never let this read as the jeweller/MCX rate — Indian physical
+              metal adds ~6% import duty and 3% GST on top of this figure. */}
+          <span className="hfx-note">International equivalent · excludes duty &amp; GST</span>
+        </div>
+      )}
       <div className="hero-dip-row">
         {isMomentum ? (
           <>
@@ -118,7 +140,7 @@ function Tracker({ item }) {
   }, [fired])
 
   return (
-    <GlassSurface className="g tracker dash-card">
+    <div className="g tracker dash-card">
       <div className="row-hd">
         <span className="sec-lbl">Dip Levels</span>
         <span className="dep-note">
@@ -133,7 +155,7 @@ function Tracker({ item }) {
           </div>
         ))}
       </div>
-    </GlassSurface>
+    </div>
   )
 }
 
@@ -142,7 +164,7 @@ function MomentumCard({ item }) {
   const crossed = change != null && Math.abs(change) >= item.threshold_pct
   const dir = change > 0 ? 'up' : change < 0 ? 'down' : null
   return (
-    <GlassSurface className="g tracker dash-card">
+    <div className="g tracker dash-card">
       <div className="row-hd">
         <span className="sec-lbl">Daily Move</span>
         <span className="dep-note">Alert at ±{fmtLevel(item.threshold_pct)}%</span>
@@ -157,7 +179,7 @@ function MomentumCard({ item }) {
             : `±${fmtLevel(item.threshold_pct)}% triggers WhatsApp`}
         </div>
       </div>
-    </GlassSurface>
+    </div>
   )
 }
 
@@ -168,7 +190,7 @@ function NextAlert({ item }) {
   const { currency } = tickerMeta(item.ticker)
   const unit = currency === 'pts' ? '' : currency
   return (
-    <GlassSurface className="g next-card dash-card">
+    <div className="g next-card dash-card">
       <div className="next-bell">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -186,17 +208,17 @@ function NextAlert({ item }) {
             : 'WhatsApp fires when crossed'}
         </div>
       </div>
-    </GlassSurface>
+    </div>
   )
 }
 
 function PriceHistory({ history, item }) {
   if (!history || history.length < 2) {
     return (
-      <GlassSurface className="g history-card dash-card">
+      <div className="g history-card dash-card">
         <div className="row-hd"><span className="sec-lbl">30-Day Price</span></div>
         <div className="empty">Price history is not available yet.</div>
-      </GlassSurface>
+      </div>
     )
   }
 
@@ -215,7 +237,7 @@ function PriceHistory({ history, item }) {
   const unit = currency === 'pts' ? '' : currency
 
   return (
-    <GlassSurface className="g history-card dash-card">
+    <div className="g history-card dash-card">
       <div className="row-hd">
         <span className="sec-lbl">30-Day Price</span>
         <span className="dep-note">{unit}{fmtPrice(values[values.length - 1])}</span>
@@ -229,16 +251,16 @@ function PriceHistory({ history, item }) {
         <polyline points={points} fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <div className="history-range"><span>{history[0].date}</span><span>{history[history.length - 1].date}</span></div>
-    </GlassSurface>
+    </div>
   )
 }
 
 function TodaysAlerts({ alerts }) {
   const today = alerts.filter((a) => isTodayIST(a.alerted_at))
+  // listRef is the querySelector target for the new-alert slide-in below.
+  // Keep this a plain div: GlassSurface doesn't forward refs, so wrapping it
+  // would break that timeline.
   const listRef = useRef(null)
-  // This card already owns a ref (querySelector target for the new-alert
-  // slide-in) and GlassSurface doesn't forward refs — use the hook directly.
-  const { defs: glassDefs, layer: glassLayer } = useLiquidGlass(listRef, 'card')
   const topId = today[0]?.id
   const prevTopId = useRef(topId)
 
@@ -251,10 +273,8 @@ function TodaysAlerts({ alerts }) {
   }, [topId])
 
   return (
-    <div className="g alist dash-card" ref={listRef}>
-      {glassDefs}
-      {glassLayer}
-      <div className="alist-hd">
+    <div className="sec alist dash-card" ref={listRef}>
+      <div className="sec-hd">
         <span className="sec-lbl">Today's Alerts</span>
         <span style={{ fontSize: 11, color: 'var(--dim)' }}>
           {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
@@ -269,12 +289,20 @@ function TodaysAlerts({ alerts }) {
           const badgeClass = isMomentum
             ? (a.alert_direction === 'up' ? 'badge-up' : 'badge-dn')
             : (idx === 0 ? '' : 'old')
-          const { currency } = tickerMeta(a.ticker)
+          /* usdInr is deliberately omitted: this is the price at the moment the
+             alert fired, and converting a past dollar figure at today's rate
+             would invent a rupee number that was never true. Historical rows
+             keep the asset's own quote currency — they still pick up the unit
+             suffix, which is what was missing for index alerts. */
+          const p = priceParts(a.ticker, a.current_price, null)
           return (
             <div className="ai" key={a.id}>
               <div className={`badge ${badgeClass}`}>{sign}{fmtLevel(a.level_pct ?? a.alert_level)}%</div>
               <div className="ai-body">
-                <div className="ai-price">{currency !== 'pts' ? currency : ''}{fmtPrice(a.current_price)}</div>
+                <div className="ai-price">
+                  {p.prefix}{fmtPrice(p.value)}
+                  {p.unit && <span className="wp-unit">{p.unit}</span>}
+                </div>
                 <div className="ai-sub">
                   {isMomentum
                     ? `Daily move · ${a.ticker}`
@@ -292,13 +320,14 @@ function TodaysAlerts({ alerts }) {
   )
 }
 
-function WatchlistMini({ items, selectedAsset, setSelectedAsset }) {
+function WatchlistMini({ items, selectedAsset, setSelectedAsset, usdInr }) {
   return (
-    <GlassSurface className="g wlist dash-card">
-      <span className="sec-lbl">Watchlist</span>
+    <div className="sec wlist dash-card">
+      <div className="sec-hd"><span className="sec-lbl">Watchlist</span></div>
       <div className="wit">
         {items.map((item) => {
-          const { exchange, type, currency } = tickerMeta(item.ticker)
+          const { exchange, type } = tickerMeta(item.ticker)
+          const p = priceParts(item.ticker, item.current_price, usdInr)
           const isMomentum = item.alert_mode === 'momentum'
           const change = item.daily_change_pct
           return (
@@ -313,7 +342,10 @@ function WatchlistMini({ items, selectedAsset, setSelectedAsset }) {
                 <div className="wf">{exchange} · {type}</div>
               </div>
               <div className="wp">
-                <div className="wp-val">{currency !== 'pts' ? currency : ''}{fmtPrice(item.current_price)}</div>
+                <div className="wp-val">
+                  {p.prefix}{fmtPrice(p.value)}
+                  {p.unit && <span className="wp-unit">{p.unit}</span>}
+                </div>
                 <div className={`wp-dip ${item.active ? '' : 'off'} ${isMomentum && change > 0 ? 'chg-up' : isMomentum && change < 0 ? 'chg-dn' : ''}`}>
                   {isMomentum
                     ? (change != null ? `${change > 0 ? '+' : ''}${change.toFixed(2)}%` : '—')
@@ -324,7 +356,7 @@ function WatchlistMini({ items, selectedAsset, setSelectedAsset }) {
           )
         })}
       </div>
-    </GlassSurface>
+    </div>
   )
 }
 
@@ -337,12 +369,17 @@ function AssetChips({ items, selectedAsset, setSelectedAsset }) {
   const stripRef = useRef(null)
 
   // A selection restored from localStorage can sit off-screen on mount.
+  // Scroll the strip itself rather than calling scrollIntoView on the chip:
+  // scrollIntoView walks up and scrolls EVERY scrollable ancestor, and .wrap is
+  // ~90px horizontally scrollable (the .ribbons wallpaper layer overhangs it),
+  // so centering a right-hand chip used to slide the whole phone shell left.
   useEffect(() => {
-    const el = stripRef.current?.querySelector('.chip-a.sel')
-    if (!el) return
-    el.scrollIntoView({
-      inline: 'center',
-      block: 'nearest',
+    const strip = stripRef.current
+    const el = strip?.querySelector('.chip-a.sel')
+    if (!strip || !el) return
+    const left = el.offsetLeft - (strip.clientWidth - el.offsetWidth) / 2
+    strip.scrollTo({
+      left: Math.max(0, Math.min(left, strip.scrollWidth - strip.clientWidth)),
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
     })
   }, [selectedAsset])
@@ -387,7 +424,7 @@ function SetupBanner({ onManage, onDismiss }) {
 }
 
 export default function WatchTab({ active, activeKey, onManage }) {
-  const { items, selectedItem, selectedAsset, setSelectedAsset, history, loading, error, lastUpdated, refresh } = useAssets()
+  const { items, selectedItem, selectedAsset, setSelectedAsset, history, loading, error, lastUpdated, usdInr, refresh } = useAssets()
   const [alerts, setAlerts] = useState([])
   const [needsSetup, setNeedsSetup] = useState(false)
   const [setupDismissed, setSetupDismissed] = useState(false)
@@ -439,7 +476,7 @@ export default function WatchTab({ active, activeKey, onManage }) {
   return (
     <div className={panelClass} ref={panelRef} data-active-key={activeKey}>
       {showSetup && <SetupBanner onManage={onManage} onDismiss={() => setSetupDismissed(true)} />}
-      <Hero item={selectedItem} lastUpdated={lastUpdated} />
+      <Hero item={selectedItem} lastUpdated={lastUpdated} usdInr={usdInr} />
       <AssetChips items={items} selectedAsset={selectedAsset} setSelectedAsset={setSelectedAsset} />
       <PriceHistory history={history} item={selectedItem} />
       {isMomentum ? (
@@ -451,7 +488,7 @@ export default function WatchTab({ active, activeKey, onManage }) {
         </>
       )}
       <TodaysAlerts alerts={alerts} />
-      <WatchlistMini items={items} selectedAsset={selectedAsset} setSelectedAsset={setSelectedAsset} />
+      <WatchlistMini items={items} selectedAsset={selectedAsset} setSelectedAsset={setSelectedAsset} usdInr={usdInr} />
     </div>
   )
 }

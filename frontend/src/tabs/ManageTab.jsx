@@ -175,8 +175,8 @@ function WatchlistManager() {
   }
 
   return (
-    <GlassSurface className="g mcard">
-      <div className="row-hd" style={{ marginBottom: 6 }}>
+    <div className="sec mcard">
+      <div className="sec-hd">
         <span className="sec-lbl">Watchlist</span>
         <button className="btn btn-primary" style={{ flex: 'none', padding: '7px 14px', fontSize: 12 }} onClick={() => setSheet('new')}>
           + Add
@@ -211,7 +211,7 @@ function WatchlistManager() {
         })
       )}
       {sheet && <AssetSheet initial={sheet === 'new' ? null : sheet} onClose={() => setSheet(null)} onSave={save} />}
-    </GlassSurface>
+    </div>
   )
 }
 
@@ -309,7 +309,7 @@ function WhatsAppCard() {
   const ready = loadState === 'ready'
 
   return (
-    <GlassSurface as="form" className="g mcard" onSubmit={save}>
+    <form className="g mcard" onSubmit={save}>
       <div className="mcard-hd">WhatsApp Delivery</div>
 
       {loadState === 'error' && (
@@ -387,7 +387,7 @@ function WhatsAppCard() {
         <button type="button" className="btn btn-ghost" onClick={test} disabled={busy || !ready}>Send test</button>
         <button type="submit" className="btn btn-primary" disabled={busy || !ready}>{busy ? 'Working…' : 'Save'}</button>
       </div>
-    </GlassSurface>
+    </form>
   )
 }
 
@@ -399,7 +399,7 @@ function SetupCard() {
     <>Enter your number and that key above, save, then fire a test alert.</>,
   ]
   return (
-    <GlassSurface className="g mcard">
+    <div className="g mcard">
       <div className="mcard-hd">One-time CallMeBot setup</div>
       <div className="ol-steps">
         {steps.map((s, i) => (
@@ -409,7 +409,7 @@ function SetupCard() {
           </div>
         ))}
       </div>
-    </GlassSurface>
+    </div>
   )
 }
 

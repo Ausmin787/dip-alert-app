@@ -115,6 +115,12 @@ function AppShell() {
   return (
     <div className="wrap" id="phone-shell">
       <Wallpaper />
+      {/* Calms the wallpaper behind the scrolling content so Tier-3 bare
+          sections stay readable. Sibling of Wallpaper, NOT a child of it:
+          wallpaperImage.js selects .wallpaper/.ribbons/.glow by name, so
+          keeping this outside means the hero still refracts the full-strength
+          wallpaper. */}
+      <div className="content-scrim" aria-hidden="true" />
       <div className="app">
         <StatusBar />
         <AppHeader />
