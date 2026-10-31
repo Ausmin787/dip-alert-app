@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import {
   dipLadder,
   fmtMarketDate,
@@ -182,6 +182,15 @@ for (const selector of ['.wrow', '.group', '.chart']) {
 }
 // A sheet's content must be able to hand a pull-down to the sheet itself.
 assert.match(sheetSource, /passive: false/)
+// The lens must stay outside the glass: a backdrop-filter makes its element a backdrop
+// root, so a lens inside it couldn't see past the bar's edge.
+const tabBarSource = readFileSync(new URL('./TabBar.jsx', import.meta.url), 'utf8')
+assert.ok(tabBarSource.includes('<div className="tab-glass" />'), 'the lens stays outside the glass')
+// Refraction maps are same-origin files: the CSP's img-src is 'self', so no data: URIs.
+for (const map of ['glass-bar.png', 'glass-lens.png']) {
+  assert.match(tabBarSource, new RegExp(`/${map}`))
+  assert.ok(existsSync(new URL(`../public/${map}`, import.meta.url)), `${map} exists`)
+}
 // Accessibility preferences stay wired up.
 assert.match(cssSource, /prefers-reduced-motion/)
 assert.match(cssSource, /prefers-reduced-transparency/)

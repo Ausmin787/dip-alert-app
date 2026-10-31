@@ -50,6 +50,8 @@
 
   /* Glass: regular variant */
   --glass: rgba(255, 255, 255, 0.66);
+  --bar-glass: rgba(255, 255, 255, 0.36);
+  --lens-edge: rgba(0, 0, 0, 0.22);
   --glass-strong: rgba(250, 250, 252, 0.82);
   --glass-rim: rgba(255, 255, 255, 0.8);
   --glass-spec: rgba(255, 255, 255, 0.9);
@@ -114,6 +116,8 @@
     --on-level: #000000;
 
     --glass: rgba(60, 60, 62, 0.58);
+    --bar-glass: rgba(58, 58, 60, 0.34);
+    --lens-edge: rgba(255, 255, 255, 0.5);
     --glass-strong: rgba(44, 44, 46, 0.86);
     --glass-rim: rgba(255, 255, 255, 0.14);
     --glass-spec: rgba(255, 255, 255, 0.2);
@@ -145,6 +149,7 @@
     --sep: rgba(60, 60, 67, 0.6);
     --tint-text: rgb(30, 110, 244);
     --glass: rgba(255, 255, 255, 0.95);
+    --bar-glass: var(--glass);
     --glass-strong: rgba(255, 255, 255, 0.98);
     --glass-rim: rgba(0, 0, 0, 0.5);
   }
@@ -160,6 +165,7 @@
     --down: rgb(255, 97, 101);
     --level: rgb(255, 160, 86);
     --glass: rgba(36, 36, 38, 0.96);
+    --bar-glass: var(--glass);
     --glass-strong: rgba(36, 36, 38, 0.98);
     --glass-rim: rgba(255, 255, 255, 0.6);
   }
@@ -471,7 +477,7 @@ svg {
   }
 
   .tab:hover {
-    opacity: 0.8;
+    background: var(--fill-4);
   }
 }
 
@@ -499,8 +505,12 @@ svg {
   cursor: default;
 }
 
-/* ── Tab bar: measured from HIG tab-bar-badges-iphone. 62pt capsule, 4pt inset ── */
+/* ── Tab bar: measured from HIG tab-bar-badges-iphone. 62pt capsule, 4pt inset ──
+   Layers, bottom to top: the glass, the tab faces, the lens, then bare hit targets.
+   The lens is not a child of the glass on purpose: an element with a backdrop-filter
+   is a backdrop root, so a lens inside it could not see anything past the bar's edge. */
 .tabbar {
+  --tab-w: min(104px, 28vw);
   position: absolute;
   z-index: 6;
   left: 50%;
@@ -513,23 +523,79 @@ svg {
   touch-action: none;
 }
 
-.tab-lens {
+.tab-glass {
   position: absolute;
-  z-index: 0;
-  top: 4px;
-  left: 0;
-  height: 54px;
-  border-radius: 27px;
-  background: var(--glass-selected);
-  pointer-events: none;
-  will-change: transform;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  background: var(--bar-glass);
+  -webkit-backdrop-filter: blur(14px) saturate(190%);
+  backdrop-filter: blur(14px) saturate(190%);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.08),
+    inset 0 0 10px rgba(255, 255, 255, 0.14),
+    var(--glass-shadow);
 }
 
-.tab {
+/* Only Chromium renders url() here today (WebKit bug 245510); TabBar.jsx sets the flag. */
+.tabbar[data-refract='true'] .tab-glass {
+  -webkit-backdrop-filter: url(#lg-bar) blur(3px) saturate(190%);
+  backdrop-filter: url(#lg-bar) blur(3px) saturate(190%);
+}
+
+/* The rim: two highlights on a hairline, which travel when the bar is touched
+   (WWDC25: "these lights move in space, causing light to travel around the material"). */
+.tab-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--rim, -50deg),
+    rgba(255, 255, 255, 0.95),
+    rgba(255, 255, 255, 0.2) 16%,
+    rgba(255, 255, 255, 0.1) 40%,
+    rgba(255, 255, 255, 0.6) 52%,
+    rgba(255, 255, 255, 0.1) 64%,
+    rgba(255, 255, 255, 0.2) 86%,
+    rgba(255, 255, 255, 0.95)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+
+/* WWDC25: "the material illuminates from within... starting right under your fingertips". */
+.tab-glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle calc(var(--glow-r, 40) * 1px) at calc(var(--glow-x, 0) * 1px) calc(var(--glow-y, 31) * 1px),
+    rgba(255, 255, 255, 0.16),
+    transparent
+  );
+  opacity: var(--glow, 0);
+  pointer-events: none;
+}
+
+.tab-faces {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 62px;
+  padding: 4px;
+  display: flex;
+  color: var(--label);
+  pointer-events: none;
+}
+
+.tab-face {
   position: relative;
-  z-index: 1;
-  width: min(104px, 28vw);
-  border-radius: 27px;
+  flex: none;
+  width: var(--tab-w);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -538,18 +604,66 @@ svg {
   font-size: var(--t-cap2);
   line-height: 1.2;
   font-weight: 600;
-  letter-spacing: 0;
-  color: var(--label);
-  transition: color 120ms linear;
 }
 
-.tab svg {
+.tab-face svg {
   width: 26px;
   height: 26px;
 }
 
-.tab[data-on='true'] {
+/* At rest a quiet fill. Pressed, it lifts into a clear lens that stands proud of the
+   bar and shows what's beneath it (measured from WWDC25 219 at 4:28). */
+.tab-lens {
+  --lift: 0;
+  position: absolute;
+  top: 4px;
+  left: 0;
+  width: var(--tab-w);
+  height: 54px;
+  border-radius: 27px;
+  overflow: hidden;
+  pointer-events: none;
+  will-change: transform;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, calc(var(--lift) * 0.2));
+}
+
+.tab-lens::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--glass-selected);
+  opacity: calc(1 - var(--lift));
+}
+
+.tab-lens::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: var(--lift);
+  box-shadow:
+    inset 0 0 0 0.5px var(--lens-edge),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.7),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.34),
+    inset 0 0 7px rgba(255, 255, 255, 0.1);
+}
+
+.tabbar[data-refract='true'][data-lifted='true'] .tab-lens {
+  -webkit-backdrop-filter: url(#lg-lens);
+  backdrop-filter: url(#lg-lens);
+}
+
+/* The same faces, tinted and clipped by the lens: colour changes exactly where it covers. */
+.tab-mirror {
   color: var(--tint-text);
+  transform-origin: 0 0;
+}
+
+.tab {
+  position: relative;
+  z-index: 1;
+  width: var(--tab-w);
+  border-radius: 27px;
 }
 
 .tab-badge {
@@ -577,9 +691,9 @@ svg {
   bottom: 0;
   height: calc(var(--safe-bottom) + 96px);
   pointer-events: none;
-  background: linear-gradient(to top, var(--bg), transparent);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: linear-gradient(to top, color-mix(in srgb, var(--bg) 58%, transparent), transparent);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
   -webkit-mask-image: linear-gradient(to top, #000 45%, transparent);
   mask-image: linear-gradient(to top, #000 45%, transparent);
 }
@@ -1834,13 +1948,36 @@ details[open] > summary .frow-chevron {
   :root {
     --glass: var(--surface);
     --glass-strong: var(--surface);
+    --bar-glass: var(--surface);
   }
 
+  .tab-glass,
+  .tabbar[data-refract='true'] .tab-glass,
+  .tabbar[data-refract='true'][data-lifted='true'] .tab-lens,
   .glass,
   .menu,
   .alert,
   .scroll-edge,
   .tab-edge {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* HIG Accessibility: increased contrast gets a defined edge, not a play of light. */
+@media (prefers-contrast: more) {
+  .tab-glass,
+  .tabbar[data-refract='true'] .tab-glass {
+    -webkit-backdrop-filter: blur(30px);
+    backdrop-filter: blur(30px);
+    box-shadow: inset 0 0 0 1px var(--glass-rim), var(--glass-shadow);
+  }
+
+  .tab-glass::before {
+    display: none;
+  }
+
+  .tabbar[data-refract='true'][data-lifted='true'] .tab-lens {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
