@@ -9,12 +9,12 @@ Dip Alert is a personal, single-user market-monitoring app with two alert modes:
 - **Dip alerts** track an asset below its all-time high and notify at newly crossed percentage levels.
 - **Momentum alerts** notify once per UTC day and direction when an asset's daily move crosses its configured threshold.
 
-The frontend has four tabs: **Watch**, **Alerts**, **History**, and **Manage**. Tab selection is local React state in `App.jsx`; there is no client-side router.
+The frontend is built to Apple's Human Interface Guidelines and has three tabs: **Watchlist**, **Alerts**, and **Settings**. Tab selection is local React state in `App.jsx`; there is no client-side router.
 
 ## Current stack
 
 - Backend: Python 3.11+, FastAPI, SQLModel with SQLite, APScheduler, yfinance, and CallMeBot.
-- Frontend: React 19, Vite 8, Tailwind CSS v4 compiler, plain CSS, Axios, GSAP, and `@gsap/react`.
+- Frontend: React 19, Vite 8, plain CSS, Axios, and self-hosted Inter as the non-Apple font fallback. No animation library.
 - Deployment: Oracle Cloud VM for the backend and Vercel for the frontend.
 - Runtime floors: Python 3.11+ and Node.js 20.19+.
 
@@ -24,16 +24,16 @@ The frontend does **not** use Motion, three.js, React Three Fiber, Recharts, or 
 
 - `backend/app/main.py` creates the FastAPI app, initializes the database, and starts scheduled monitoring.
 - `backend/app/routes.py` owns the API; `ath_logic.py` contains alert evaluation; `price_service.py` fetches prices; `whatsapp.py` sends notifications.
-- `frontend/src/AssetContext.jsx` polls shared status and fetches history only for the selected asset.
-- `frontend/src/App.jsx` owns the phone shell and four-tab state.
-- `frontend/src/tabs/` contains the four tab views.
+- `frontend/src/AssetContext.jsx` polls status and alerts, and caches price history per ticker and period.
+- `frontend/src/App.jsx` owns the shell, tab state, and size class (tab bar on phones, sidebar and split view from 1000px).
+- `frontend/src/tabs/` contains the three tab views.
 - `frontend/src/api.js` is the Axios API client and attaches the optional `X-App-Token` from browser storage.
-- `frontend/src/gsap.js` is the single shared GSAP registration/export module.
-- `frontend/src/index.css` contains the Liquid Glass design system.
+- `frontend/src/spring.js` is the shared spring physics: damping and response, velocity handoff, projection, rubber-banding.
+- `frontend/src/index.css` contains the design tokens, taken from Apple's published HIG values.
 
-### Bottom navigation
+### Gestures
 
-`frontend/src/GlassNav.jsx` implements the floating Aave-style glass navigation. Its semantic buttons remain stationary. During movement, a pointer-inert duplicate is cropped through a generated SVG displacement filter while a separate glass indicator moves from the same GSAP X-coordinate source. Refraction is velocity-driven and disabled at rest so the selected icon and label remain crisp. Preserve reduced-motion behavior and the non-filter fallback.
+`frontend/src/Sheet.jsx` (draggable sheet, velocity handoff, grabbable mid-flight), `PriceChart.jsx` (1:1 scrub, morphing line) and `TabBar.jsx` (draggable lens) all run on `spring.js`. Glass is the floating functional layer only, never the content layer. See "Design system" in `CLAUDE.md` for the rules not to regress.
 
 ## Local commands
 

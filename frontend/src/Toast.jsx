@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import Icon from './Icon.jsx'
 
 const ToastContext = createContext(null)
 
@@ -8,10 +9,8 @@ export const useToast = () => useContext(ToastContext)
 
 const DISMISS_MS = 3200
 
-/* App-wide action feedback. The {kind, msg} shape matches the inline
-   `status-msg` state WhatsAppCard already uses, so call sites migrate as-is.
-   Success is gold (--accent), not green: green means "price up" in this app and
-   reusing it for "saved" would collide with the financial colours. */
+/* App-wide action feedback, as a capsule under the top edge. The glyph carries the
+   meaning as well as the colour (HIG Inclusive color: never colour alone). */
 export function ToastProvider({ children }) {
   const [toast, setToast] = useState(null)
   const timerRef = useRef(null)
@@ -44,26 +43,22 @@ export function ToastProvider({ children }) {
   )
 }
 
-/* Rendered inside AppShell, not beside the provider: #phone-shell does not
-   exist on the provider's first render, so a portal mounted there would find
-   null. Sits at z-index 40 — above the nav, below an open sheet. */
 export function ToastViewport() {
   const { toast, dismiss } = useToast()
-  const host = document.getElementById('phone-shell')
-  if (!host || !toast) return null
+  if (!toast) return null
 
   return createPortal(
     <div className="toast-layer" aria-live="polite" aria-atomic="true">
       <button
         type="button"
         key={toast.id}
-        className={`toast ${toast.kind === 'err' ? 'toast-err' : 'toast-ok'}`}
+        className={`toast glass ${toast.kind === 'err' ? 'toast-err' : 'toast-ok'}`}
         onClick={dismiss}
       >
-        <span className="toast-icon" aria-hidden="true">{toast.kind === 'err' ? '!' : '✓'}</span>
-        <span className="toast-msg">{toast.msg}</span>
+        <Icon name={toast.kind === 'err' ? 'warn' : 'check'} filled />
+        <span>{toast.msg}</span>
       </button>
     </div>,
-    host,
+    document.body,
   )
 }

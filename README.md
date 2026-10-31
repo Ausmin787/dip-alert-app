@@ -14,7 +14,7 @@ The original dip strategy is still supported: *"Buy ₹1L of Nifty 50 ETF for ev
 <p align="center">
   <img
     src="docs/screenshots/dashboard-desktop.png"
-    alt="Dip Alert Liquid Glass dashboard — Watch tab with the floating bottom navigation"
+    alt="Dip Alert on a wide screen: sidebar, watchlist with sparklines, and Nifty 50 detail with its price chart and alert levels"
     width="720"
   />
 </p>
@@ -50,14 +50,16 @@ Alert fires once per UTC day per direction when abs(daily_change%) >= threshold
 |---|---|
 | Backend | Python 3.11+, FastAPI, SQLModel (SQLite), APScheduler, yfinance |
 | Alerts | CallMeBot WhatsApp API (free, personal use) |
-| Frontend | React + Vite, Tailwind CSS v4, GSAP, Axios (requires Node 20.19+ — Vite 8 floor) |
+| Frontend | React + Vite, plain CSS, Axios (requires Node 20.19+ — Vite 8 floor) |
 | Deployment targets | Oracle Cloud Always Free VM (backend, systemd service), Vercel (frontend) |
 
 ## Interface
 
-The frontend is a mobile-first, four-tab **Liquid Glass** dashboard: **Watch**, **Alerts**, **History**, and **Manage**. Watch includes an accessible 30-day closing-price chart for the selected asset; only that selected history is refreshed, limiting upstream Yahoo requests. The floating bottom navigation uses the web-compatible refraction technique documented by Aave: a generated SVG displacement map and RGB channel offsets appear only while the selector moves. At rest, the filtered duplicate is hidden so the selected icon and label remain crisp. GSAP owns the selector position and motion envelope; reduced-motion users get an immediate, non-refracting transition.
+The frontend is built to **Apple's Human Interface Guidelines**, modelled on Apple's Stocks app, with three tabs: **Watchlist**, **Alerts**, and **Settings**. It follows the device between light and dark, and honours reduced motion, reduced transparency, and increased contrast. On phones a floating tab bar leads to a detail sheet you can drag, with a price chart you can scrub; from 1000px wide it becomes a sidebar with the list beside its detail.
 
-Chromium has been visually verified. Safari and Firefox retain a readable glass-selector fallback but still need physical-browser spot checks for exact SVG-filter rendering.
+Detail for a dip asset shows the alert ladder: every level as a price and an amount, with today's price between the rungs. Daily-move assets show a centre-zero gauge against their alert size. Gold and silver are shown in Indian units (₹ per 10 g, ₹ per kg) with the dollar quote and exchange rate printed beside them; these are international equivalents and exclude duty and GST.
+
+Verified in Chromium with emulated touch, in both colour schemes. Real iPhone Safari (San Francisco, Dynamic Type, safe areas, touch feel) is still to be checked on a device.
 
 ## Run locally
 

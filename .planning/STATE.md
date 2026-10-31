@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
 milestone: current-product
-milestone_name: four-tab-liquid-glass
+milestone_name: three-tab-apple-hig
 status: maintenance
 stopped_at: Full correctness, security, persistence, and request-efficiency audit remediated
-last_updated: "2026-07-21T00:00:00+05:30"
-last_activity: 2026-07-21 — Audit repairs and regression coverage reconciled with live source
+last_updated: "2026-10-31T00:00:00+05:30"
+last_activity: 2026-10-31 — Frontend rebuilt to Apple HIG; verified in Chromium, real iPhone Safari pending
 progress:
   historical_phases: 3
   historical_phases_completed: 3
@@ -16,16 +16,16 @@ progress:
 
 ## Current Product
 
-Dip Alert is a working single-user FastAPI/React application with dip and momentum alert modes and a mobile-first four-tab Liquid Glass frontend.
+Dip Alert is a working single-user FastAPI/React application with dip and momentum alert modes and a mobile-first three-tab frontend built to Apple's Human Interface Guidelines.
 
-**Current frontend:** `App.jsx`, `AssetContext.jsx`, `GlassNav.jsx`, `gsap.js`, `api.js`, `lib.js`, and `tabs/{Watch,Alerts,History,Manage}Tab.jsx`.
+**Current frontend:** `App.jsx`, `AssetContext.jsx`, `spring.js`, `Sheet.jsx`, `PriceChart.jsx`, `TabBar.jsx`, `AssetDetail.jsx`, `api.js`, `lib.js`, and `tabs/{Watchlist,Alerts,Settings}Tab.jsx`.
 
 **Current backend:** FastAPI routes, SQLModel/SQLite, APScheduler, cached/single-flight yfinance reads, CallMeBot integration, additive migrations, optional `APP_TOKEN`, and logic/security/migration regression scripts.
 
 ## Current Position
 
-- Bottom-nav architecture rebuilt and motion refraction corrected.
-- Parked selector is crisp; the filtered duplicate is visible only during travel.
+- Frontend rebuilt to Apple HIG (2026-10-31): glass only on the floating layer, springs for all motion, no animation library.
+- Real iPhone Safari check still pending: San Francisco, Dynamic Type, safe areas, touch feel.
 - Frontend lint, helper tests, and production build are the standard UI gate.
 - Alert state advances only after configured, successful delivery; alert history snapshots the investment amount used at alert time.
 - Status polling is guarded against overlap and chart history is fetched only for the selected asset.

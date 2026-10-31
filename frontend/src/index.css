@@ -1,1597 +1,1871 @@
-@import 'tailwindcss';
+/* ─────────────────────── Dip Alert: Apple system design ───────────────────────
+   Tokens are Apple's published values (HIG Color and Typography spec tables, UIKit
+   dynamic colours), not an invented palette. The web has no system colour API, so
+   they are hard-coded here and nowhere else.
 
-/* ─────────────────────────────── Dip Alert — Liquid Glass ───────────────────────
-   Mobile-first phone shell. Sky/ribbon wallpaper behind transparent refractive
-   glass cards, a single warm-gold accent, SF/system font, big tabular numerals.
-   Source of truth: the Liquid Glass design (replaces the earlier Open Design
-   dark mono-cyan pass). Four tabs: Watch · Alerts · History · Manage.
+   One job per colour (HIG: "avoid using the same color to mean different things"):
+   tint = interactive, up/down = price direction, level = alert levels.
+
+   Materials: glass is the floating functional layer only (tab bar, sidebar, round
+   buttons, menus, alerts, toasts). HIG: "Don't use Liquid Glass in the content
+   layer." Content sits on solid system backgrounds.
 ──────────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --accent: #ffcf73;
-  --accent-dim: rgba(255, 207, 115, 0.16);
-  --accent-glow: rgba(255, 207, 115, 0.32);
-  --bg: #03176f;
-  --glass: rgba(255, 255, 255, 0.10);
-  --gb: rgba(255, 255, 255, 0.30);
-  --gt: rgba(255, 255, 255, 0.55);
-  --fg: #ffffff;
-  --muted: rgba(255, 255, 255, 0.70);
-  --dim: rgba(255, 255, 255, 0.52);
-  --faint: rgba(255, 255, 255, 0.16);
-  /* Content-card surfaces (Tier 2). Solid, not translucent: a card must present
-     ONE constant fill top-to-bottom. The old translucent `.g` composited to
-     roughly #495567 over the pale wallpaper band and to near-navy over the dark
-     band, so secondary text swung between ~3.4:1 and comfortable within a
-     single card. --card is that constant; --card-2 is for wells nested inside
-     it (inputs, stat cells), which must be a real step darker now that they can
-     no longer rely on borrowing the wallpaper. */
-  --card: #0a1030;
-  --card-2: #060b24;
-  --card-bd: rgba(255, 255, 255, 0.09);
-  --green: #22c55e;
-  --rose: #ff5e6c;
-  --r: 26px;
-  --rs: 18px;
+  color-scheme: light dark;
+
+  /* Backgrounds: systemGrouped set, light */
+  --bg: #f2f2f7;
+  --surface: #ffffff;
+  --surface-2: #f2f2f7;
+  --sheet: #ffffff;
+  --sheet-group: #f2f2f7;
+
+  /* Labels */
+  --label: #000000;
+  --label-2: rgba(60, 60, 67, 0.76);
+  --label-3: rgba(60, 60, 67, 0.3);
+  --placeholder: var(--label-2);
+  --sep: rgba(60, 60, 67, 0.29);
+  --fill-1: rgba(120, 120, 128, 0.2);
+  --fill-2: rgba(120, 120, 128, 0.16);
+  --fill-3: rgba(118, 118, 128, 0.12);
+  --fill-4: rgba(116, 116, 128, 0.08);
+
+  /* Semantic colour. Small text on white uses Apple's increased-contrast values:
+     standard system green on white is only 2.2:1. */
+  --tint: rgb(0, 136, 255);
+  --tint-text: rgb(30, 110, 244);
+  /* Filled controls carry white text in both appearances. White on Apple's standard
+     blue is 3.4:1, so fills use the increased-contrast value, which clears 4.5:1. */
+  --tint-fill: rgb(30, 110, 244);
+  --up: rgb(0, 137, 50);
+  --down: rgb(233, 21, 45);
+  --level: rgb(180, 72, 0);
+  --on-level: #ffffff;
+  /* Change capsules carry white text in both appearances, so both fills are the
+     darker values that clear 4.5:1 against it. */
+  --up-fill: rgb(0, 137, 50);
+  --down-fill: rgb(233, 21, 45);
+
+  /* Glass: regular variant */
+  --glass: rgba(255, 255, 255, 0.66);
+  --glass-strong: rgba(250, 250, 252, 0.82);
+  --glass-rim: rgba(255, 255, 255, 0.8);
+  --glass-spec: rgba(255, 255, 255, 0.9);
+  --glass-selected: rgba(120, 120, 128, 0.14);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.14), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --dim: rgba(0, 0, 0, 0.32);
+  --behind-stage: #000000;
+
+  /* Shape: capsules for touch controls, concentric radii around the groups. */
+  --r-group: 26px;
+  --r-sheet: 38px;
+
+  /* Type: HIG Large (default) Dynamic Type scale, in rem so it follows the user's
+     text size. html sets 1rem = Body (17px at the default size). */
+  --t-large: 2rem;
+  --t-title1: 1.6471rem;
+  --t-title2: 1.2941rem;
+  --t-title3: 1.1765rem;
+  --t-body: 1rem;
+  --t-sub: 0.8824rem;
+  --t-foot: 0.7647rem;
+  --t-cap: 0.7059rem;
+  --t-cap2: 0.6471rem;
+
+  /* Tracking for the Inter fallback, shaped by Apple's SF table but tighter at
+     display sizes because Inter runs wider than SF. See @supports below. */
+  --tr-large: -0.022em;
+  --tr-title1: -0.02em;
+  --tr-title2: -0.012em;
+  --tr-title3: -0.023em;
+  --tr-body: -0.026em;
+  --tr-sub: -0.016em;
+  --tr-foot: -0.006em;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --nav-h: calc(var(--safe-top) + 60px);
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-2: #2c2c2e;
+    --sheet: #1c1c1e;
+    --sheet-group: #2c2c2e;
+
+    --label: #ffffff;
+    --label-2: rgba(235, 235, 245, 0.62);
+    --label-3: rgba(235, 235, 245, 0.3);
+    --sep: rgba(84, 84, 88, 0.65);
+    --fill-1: rgba(120, 120, 128, 0.36);
+    --fill-2: rgba(120, 120, 128, 0.32);
+    --fill-3: rgba(118, 118, 128, 0.24);
+    --fill-4: rgba(118, 118, 128, 0.18);
+
+    --tint: rgb(0, 145, 255);
+    --tint-text: rgb(60, 165, 255);
+    --up: rgb(48, 209, 88);
+    --down: rgb(255, 97, 101);
+    --level: rgb(255, 146, 48);
+    --on-level: #000000;
+
+    --glass: rgba(60, 60, 62, 0.58);
+    --glass-strong: rgba(44, 44, 46, 0.86);
+    --glass-rim: rgba(255, 255, 255, 0.14);
+    --glass-spec: rgba(255, 255, 255, 0.2);
+    --glass-selected: rgba(255, 255, 255, 0.14);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --dim: rgba(0, 0, 0, 0.48);
+  }
+}
+
+/* HIG: "In a running app, the system font dynamically adjusts tracking at every
+   point size." So on real San Francisco the fallback's manual tracking must go. */
+@supports (font: -apple-system-body) {
+  :root {
+    --tr-large: normal;
+    --tr-title1: normal;
+    --tr-title2: normal;
+    --tr-title3: normal;
+    --tr-body: normal;
+    --tr-sub: normal;
+    --tr-foot: normal;
+  }
+}
+
+/* HIG increased-contrast values, for people who asked for them. */
+@media (prefers-contrast: more) {
+  :root {
+    --label-2: rgba(60, 60, 67, 0.9);
+    --label-3: rgba(60, 60, 67, 0.6);
+    --sep: rgba(60, 60, 67, 0.6);
+    --tint-text: rgb(30, 110, 244);
+    --glass: rgba(255, 255, 255, 0.95);
+    --glass-strong: rgba(255, 255, 255, 0.98);
+    --glass-rim: rgba(0, 0, 0, 0.5);
+  }
+}
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root {
+    --label-2: rgba(235, 235, 245, 0.85);
+    --label-3: rgba(235, 235, 245, 0.6);
+    --sep: rgba(235, 235, 245, 0.45);
+    --tint: rgb(92, 184, 255);
+    --tint-text: rgb(92, 184, 255);
+    --up: rgb(74, 217, 104);
+    --down: rgb(255, 97, 101);
+    --level: rgb(255, 160, 86);
+    --glass: rgba(36, 36, 38, 0.96);
+    --glass-strong: rgba(36, 36, 38, 0.98);
+    --glass-rim: rgba(255, 255, 255, 0.6);
+  }
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+html {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter Variable', Roboto, 'Segoe UI', sans-serif;
+  font-size: 106.25%;
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Real Dynamic Type on iPhone: the system's body size becomes 1rem, so every size
+   in this file follows the Larger Text setting. Touch-only guard because macOS
+   Safari resolves this keyword to a much smaller desktop size. */
+@supports (font: -apple-system-body) and (-webkit-touch-callout: none) {
+  html {
+    font: -apple-system-body;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--behind-stage);
+  color: var(--label);
+  font-size: var(--t-body);
+  line-height: 1.294;
+  letter-spacing: var(--tr-body);
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1,
+h2,
+h3,
+p,
+ol {
   margin: 0;
   padding: 0;
 }
 
-html,
-body {
-  height: 100%;
-  background: var(--bg);
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+ol {
+  list-style: none;
 }
 
-body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ── Phone shell (desktop = centered device, real mobile = fullscreen) ── */
-.wrap {
-  width: 375px;
-  height: min(812px, calc(100vh - 24px));
-  position: relative;
-  z-index: 0;
-  border-radius: 50px;
-  /* `clip`, not `hidden`: the .ribbons wallpaper layer overhangs the shell by
-     ~90px, and `hidden` still makes .wrap a programmatically scrollable box —
-     any scrollIntoView/focus deep in the tree could slide the whole phone. */
-  overflow: clip;
-  box-shadow:
-    0 0 0 1.5px rgba(255, 255, 255, 0.1),
-    0 0 0 2px rgba(0, 0, 0, 0.6),
-    0 60px 120px rgba(0, 0, 0, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
-}
-
-@media (max-width: 430px) {
-  body {
-    display: block;
-    background: var(--bg);
-  }
-  .wrap {
-    width: 100%;
-    height: 100vh;
-    height: 100dvh;
-    border-radius: 0;
-    box-shadow: none;
-  }
-}
-
-/* ── Atmospheric background (Liquid Glass: sky wallpaper + ribbons + grain + glow) ── */
-.wallpaper,
-.ribbons,
-.grain,
-.glow {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.wallpaper {
-  z-index: -4;
-  background:
-    radial-gradient(ellipse 140% 78% at 52% -12%, rgba(94, 177, 232, 0.95), transparent 44%),
-    radial-gradient(ellipse 108% 88% at 20% 58%, rgba(205, 218, 199, 0.58), transparent 48%),
-    radial-gradient(ellipse 86% 74% at 88% 32%, rgba(198, 221, 188, 0.72), transparent 47%),
-    radial-gradient(ellipse 82% 78% at 76% 86%, rgba(2, 34, 169, 0.94), transparent 57%),
-    linear-gradient(180deg, #3b98d6 0%, #bfd0c1 42%, #0635b9 72%, #03176f 100%);
-}
-.ribbons {
-  z-index: -3;
-  width: 150%;
-  height: 118%;
-  left: -26%;
-  top: -8%;
-  opacity: 0.97;
-  filter: saturate(1.14) contrast(1.04);
-}
-.grain {
-  z-index: -2;
-  opacity: 0.05;
-  mix-blend-mode: soft-light;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E");
-}
-.glow {
-  z-index: -1;
-  background:
-    radial-gradient(circle at 50% 20%, rgba(247, 252, 255, 0.32), transparent 30%),
-    radial-gradient(ellipse 92% 34% at 54% 73%, rgba(7, 61, 219, 0.56), transparent 63%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 20%, rgba(0, 8, 48, 0.18) 100%);
-}
-
-/* Sits above the wallpaper layers (z −4…−1) and below `.app` (z 1). Stays clear
-   only across the status bar + title strip, which is the branding moment, then
-   deepens fast through the scroll area so bare sections read against a calm
-   field instead of moving ribbons.
-
-   The ramp has to start high because only Watch has a hero occupying the bright
-   band — Alerts/History/Manage put real content there, and an earlier version
-   that stayed clear to 28% left Manage's top rows sitting on the pale ribbon,
-   unreadable. The hero is unaffected in the way that matters: its visible
-   refraction comes from the pre-baked wallpaper bitmap, which this layer is not
-   part of, and its own 0.66→0.80 scrim already dominates its live backdrop. */
-.content-scrim {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    rgba(3, 10, 42, 0) 0%,
-    rgba(3, 10, 42, 0) 11%,
-    rgba(3, 10, 42, 0.58) 20%,
-    rgba(3, 10, 42, 0.90) 33%,
-    rgba(3, 10, 42, 0.96) 100%
-  );
-}
-
-/* ── App chrome ── */
-.app {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.sbar {
-  padding: 18px 24px 4px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.68);
-  flex-shrink: 0;
-}
-.sbar-r {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.sig {
-  display: flex;
-  gap: 2.5px;
-  align-items: flex-end;
-}
-.sig i {
-  display: block;
-  width: 3px;
-  background: rgba(255, 255, 255, 0.68);
-  border-radius: 1px;
-}
-.sig i:nth-child(1) { height: 4px; }
-.sig i:nth-child(2) { height: 7px; }
-.sig i:nth-child(3) { height: 10px; }
-.sig i:nth-child(4) { height: 13px; }
-
-.aheader {
-  padding: 10px 20px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
-.aname {
-  font-size: 21px;
-  font-weight: 800;
-  color: var(--fg);
-  letter-spacing: -0.04em;
-}
-.live-chip {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--accent);
-  background: var(--accent-dim);
-  border: 1px solid var(--accent-glow);
-  border-radius: 100px;
-  padding: 4px 11px 4px 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.live-chip.closed {
-  color: var(--muted);
-  background: var(--faint);
-  border-color: var(--gb);
-}
-.live-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 6px var(--accent);
-  animation: blink 2.2s ease-in-out infinite;
-}
-.live-chip.closed .live-dot {
-  background: var(--muted);
-  box-shadow: none;
-  animation: none;
-}
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.28; }
-}
-
-/* ── Panels (one per tab) ── */
-.panels {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-}
-.panel {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 0 15px 110px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.panel::-webkit-scrollbar { display: none; }
-.panel.active {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-.panel.active.animating {
-  animation: panel-enter 0.18s ease both;
-}
-.panel.active.animating > .dash-card {
-  animation: card-enter 0.45s 0.02s ease-out both;
-}
-/* nth-child counts ALL panel children, not just .dash-cards — inserting
-   anything above the hero (e.g. the setup banner) shifts every delay below it.
-   Extended past 4 so the lower cards stagger instead of sharing the base
-   delay, and so a conditional banner can't leave a card un-delayed. */
-.panel.active.animating > .dash-card:nth-child(2) { animation-delay: 0.10s; }
-.panel.active.animating > .dash-card:nth-child(3) { animation-delay: 0.18s; }
-.panel.active.animating > .dash-card:nth-child(4) { animation-delay: 0.26s; }
-.panel.active.animating > .dash-card:nth-child(5) { animation-delay: 0.32s; }
-.panel.active.animating > .dash-card:nth-child(6) { animation-delay: 0.37s; }
-.panel.active.animating > .dash-card:nth-child(7) { animation-delay: 0.41s; }
-.panel.active.animating > .dash-card:nth-child(n + 8) { animation-delay: 0.44s; }
-@keyframes panel-enter {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes card-enter {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ── Glass card (Liquid Glass: transparent glass + dark scrim + edge refraction) ── */
-/* Holder for per-surface SVG filter defs (GlassSurface.jsx); must never affect layout. */
-.glass-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-/* Bent-wallpaper refraction layer (useLiquidGlass.jsx). z-index:-1 keeps it
-   above the surface's own background but below all content — the surface's
-   backdrop-filter guarantees a stacking context, so the negative z stays
-   contained. ::after repaints the surface's own scrim over the bent clone
-   (background: inherit resolves to the host's computed gradient), keeping
-   text contrast identical to the plain CSS recipe. */
-.glass-refract {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  overflow: hidden;
-  pointer-events: none;
-  background: inherit;
-}
-.glass-refract::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  background: inherit;
-}
-.glass-refract-window {
-  position: absolute;
-  inset: -40px; /* keep in sync with BLEED in useLiquidGlass.jsx */
-}
-/* ── CONTENT CARD (Tier 2) ────────────────────────────────────────────────
-   A solid surface, deliberately NOT glass. Apple: "Avoid overusing Liquid
-   Glass effects… overusing this material in multiple custom controls can
-   provide a subpar user experience by distracting from that content."
-
-   The old translucent recipe made every card a window onto a moving wallpaper,
-   so a single card ran dark grey at the top and bright blue at the bottom and
-   its own rows sat on different grounds. One flat fill fixes that and, as a
-   side effect, raises the worst-case contrast of `--dim` body text from about
-   3.4:1 (below AA) to about 5.1:1. Do NOT lighten this fill to "keep the glass
-   feel" — that spends the headroom straight back.
-
-   No backdrop-filter, no ::before sheen, no refraction layer. The glass
-   material lives in `.glass` below and is reserved for hero/nav/sheet/toast. */
-.g {
-  background: var(--card);
-  /* Softer than --gb (white@0.30): a hot rim reads as a glass meniscus. */
-  border: 1px solid var(--card-bd);
-  border-radius: var(--r);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 6px 20px rgba(0, 2, 20, 0.35);
-  position: relative;
-  /* Load-bearing: the History summary's .stat-grid corners clip against it. */
-  overflow: hidden;
-  flex-shrink: 0;
-}
-/* ── GLASS (Tier 1) ──────────────────────────────────────────────────────
-   The Liquid Glass material, applied ONLY to the functional/floating layer:
-   the hero, the nav, sheets and the toast. Apple: "This material forms a
-   distinct functional layer for controls and navigation elements… Limit these
-   effects to the most important functional elements in your app."
-
-   `.glass` must stay AFTER `.g` in source order — both are single-class
-   specificity, so the later block wins the properties they share. `.hero` then
-   overrides background/::before on top of this. Order: .g → .glass → .hero. */
-.glass {
-  background: linear-gradient(150deg, rgba(0, 8, 36, 0.56) 0%, rgba(2, 14, 60, 0.68) 100%);
-  backdrop-filter: blur(28px) saturate(180%) contrast(1.05);
-  -webkit-backdrop-filter: blur(28px) saturate(180%) contrast(1.05);
-  /* Restores the bright rim `.g` deliberately softened for solid cards. */
-  border-color: var(--gb);
-  box-shadow:
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.85),
-    inset 0 -2px 8px rgba(255, 255, 255, 0.10),
-    inset 2px 0 8px rgba(255, 255, 255, 0.06),
-    inset -2px 0 6px rgba(0, 10, 60, 0.12),
-    0 8px 28px rgba(0, 4, 50, 0.30);
-}
-/* The corner sheen is a property of the glass material, not of a card. */
-.glass::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: 1;
-  background:
-    radial-gradient(ellipse 55% 42% at 8% 4%, rgba(255, 255, 255, 0.20), transparent 65%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, transparent 18%),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0%, transparent 16%),
-    linear-gradient(0deg, rgba(0, 10, 60, 0.14) 0%, transparent 14%),
-    linear-gradient(270deg, rgba(0, 10, 60, 0.10) 0%, transparent 12%);
-  mix-blend-mode: screen;
-}
-
-/* ── HERO (deepest scrim — sits on the brightest part of the wallpaper) ── */
-.hero {
-  padding: 22px 22px 20px;
-  background: linear-gradient(158deg, rgba(0, 6, 32, 0.66) 0%, rgba(0, 4, 24, 0.80) 100%);
-}
-.hero::before {
-  background:
-    radial-gradient(ellipse 50% 35% at 10% 3%, rgba(255, 255, 255, 0.12), transparent 65%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 18%),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, transparent 14%);
-}
-.hero-asset {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--muted);
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  margin-bottom: 13px;
-}
-.green-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.65);
-  animation: blink 2.5s ease-in-out infinite;
-}
-.green-dot.off {
-  background: var(--dim);
-  box-shadow: none;
-  animation: none;
-}
-.hero-price-row { display: flex; align-items: flex-start; }
-.hcur {
-  font-size: 26px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.42);
-  margin-top: 6px;
-}
-.hnum {
-  font-size: 58px;
-  font-weight: 800;
-  color: var(--fg);
-  letter-spacing: -0.055em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-.hdec {
-  font-size: 30px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.38);
-  align-self: flex-end;
-  padding-bottom: 7px;
-  letter-spacing: -0.02em;
-}
-/* Unit suffix on the hero number: "/10g", "/kg", "pts". Sits on the number's
-   baseline and stays quiet — it qualifies the figure, it isn't part of it. */
-.hunit {
-  font-size: 15px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.42);
-  align-self: flex-end;
-  padding-bottom: 10px;
-  margin-left: 5px;
-  letter-spacing: 0.01em;
-}
-
-/* Source quote + the exact rate used + the duty/GST caveat, under a rupee-led
-   metal price. Disclosing the rate is the Wise pattern (docs/design-refs) — a
-   converted number that hides its rate invites being read as an official one. */
-.hero-fx {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
-  margin-top: 7px;
-  font-size: 11.5px;
-  font-variant-numeric: tabular-nums;
-}
-.hfx-src { color: var(--muted); font-weight: 600; }
-.hfx-rate { color: var(--dim); }
-.hfx-note {
-  flex-basis: 100%;
-  font-size: 10.5px;
-  color: var(--dim);
-  letter-spacing: 0.01em;
-}
-
-/* Compact unit suffix for list rows (watchlist + alert lists). */
-.wp-unit {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--dim);
-  margin-left: 3px;
-}
-
-.hero-dip-row {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin-top: 14px;
-}
-.hdip {
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--accent);
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-}
-.hath-block { line-height: 1.5; }
-.hath-lbl { font-size: 11px; color: var(--dim); }
-.hath-val { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.hero-divider { height: 1px; background: var(--faint); margin-top: 15px; }
-.hero-meta {
-  display: flex;
-  align-items: center;
-  padding-top: 12px;
-  gap: 7px;
-}
-.open-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 5px rgba(34, 197, 94, 0.6);
-}
-.open-dot.off { background: var(--dim); box-shadow: none; }
-.open-lbl { font-size: 11px; color: rgba(255, 255, 255, 0.38); }
-.upd-time { font-size: 11px; color: var(--dim); margin-left: auto; font-variant-numeric: tabular-nums; }
-
-/* ── DIP TRACKER ── */
-.tracker { padding: 16px 16px 17px; }
-.row-hd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-.sec-lbl {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--dim);
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-}
-/* ── BARE SECTION (Tier 3) ────────────────────────────────────────────────
-   Homogeneous, scannable lists whose rows are self-contained don't need a card
-   around them — the header sits directly on the background and the rows carry
-   their own hairlines. Pattern from docs/design-refs/watchlist-borderless-*.png
-   (Tokenized Stocks / MoonPay): hierarchy comes from type and spacing, not from
-   another translucent panel. Keeps `.dash-card` so the entrance stagger still
-   applies; it is a layout class, not a surface class. */
-.sec {
-  background: none;
-  border: none;
-  box-shadow: none;
-  padding: 2px 4px 0;
-  flex-shrink: 0;
-}
-/* Header on the background, not inside a card. Slightly brighter than the
-   in-card `.sec-lbl` because it no longer has a card fill lifting it. */
-.sec-hd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 2px 0 6px;
-  padding: 0 2px;
-}
-.sec-hd .sec-lbl { color: var(--muted); }
-/* Two-class specificity so a section beats the card padding those component
-   classes still carry for their non-section uses (e.g. `.mcard` on the
-   WhatsApp form, which is a real card). */
-.sec.alist,
-.sec.mcard,
-.sec.wlist { padding: 2px 4px 0; }
-
-.dep-note { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.dep-note strong { color: var(--accent); font-weight: 700; }
-.levels { display: flex; gap: 7px; }
-.lv {
-  flex: 1;
-  padding: 9px 3px;
-  border-radius: 13px;
-  border: 1px solid var(--gb);
-  text-align: center;
-}
-.lv.done { background: var(--accent-dim); border-color: var(--accent-glow); }
-.lv.next { border-color: rgba(255, 255, 255, 0.26); border-style: dashed; }
-.lv-pct {
-  font-size: 12px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--dim);
-  letter-spacing: -0.01em;
-}
-.lv.done .lv-pct { color: var(--accent); }
-.lv.next .lv-pct { color: rgba(255, 255, 255, 0.78); }
-.lv-st { font-size: 10px; margin-top: 3px; color: rgba(255, 255, 255, 0.18); }
-.lv.done .lv-st { color: var(--accent); }
-.lv.next .lv-st { color: rgba(255, 255, 255, 0.48); }
-
-/* ── NEXT ALERT ── */
-.next-card {
-  padding: 16px 18px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.next-bell {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--accent-dim);
-  border: 1px solid var(--accent-glow);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.next-bell svg { width: 20px; height: 20px; }
-.next-body { flex: 1; }
-.next-lbl {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--dim);
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-.next-val {
-  font-size: 19px;
-  font-weight: 800;
-  color: var(--fg);
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-.next-sub { font-size: 11px; color: var(--dim); margin-top: 3px; }
-
-/* ── ALERT LIST ── */
-/* `.alist` is only ever a bare section now, so it carries no card padding.
-   (`.alist-hd` was removed with it — every list header is a `.sec-hd`.) */
-.alist { padding: 0; }
-.ai {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--faint);
-}
-.ai:last-child { border-bottom: none; padding-bottom: 0; }
-.badge {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--accent-dim);
-  border: 1px solid var(--accent-glow);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-  letter-spacing: -0.01em;
-}
-.badge.old {
-  background: var(--faint);
-  border-color: var(--gb);
-  color: var(--muted);
-}
-/* Momentum alert badges */
-.badge-up {
-  background: rgba(34, 197, 94, 0.12);
-  border-color: rgba(34, 197, 94, 0.3);
-  color: var(--green);
-}
-.badge-dn {
-  background: rgba(255, 94, 108, 0.12);
-  border-color: rgba(255, 94, 108, 0.3);
-  color: var(--rose);
-}
-/* Directional change colors */
-.chg-up { color: var(--green) !important; }
-.chg-dn { color: var(--rose) !important; }
-
-/* ── MOMENTUM CARD ── */
-.momentum-row {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.momentum-val {
-  font-size: 32px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-}
-.momentum-sub { font-size: 12px; color: var(--dim); }
-
-.history-card { padding: 16px 18px 14px; }
-.history-chart {
-  display: block;
-  width: 100%;
-  height: 84px;
-  margin-top: 8px;
-  color: var(--accent);
-  filter: drop-shadow(0 4px 8px rgba(255, 207, 115, 0.22));
-}
-.history-range {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 4px;
-  color: var(--dim);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-}
-.ai-body { flex: 1; min-width: 0; }
-.ai-price {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--fg);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-.ai-sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
-.ai-time {
-  font-size: 11px;
-  color: var(--dim);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  flex-shrink: 0;
-}
-.ai-sent { color: var(--accent); font-size: 10px; }
-
-/* ── WATCHLIST (read-only list on Watch tab) ── */
-.wlist { padding: 2px 4px 0; }
-.wit { display: flex; flex-direction: column; }
-.wr {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 9px 0;
-  border-bottom: 1px solid var(--faint);
-  width: 100%;
-  background: none;
-  border-left: none;
-  border-right: none;
-  border-top: none;
-  cursor: pointer;
-  text-align: left;
+button,
+input,
+select {
   font: inherit;
+  letter-spacing: inherit;
   color: inherit;
 }
-.wr:last-child { border-bottom: none; }
-.wr.sel .wn { color: var(--accent); }
-.wd { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.wd.on { background: var(--accent); box-shadow: 0 0 5px var(--accent); }
-.wd.off { background: var(--dim); }
-.wn { font-size: 14px; font-weight: 700; color: var(--fg); letter-spacing: -0.01em; }
-.wf { font-size: 10px; color: var(--dim); margin-top: 1px; }
-.wp { margin-left: auto; text-align: right; }
-.wp-val { font-size: 14px; font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; }
-.wp-dip { font-size: 11px; color: var(--accent); font-variant-numeric: tabular-nums; margin-top: 1px; }
-.wp-dip.off { color: var(--dim); }
 
-/* ── Tab titles & config rows ── */
-.tab-title {
-  padding: 6px 0 14px;
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--fg);
-  letter-spacing: -0.04em;
+h1,
+h2 {
+  text-wrap: balance;
 }
-.cfg-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  width: 100%;
+
+p {
+  text-wrap: pretty;
+}
+
+button,
+a,
+input,
+summary {
+  touch-action: manipulation;
+}
+
+button {
   background: none;
-  border: none;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-.cfg-row + .cfg-row { border-top: 1px solid var(--faint); }
-.cfg-lbl { font-size: 14px; font-weight: 600; color: var(--fg); }
-.cfg-sub { font-size: 11px; color: var(--dim); margin-top: 3px; }
-.cfg-val { font-size: 14px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
-.cfg-val.muted { color: var(--muted); }
-.toggle {
-  width: 46px;
-  height: 27px;
-  border-radius: 14px;
-  background: var(--accent);
-  /* Was rgba(0,228,255,.35) — #00e4ff, a leftover from the old Open Design
-     mono-cyan pass, glowing cyan underneath a gold toggle. */
-  box-shadow: 0 0 12px var(--accent-glow);
-  position: relative;
-  flex-shrink: 0;
-}
-.toggle.off { background: var(--gb); box-shadow: none; }
-.toggle-k {
-  position: absolute;
-  width: 21px;
-  height: 21px;
-  border-radius: 50%;
-  background: #fff;
-  top: 3px;
-  right: 3px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-  transition: right 0.18s ease;
-}
-.toggle.off .toggle-k { right: 22px; }
-
-.mh-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 0;
-}
-.mh-row + .mh-row { border-top: 1px solid var(--faint); }
-.mh-lbl { font-size: 13px; color: var(--muted); }
-.mh-val { font-size: 13px; color: var(--fg); font-variant-numeric: tabular-nums; font-weight: 600; }
-.mh-val.live { color: var(--green); }
-.mh-val.dim { color: var(--dim); }
-
-/* ── HISTORY summary ── */
-.summ-top { padding: 22px 20px 18px; text-align: center; }
-.summ-val {
-  font-size: 40px;
-  font-weight: 800;
-  color: var(--fg);
-  letter-spacing: -0.05em;
-  font-variant-numeric: tabular-nums;
-}
-.summ-val span { font-size: 20px; color: var(--muted); font-weight: 600; }
-.summ-sub { font-size: 12px; color: var(--dim); margin-top: 6px; }
-.stat-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: var(--faint);
-  border-bottom-left-radius: var(--r);
-  border-bottom-right-radius: var(--r);
-  overflow: hidden;
-}
-/* Explicitly opaque, not a translucent well. On the old glass card this leaned
-   on the wallpaper underneath for its separation; on a solid card it has to
-   state its own tone or the 4-up grid flattens into one block. */
-.stat-cell { background: var(--card-2); padding: 15px 18px; }
-.stat-v {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
-}
-.stat-l {
-  font-size: 10px;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-top: 4px;
-}
-
-/* ── MANAGE: forms, list rows, buttons ── */
-.mcard { padding: 18px; }
-.mcard-hd {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--dim);
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-}
-.field-group { margin-bottom: 14px; }
-.field-group:last-child { margin-bottom: 0; }
-.field-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 7px;
-}
-.flabel {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted);
-  letter-spacing: 0.04em;
-}
-.fhint { font-size: 10px; color: var(--dim); margin-top: 6px; line-height: 1.5; }
-.fhint.ok { color: var(--accent); }
-.fhint.warn { color: var(--green); }
-/* Stays translucent because it has to work on BOTH a solid card (the WhatsApp
-   form) and the still-glass AssetSheet — one value serves both. Deepened from
-   0.25: on a solid card, black-at-25% was barely a dip. The border comes off
-   `--gb` for the same reason `.btn-ghost` did — it was a glass token in a
-   non-glass context. */
-.field {
-  width: 100%;
-  border-radius: var(--rs);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(0, 0, 0, 0.34);
-  padding: 11px 13px;
-  font-size: 14px;
-  color: var(--fg);
-  outline: none;
-  font-variant-numeric: tabular-nums;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
-}
-.field::placeholder { color: var(--dim); }
-.field:focus {
-  border-color: var(--accent-glow);
-  box-shadow: 0 0 0 3px var(--accent-dim);
-}
-.field:disabled { opacity: 0.45; cursor: not-allowed; }
-
-.btn-row {
-  display: flex;
-  gap: 10px;
-  margin-top: 16px;
-}
-.btn {
-  flex: 1;
-  border-radius: 100px;
-  padding: 12px 16px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: filter 0.18s ease, background 0.18s ease, transform 0.12s ease;
-}
-.btn:active { transform: scale(0.97); }
-.btn:disabled { opacity: 0.4; pointer-events: none; }
-.btn-primary {
-  background: var(--accent);
-  color: #04121a;
-  box-shadow: 0 0 18px -4px var(--accent-glow);
-}
-.btn-primary:hover { filter: brightness(1.08); }
-/* Deliberately NOT `var(--glass)` any more. Borrowing the glass fill + glass
-   border meant these buttons were a glass chip inside a glass card, and over
-   the bright half of the wallpaper they all but vanished. They now carry their
-   own tint, independent of the material tokens. */
-.btn-ghost {
-  background: rgba(255, 255, 255, 0.11);
-  border-color: rgba(255, 255, 255, 0.18);
-  color: var(--fg);
-}
-.btn-ghost:hover { background: rgba(255, 255, 255, 0.09); }
-.btn-sm {
-  flex: none;
-  width: 38px;
-  height: 38px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.btn-sm svg { width: 16px; height: 16px; }
-.btn-danger { color: var(--rose); }
-
-.status-msg { font-size: 12px; margin-top: 12px; font-weight: 600; }
-.status-msg.ok { color: var(--accent); }
-.status-msg.err { color: var(--rose); }
-
-/* Manage asset rows */
-.mrow {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--faint);
-}
-.mrow:last-child { border-bottom: none; }
-.mrow-bar {
-  width: 4px;
-  height: 34px;
-  border-radius: 4px;
-  flex-shrink: 0;
-  background: var(--accent);
-  box-shadow: 0 0 8px -1px var(--accent-glow);
-}
-.mrow-bar.off { background: var(--dim); box-shadow: none; }
-.mrow-body { flex: 1; min-width: 0; }
-.mrow-name { font-size: 14px; font-weight: 700; color: var(--fg); }
-.mrow-meta { font-size: 10px; color: var(--dim); margin-top: 2px; font-variant-numeric: tabular-nums; }
-.mrow-actions { display: flex; gap: 6px; flex-shrink: 0; }
-
-.ol-steps { display: flex; flex-direction: column; gap: 14px; }
-.ol-step { display: flex; gap: 13px; font-size: 13px; line-height: 1.5; color: var(--muted); }
-.ol-num { font-size: 11px; font-weight: 800; color: var(--accent); flex-shrink: 0; padding-top: 1px; font-variant-numeric: tabular-nums; }
-.ol-step em { color: var(--fg); font-style: normal; }
-.ol-step b { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; }
-
-.empty {
-  padding: 28px 16px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--dim);
-  line-height: 1.7;
-}
-
-/* ── Bottom sheet (add / edit asset) ── */
-.sheet-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 50;
-  /* Lightened from 0.66. With the content scrim now calming the wallpaper, an
-     overlay that dark left the sheet nothing to refract — glass needs contrast
-     behind it to bend. This keeps focus on the sheet while letting the cards
-     underneath still read through its rim. */
-  background: rgba(4, 9, 22, 0.48);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  display: flex;
-  align-items: flex-end;
-  animation: fadein 0.18s ease;
-}
-.sheet {
-  width: 100%;
-  /* Hero-depth scrim: deep enough that form fields stay legible over the blurred
-     overlay, translucent enough for the refraction rim to read as glass. */
-  background: linear-gradient(165deg, rgba(0, 6, 32, 0.78) 0%, rgba(0, 4, 24, 0.88) 100%);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border-top: 1px solid var(--gb);
-  border-radius: 26px 26px 0 0;
-  padding: 18px 18px calc(20px + env(safe-area-inset-bottom));
-  /* Rim ladder from the reference lens study: a bright inner edge, a warm
-     top-left inner glow and a cool bottom-right inner shade read as thickness,
-     which is what separates a lens from a tinted panel. */
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.30),
-    inset 12px 14px 26px rgba(255, 255, 255, 0.11),
-    inset -16px -18px 26px rgba(0, 0, 0, 0.20),
-    0 -24px 80px -12px rgba(0, 0, 0, 0.9);
-  animation: sheetup 0.26s cubic-bezier(0.22, 1, 0.36, 1);
-  max-height: 92%;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-.sheet::-webkit-scrollbar { display: none; }
-@keyframes sheetup {
-  from { transform: translateY(40px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-.sheet-grip {
-  width: 40px;
-  height: 4px;
-  border-radius: 100px;
-  background: var(--gb);
-  margin: 0 auto 16px;
-}
-.sheet-title { font-size: 18px; font-weight: 800; color: var(--fg); letter-spacing: -0.03em; }
-.sheet-sub { font-size: 11px; color: var(--dim); margin: 4px 0 16px; line-height: 1.5; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-/* The fade only protects the gap below the floating nav. Keeping it subtle
-   preserves the contrast that makes the lens refraction visible. */
-.nav-scrim {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 150px;
-  z-index: 5;
-  pointer-events: none;
-  background: linear-gradient(to bottom, transparent 0%, rgba(2, 6, 20, 0.12) 44%, rgba(2, 6, 20, 0.58) 78%, rgba(2, 6, 20, 0.86) 100%);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.25) 38%, black 72%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.25) 38%, black 72%);
-}
-
-/* One continuous refractive material for the navigation plane. The selected
-   item is a thin vibrancy overlay, not a second glass layer. */
-.nav {
-  position: absolute;
-  right: 15px;
-  bottom: calc(10px + env(safe-area-inset-bottom));
-  left: 15px;
-  z-index: 10;
-  isolation: isolate;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 2px;
-  padding: 8px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.27);
-  border-radius: 31px;
-  background:
-    linear-gradient(155deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.025) 48%, rgba(152, 190, 255, 0.07)),
-    rgba(5, 12, 38, 0.27);
-  backdrop-filter: blur(18px) saturate(1.5) brightness(1.04);
-  -webkit-backdrop-filter: blur(18px) saturate(1.5) brightness(1.04);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.52),
-    inset 0 -1px 0 rgba(82, 126, 214, 0.16),
-    inset 1px 0 0 rgba(255, 255, 255, 0.14),
-    inset -1px 0 0 rgba(142, 186, 255, 0.10),
-    0 20px 48px rgba(0, 4, 20, 0.42);
-}
-
-.nav::before {
-  content: '';
-  position: absolute;
-  inset: 1px;
-  z-index: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse 62% 56% at 20% -8%, rgba(255, 255, 255, 0.24), transparent 68%),
-    linear-gradient(112deg, rgba(255, 255, 255, 0.11), transparent 28% 72%, rgba(167, 207, 255, 0.08));
-  mix-blend-mode: screen;
-  opacity: 0.8;
-}
-
-/* The held selector deliberately grows beyond the bar, like a lifted optical
-   lens. Resting navigation remains clipped to its original rounded shell. */
-.nav.dragging { overflow: visible; }
-
-.nav button {
-  position: relative;
-  z-index: 3;
-  display: grid;
-  min-width: 0;
-  min-height: 58px;
-  place-items: center;
-  gap: 4px;
   border: 0;
-  border-radius: 25px;
-  background: transparent;
+  padding: 0;
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.66);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
   user-select: none;
-  transition:
-    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
-    color 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    text-shadow 220ms ease;
 }
 
-.nav button.active {
-  color: #fff;
-  cursor: grab;
-  touch-action: none;
-  text-shadow: 0 1px 8px rgba(255, 255, 255, 0.34);
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
-.nav.dragging button.active { cursor: grabbing; }
-
-.nav button:focus-visible {
-  z-index: 5;
-  outline: 2px solid rgba(255, 255, 255, 0.92);
-  outline-offset: -4px;
+svg {
+  display: block;
 }
 
-.nav-filter-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-  pointer-events: none;
+:focus {
+  outline: none;
 }
 
-/* A duplicate of the tab row is visible only through the travelling filter
-   crop. At rest it is not painted, leaving the normal selector unchanged. */
-.nav-highlight-target {
-  position: absolute;
-  inset: 8px;
-  z-index: 4;
-  display: none;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 2px;
-  pointer-events: none;
-  color: #fff;
+:focus-visible {
+  outline: 2px solid var(--tint);
+  outline-offset: 2px;
 }
 
-@supports (filter: url("#nav-filter-test")) {
-  .nav-highlight-target.ready.moving { display: grid; }
+::selection {
+  background: color-mix(in srgb, var(--tint) 30%, transparent);
 }
-
-.nav-highlight-item {
-  display: grid;
-  min-width: 0;
-  place-items: center;
-  gap: 4px;
-  border-radius: 25px;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  text-shadow: 0 1px 8px rgba(255, 255, 255, 0.42);
-}
-
-.nav-indicator {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 2;
-  overflow: hidden;
-  border-radius: 25px;
-  pointer-events: none;
-  opacity: 0;
-  transform-origin: 50% 50%;
-  will-change: transform;
-  background:
-    radial-gradient(ellipse 78% 46% at 50% 2%, rgba(255, 255, 255, 0.18), transparent 72%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.025) 54%, rgba(180, 214, 255, 0.07)),
-    rgba(255, 255, 255, 0.025);
-  backdrop-filter: blur(10px) saturate(1.42) brightness(1.08);
-  -webkit-backdrop-filter: blur(10px) saturate(1.42) brightness(1.08);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.56),
-    inset 1px 0 0 rgba(255, 255, 255, 0.18),
-    inset -1px 0 0 rgba(180, 215, 255, 0.14),
-    inset 0 -1px 0 rgba(112, 153, 224, 0.20),
-    0 8px 20px rgba(1, 8, 34, 0.24),
-    0 0 0 0.5px rgba(255, 255, 255, 0.24);
-  transition: opacity 180ms ease;
-}
-
-.nav-indicator.ready { opacity: 1; }
-
-.nav-indicator::before,
-.nav-indicator::after {
-  content: '';
-  position: absolute;
-  pointer-events: none;
-  transition: opacity 160ms ease;
-}
-
-.nav-indicator::before {
-  inset: 1px;
-  border-radius: inherit;
-  border-top: 1px solid rgba(255, 255, 255, 0.40);
-  mask-image: linear-gradient(90deg, transparent 3%, black 28%, black 72%, transparent 97%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 3%, black 28%, black 72%, transparent 97%);
-  opacity: 0.55;
-}
-
-.nav-indicator::after {
-  width: 52%;
-  height: 120%;
-  left: -14%;
-  top: -42%;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.16);
-  filter: blur(9px);
-  transform: rotate(-18deg);
-  opacity: 0.35;
-}
-
-.nav-indicator.moving::before { opacity: 1; }
-.nav-indicator.moving::after { opacity: 0.82; }
-
-.nav-indicator.dragging {
-  box-shadow:
-    inset 0 2px 1px rgba(255, 255, 255, 0.72),
-    inset 2px 0 2px rgba(255, 255, 255, 0.22),
-    inset -2px 0 2px rgba(132, 192, 255, 0.24),
-    inset 0 -2px 2px rgba(68, 108, 200, 0.30),
-    0 13px 30px rgba(0, 5, 28, 0.34),
-    0 0 0 1px rgba(255, 255, 255, 0.32);
-}
-
-.nav button svg,
-.nav-highlight-item svg {
-  width: 21px;
-  height: 21px;
-  stroke: currentColor;
-  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), filter 220ms ease;
-}
-
-.nav button.active svg { filter: drop-shadow(0 1px 5px rgba(255, 255, 255, 0.26)); }
-
-/* ---------------------------------------------------------------------------
-   Feedback, loading and error surfaces.
-   All flat tint, no refraction: the tiering rule keeps refraction on cards and
-   the sheet only. Nothing here uses backdrop-filter: url().
-   --------------------------------------------------------------------------- */
 
 .sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
-  padding: 0;
-  margin: -1px;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
-  border: 0;
 }
 
-/* --- Toast -------------------------------------------------------------- */
-/* z-index 40: above the nav (10), below an open sheet (50). Absolute, not
-   fixed — .wrap is a clipped 375px shell, not the viewport. */
-.toast-layer {
+/* ── Type ──────────────────────────────────────────────────────────────────── */
+.t-large { font-size: var(--t-large); line-height: 1.206; font-weight: 700; letter-spacing: var(--tr-large); }
+.t-title1 { font-size: var(--t-title1); line-height: 1.214; font-weight: 700; letter-spacing: var(--tr-title1); }
+.t-title2 { font-size: var(--t-title2); line-height: 1.273; font-weight: 700; letter-spacing: var(--tr-title2); }
+.t-title3 { font-size: var(--t-title3); line-height: 1.25; font-weight: 600; letter-spacing: var(--tr-title3); }
+.t-head { font-size: var(--t-body); line-height: 1.294; font-weight: 600; letter-spacing: var(--tr-body); }
+.t-body { font-size: var(--t-body); line-height: 1.294; letter-spacing: var(--tr-body); }
+.t-sub { font-size: var(--t-sub); line-height: 1.333; letter-spacing: var(--tr-sub); }
+.t-foot { font-size: var(--t-foot); line-height: 1.385; letter-spacing: var(--tr-foot); }
+.t-cap { font-size: var(--t-cap); line-height: 1.333; letter-spacing: 0; }
+
+.c-2 { color: var(--label-2); }
+.c-up { color: var(--up); }
+.c-down { color: var(--down); }
+.c-level { color: var(--level); }
+.w-600 { font-weight: 600; }
+.num { font-variant-numeric: tabular-nums; }
+
+.clip {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Digit changes roll in like SwiftUI's numericText transition. Only ever runs on a
+   poll that actually changed the figure, never on a tap (HIG Motion). */
+.roll {
+  display: inline-block;
+  animation: digit-roll 340ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+@keyframes digit-roll {
+  from {
+    opacity: 0;
+    transform: translateY(0.45em);
+    filter: blur(2px);
+  }
+}
+
+/* ── Shell ─────────────────────────────────────────────────────────────────── */
+.stage {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  overflow: hidden;
+  transform-origin: 50% 0;
+}
+
+.panel {
   position: absolute;
-  right: 15px;
-  bottom: calc(96px + env(safe-area-inset-bottom));
-  left: 15px;
-  z-index: 40;
+  inset: 0;
+  visibility: hidden;
+}
+
+.panel.active {
+  visibility: visible;
+}
+
+/* A screen owns its own scroll so tabs keep their position when switched. */
+.screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* Keyboard focus must never land under the floating bars. */
+  scroll-padding: var(--nav-h) 0 110px;
+}
+
+.screen::-webkit-scrollbar {
+  display: none;
+}
+
+.screen-body {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 max(16px, env(safe-area-inset-right)) calc(var(--safe-bottom) + 110px) max(16px, env(safe-area-inset-left));
+}
+
+/* ── Navigation bar: large title that hands off to a small inline one ──────── */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: var(--nav-h);
+  margin-bottom: calc(var(--nav-h) * -1);
+  /* Keeps the action on the content column when the screen is wider than the column. */
+  padding: calc(var(--safe-top) + 8px) max(16px, calc((100% - 680px) / 2 + 16px)) 8px;
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
   pointer-events: none;
 }
-.toast {
+
+.navbar > * {
+  pointer-events: auto;
+}
+
+/* Scroll edge effect (WWDC25): clarifies where floating controls meet content.
+   Never shown at rest, and it is a blur, not a darkening overlay. */
+.scroll-edge {
+  position: absolute;
+  inset: 0 0 -18px;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease;
+  background: linear-gradient(to bottom, var(--bg) 35%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent);
+  mask-image: linear-gradient(to bottom, #000 62%, transparent);
+}
+
+.navbar[data-scroll='edge'] .scroll-edge,
+.navbar[data-scroll='title'] .scroll-edge {
+  opacity: 1;
+}
+
+.nav-inline-title {
+  position: absolute;
+  left: 64px;
+  right: 64px;
+  top: calc(var(--safe-top) + 8px);
+  height: 44px;
+  line-height: 44px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 160ms ease, transform 200ms cubic-bezier(0.2, 0.9, 0.25, 1);
+  pointer-events: none;
+}
+
+.navbar[data-scroll='title'] .nav-inline-title {
+  opacity: 1;
+  transform: none;
+}
+
+.large-title {
+  padding: calc(var(--safe-top) + 12px) 60px 10px 0;
+  min-height: var(--nav-h);
+}
+
+/* ── Glass round buttons (44pt, HIG minimum hit target) ────────────────────── */
+.glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  backdrop-filter: blur(24px) saturate(190%);
+  box-shadow:
+    inset 0 0 0 0.5px var(--glass-rim),
+    inset 0 1px 0 var(--glass-spec),
+    var(--glass-shadow);
+}
+
+.gbtn {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--label);
+  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+/* Small shadow on purpose: these sit inside scrollers, which would clip a large one. */
+.gbtn.glass {
+  box-shadow:
+    inset 0 0 0 0.5px var(--glass-rim),
+    inset 0 1px 0 var(--glass-spec),
+    0 2px 10px rgba(0, 0, 0, 0.16);
+}
+
+@media (hover: hover) {
+  .gbtn:hover:not(:disabled),
+  .btn:hover:not(:disabled),
+  .iconbtn:hover,
+  .seg-item:hover {
+    background-image: linear-gradient(var(--fill-4), var(--fill-4));
+  }
+
+  .tab:hover {
+    opacity: 0.8;
+  }
+}
+
+/* WWDC25: glass "responds to interaction by instantly flexing and energizing with light". */
+.gbtn:active {
+  transform: scale(0.9);
+  filter: brightness(1.2);
+  transition-duration: 60ms;
+}
+
+.gbtn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* A primary action is the one tinted thing in a bar (WWDC25: the blue checkmark). */
+.gbtn.tinted {
+  background: var(--tint-fill);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 2px 10px color-mix(in srgb, var(--tint-fill) 45%, transparent);
+}
+
+.gbtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ── Tab bar: measured from HIG tab-bar-badges-iphone. 62pt capsule, 4pt inset ── */
+.tabbar {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) * 0.6 + 14px);
+  transform: translateX(-50%);
+  height: 62px;
+  padding: 4px;
+  display: flex;
+  border-radius: 31px;
+  touch-action: none;
+}
+
+.tab-lens {
+  position: absolute;
+  z-index: 0;
+  top: 4px;
+  left: 0;
+  height: 54px;
+  border-radius: 27px;
+  background: var(--glass-selected);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.tab {
+  position: relative;
+  z-index: 1;
+  width: min(104px, 28vw);
+  border-radius: 27px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-size: var(--t-cap2);
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--label);
+  transition: color 120ms linear;
+}
+
+.tab svg {
+  width: 26px;
+  height: 26px;
+}
+
+.tab[data-on='true'] {
+  color: var(--tint-text);
+}
+
+.tab-badge {
+  position: absolute;
+  top: 2px;
+  left: calc(50% + 4px);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: rgb(233, 21, 45);
+  color: #ffffff;
+  font-size: 0.6471rem;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Progressive blur under the floating bar: mask-image fades the blur itself. */
+.tab-edge {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--safe-bottom) + 96px);
+  pointer-events: none;
+  background: linear-gradient(to top, var(--bg), transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  -webkit-mask-image: linear-gradient(to top, #000 45%, transparent);
+  mask-image: linear-gradient(to top, #000 45%, transparent);
+}
+
+/* ── Sidebar: the tab bar's wide-screen form (HIG Layout, Sidebars) ─────────── */
+.sidebar {
+  position: fixed;
+  z-index: 6;
+  top: 10px;
+  bottom: 10px;
+  left: 10px;
+  width: 224px;
+  padding: 18px 10px;
+  border-radius: var(--r-group);
+  background: var(--glass-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-title {
+  padding: 0 10px 14px;
+}
+
+.side-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  max-width: 100%;
-  padding: 11px 16px;
-  border-radius: 100px;
-  border: 1px solid var(--gb);
-  background: rgba(3, 10, 34, 0.86);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34), 0 14px 34px rgba(0, 4, 24, 0.5);
-  color: var(--fg);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 16px;
   text-align: left;
-  cursor: pointer;
-  pointer-events: auto;
-  animation: toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  font-weight: 500;
 }
-.toast-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
+
+.side-item svg {
+  width: 22px;
+  height: 22px;
   flex: none;
-  border-radius: 50%;
-  font-size: 12px;
-  font-weight: 800;
-}
-/* Success is gold, not green: green already means "price up" here. */
-.toast-ok .toast-icon {
-  background: var(--accent-dim);
-  border: 1px solid var(--accent-glow);
-  color: var(--accent);
-}
-.toast-err .toast-icon {
-  background: rgba(255, 94, 108, 0.14);
-  border: 1px solid rgba(255, 94, 108, 0.34);
-  color: var(--rose);
-}
-.toast-err { border-color: rgba(255, 94, 108, 0.34); }
-.toast-msg { min-width: 0; }
-@keyframes toast-in {
-  from { opacity: 0; transform: translateY(14px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  color: var(--tint-text);
 }
 
-/* --- Skeletons ---------------------------------------------------------- */
-/* The sweep is pure CSS, so the reduced-motion block below freezes it and the
-   skeleton correctly degrades to static blocks. */
-.skel-line {
-  border-radius: 8px;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.07) 0%,
-    rgba(255, 255, 255, 0.15) 50%,
-    rgba(255, 255, 255, 0.07) 100%
-  );
-  background-size: 220% 100%;
-  animation: skel-sweep 1.5s ease-in-out infinite;
-}
-.skel { padding: 22px 22px 20px; }
-.skel-row { display: flex; gap: 6px; }
-.skel-ai {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--faint);
-}
-.skel-ai:last-of-type { border-bottom: none; }
-@keyframes skel-sweep {
-  from { background-position: 120% 0; }
-  to { background-position: -120% 0; }
+@media (hover: hover) {
+  .side-item:hover {
+    background: var(--fill-4);
+  }
 }
 
-/* --- Error card --------------------------------------------------------- */
-.err-card { padding: 20px 20px 18px; }
-.err-title {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--fg);
-  letter-spacing: -0.02em;
+.side-item:active {
+  background: var(--fill-3);
 }
-.err-msg {
-  font-size: 12px;
-  color: var(--dim);
-  line-height: 1.6;
-  margin-top: 6px;
-}
-.err-card .btn-row { margin-top: 14px; }
-.err-card .btn { flex: none; padding: 9px 18px; font-size: 13px; }
 
-/* --- Confirm dialog ------------------------------------------------------ */
-/* Bottom sheet, per docs/design-refs/confirm-destructive-sheet-wise.png:
-   question, one-line consequence, filled destructive, outlined escape below.
-   z-index 60 clears an open AssetSheet (50) and the toast layer (40). */
-.sheet-overlay-confirm { z-index: 60; }
-.sheet-confirm {
-  padding: 24px 20px calc(22px + env(safe-area-inset-bottom));
-  border-radius: var(--r) var(--r) 0 0;
-}
-.sheet-confirm .sheet-title { font-size: 19px; }
-.confirm-body {
-  font-size: 13px;
-  color: var(--muted);
-  line-height: 1.55;
-  margin-top: 8px;
-}
-.confirm-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  margin-top: 22px;
-}
-.confirm-actions .btn { flex: none; width: 100%; }
-
-/* .btn-danger is text-colour only and is used on icon buttons; the confirm
-   sheet needs a filled destructive, so it gets its own recipe. */
-.btn-danger-solid {
-  background: #a32218;
-  color: #fff;
-  border-color: transparent;
-  box-shadow: 0 8px 20px -8px rgba(163, 34, 24, 0.7);
-}
-.btn-danger-solid:hover { filter: brightness(1.1); }
-.btn-outline {
-  background: transparent;
-  border-color: var(--gb);
-  color: var(--fg);
-}
-.btn-outline:hover { background: rgba(255, 255, 255, 0.07); }
-
-/* --- Asset chip strip ---------------------------------------------------- */
-/* Scrolling text tabs, per docs/design-refs/asset-switcher-okx.png. Flat tint,
-   no refraction — the tiering rule keeps that on cards and the sheet. */
-.chips {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x proximity;
-  padding: 2px 2px 4px;
-  flex-shrink: 0;
-}
-.chips::-webkit-scrollbar { display: none; }
-/* The chip strip is the ONLY interactive surface that sits directly on bare
-   wallpaper with no `.g` card scrim beneath it. The original white tint
-   (rgba(255,255,255,0.07)) *lightened* an already-bright background, so over the
-   pale band of the gradient the unselected chips were white-on-white and
-   effectively invisible. Same rule as `.g`: a real dark scrim, not just a tint.
-   Measured against the palest wallpaper stop (#bfd0c1) this lands ~5.7:1 for the
-   unselected label and ~4.9:1 for the selected gold — and only gets better over
-   the navy end, so it holds across the whole gradient. */
-.chip-a {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex: none;
-  scroll-snap-align: center;
-  padding: 7px 13px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 100px;
-  background: rgba(2, 12, 48, 0.62);
-  color: rgba(255, 255, 255, 0.85);
-  font: inherit;
-  font-size: 12.5px;
+.side-item[aria-current='page'] {
+  background: var(--fill-2);
   font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 }
-.chip-a:hover {
-  color: #fff;
-  background: rgba(2, 12, 48, 0.74);
-  border-color: rgba(255, 255, 255, 0.22);
-}
-/* Weight AND colour, never colour alone. The scrim stays (and deepens) rather
-   than being replaced by the gold tint — `--accent-dim` over the pale wallpaper
-   washed the selected chip out just as badly as the unselected ones. */
-.chip-a.sel {
-  color: var(--accent);
-  font-weight: 800;
-  background: rgba(2, 12, 48, 0.72);
-  border-color: var(--accent-glow);
-  box-shadow: 0 0 0 1px var(--accent-dim), 0 2px 10px rgba(0, 0, 0, 0.28);
-}
-.chip-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  flex: none;
-  background: var(--dim);
-}
-.chip-dot.off { background: var(--rose); }
 
-/* --- First-run setup banner --------------------------------------------- */
-.setup-banner {
-  display: flex;
+.side-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: rgb(233, 21, 45);
+  color: #ffffff;
+  font-size: var(--t-foot);
+  line-height: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Black only belongs behind the stage while a phone sheet pushes it back. */
+.app[data-size='regular'] {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+}
+
+.app[data-size='regular'] .stage {
+  left: 244px;
+}
+
+.app[data-size='regular'] .screen-body {
+  padding-bottom: 32px;
+}
+
+.app[data-size='regular'] .large-title {
+  padding-top: 18px;
+}
+
+/* ── Split view: list beside detail on wide screens ─────────────────────────── */
+.split {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+}
+
+.split-list {
+  position: relative;
+  min-width: 0;
+}
+
+.split-detail {
+  position: relative;
+  min-width: 0;
+  margin: 10px 10px 10px 0;
+  border-radius: var(--r-group);
+  background: var(--sheet);
+  overflow: hidden;
+}
+
+/* ── Watchlist rows ────────────────────────────────────────────────────────── */
+.wlist {
+  margin: 0 -16px;
+}
+
+.wrow {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 7.6rem;
   align-items: center;
+  column-gap: 10px;
+  width: 100%;
+  min-height: 4rem;
+  padding: 10px 16px;
+  text-align: left;
+  transition: background-color 240ms ease;
+}
+
+/* Feedback on pointer-down, instantly. The transition only runs on the way out. */
+.wrow:active {
+  background: var(--fill-3);
+  transition-duration: 0ms;
+}
+
+@media (hover: hover) {
+  .wrow:hover {
+    background: var(--fill-4);
+  }
+}
+
+.wrow + .wrow::before,
+.ai + .ai::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: 0.5px;
+  background: var(--sep);
+}
+
+/* A list that drives a detail pane keeps the selection lit (HIG Lists). */
+.wrow[aria-current='true'] {
+  background: var(--fill-3);
+  border-radius: 16px;
+}
+
+.wrow[aria-current='true']::before,
+.wrow[aria-current='true'] + .wrow::before {
+  display: none;
+}
+
+.app[data-size='regular'] .wlist {
+  margin: 0 -8px;
+}
+
+.app[data-size='regular'] .wrow {
+  padding: 10px 8px;
+  grid-template-columns: minmax(0, 1fr) 52px 6.9rem;
+}
+
+.app[data-size='regular'] .wrow + .wrow::before {
+  left: 8px;
+  right: 8px;
+}
+
+.wrow-right {
+  text-align: right;
+  min-width: 0;
+}
+
+.chg {
+  display: inline-block;
+  min-width: 4.6rem;
+  margin-top: 3px;
+  padding: 1px 7px;
+  border-radius: 7px;
+  font-size: var(--t-sub);
+  line-height: 1.333;
+  font-weight: 600;
+  letter-spacing: var(--tr-sub);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+  background: var(--fill-1);
+}
+
+.chg.up { background: var(--up-fill); }
+.chg.down { background: var(--down-fill); }
+.chg.none { color: var(--label-2); }
+
+.wrow.paused .wrow-right,
+.wrow.paused .spark {
+  opacity: 0.45;
+}
+
+.list-note {
+  padding: 14px 0 0;
+}
+
+@media (max-width: 349px) {
+  .wrow,
+  .app[data-size='regular'] .wrow {
+    grid-template-columns: minmax(0, 1fr) 7.6rem;
+  }
+
+  .wrow .spark {
+    display: none;
+  }
+}
+
+/* ── Inline notice (HIG Feedback: status in place, not an alert) ───────────── */
+.notice {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
   gap: 12px;
+  align-items: center;
+  margin: 4px 0 14px;
   padding: 12px 14px;
-  border-radius: var(--rs);
-  border: 1px solid var(--accent-glow);
-  border-left: 3px solid var(--accent);
-  /* Needs a real dark base under the gold tint, not just the tint: over the
-     bright sky wallpaper a translucent fill leaves the gold title unreadable.
-     Same contrast rule the .g scrim opacity exists for. */
-  background:
-    linear-gradient(150deg, rgba(255, 207, 115, 0.13), rgba(255, 207, 115, 0.07)),
-    rgba(2, 10, 44, 0.82);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 8px 24px rgba(0, 4, 40, 0.3);
+  border-radius: 20px;
+  background: var(--surface);
 }
-.setup-banner-body { flex: 1; min-width: 0; }
-.setup-banner-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: -0.01em;
+
+.notice-glyph {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--tint-fill);
+  color: #ffffff;
 }
-.setup-banner-sub {
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.5;
-  margin-top: 2px;
+
+.notice-glyph svg {
+  width: 17px;
+  height: 17px;
 }
-.setup-banner-actions {
+
+.notice-actions {
   display: flex;
   align-items: center;
   gap: 4px;
-  flex: none;
 }
-.btn-xs {
-  flex: none;
-  padding: 7px 13px;
-  font-size: 12px;
-}
-.setup-banner-x {
-  width: 26px;
-  height: 26px;
-  flex: none;
-  border: none;
-  border-radius: 50%;
-  background: none;
-  color: var(--dim);
-  font-size: 17px;
-  line-height: 1;
-  cursor: pointer;
-  transition: color 0.18s ease, background 0.18s ease;
-}
-.setup-banner-x:hover { color: var(--fg); background: rgba(255, 255, 255, 0.08); }
 
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 22px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.25, 1), opacity 120ms linear;
+}
+
+.btn:active {
+  transform: scale(0.97);
+  transition-duration: 60ms;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn-tinted { background: var(--tint-fill); color: #ffffff; }
+.btn-fill { background: var(--fill-2); color: var(--label); }
+.btn-plain { background: none; color: var(--tint-text); padding: 0 10px; }
+.btn-block { display: flex; width: 100%; }
+
+.iconbtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--fill-3);
+  color: var(--label-2);
+}
+
+.iconbtn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Grouped lists: iOS inset grouped ──────────────────────────────────────── */
+.group-title {
+  padding: 18px 16px 7px;
+  font-size: var(--t-title3);
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: var(--tr-title3);
+}
+
+.group {
+  border-radius: var(--r-group);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.group-foot {
+  padding: 7px 16px 0;
+  font-size: var(--t-foot);
+  line-height: 1.385;
+  letter-spacing: var(--tr-foot);
+  color: var(--label-2);
+}
+
+.sheet .group,
+.split-detail .group {
+  background: var(--sheet-group);
+}
+
+.frow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 2.9rem;
+  padding: 8px 16px;
+  width: 100%;
+  text-align: left;
+}
+
+.frow + .frow::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: 0.5px;
+  background: var(--sep);
+}
+
+button.frow,
+a.frow {
+  transition: background-color 240ms ease;
+}
+
+button.frow:active,
+a.frow:active {
+  background: var(--fill-3);
+  transition-duration: 0ms;
+}
+
+@media (hover: hover) {
+  button.frow:hover:not(:disabled),
+  a.frow:hover {
+    background: var(--fill-4);
+  }
+}
+
+button.frow:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.frow-label {
+  flex: none;
+}
+
+.frow-value {
+  color: var(--label-2);
+  text-align: right;
+  min-width: 0;
+}
+
+.frow-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  text-align: right;
+  caret-color: var(--tint);
+  outline: none;
+}
+
+.frow-input::placeholder {
+  color: var(--placeholder);
+}
+
+.frow-input:disabled {
+  color: var(--label-2);
+  -webkit-text-fill-color: var(--label-2);
+  opacity: 1;
+}
+
+.frow:focus-within:not(button) {
+  background: var(--fill-4);
+}
+
+.tint-action { color: var(--tint-text); font-weight: 500; }
+.danger-action { color: var(--down); font-weight: 500; }
+.frow-chevron { color: var(--label-3); flex: none; width: 13px; height: 13px; }
+
+.stepper {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  border-radius: 16px;
+  background: var(--fill-3);
+}
+
+.stepper button {
+  width: 46px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+}
+
+.stepper button:active {
+  background: var(--fill-1);
+}
+
+.stepper button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.stepper svg {
+  width: 15px;
+  height: 15px;
+}
+
+.stepper i {
+  width: 0.5px;
+  height: 18px;
+  background: var(--sep);
+}
+
+/* ── Segmented control: thumb travels, never swaps ─────────────────────────── */
+.segmented {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  padding: 2px;
+  border-radius: 18px;
+  background: var(--fill-3);
+}
+
+.seg-thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14), inset 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+  transition: transform 340ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+.sheet .seg-thumb,
+.split-detail .seg-thumb {
+  background: var(--sheet);
+}
+
+@media (prefers-color-scheme: dark) {
+  .seg-thumb,
+  .sheet .seg-thumb,
+  .split-detail .seg-thumb {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.seg-item {
+  position: relative;
+  min-height: 32px;
+  padding: 0 6px;
+  border-radius: 16px;
+  font-size: var(--t-foot);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* ── Detail ────────────────────────────────────────────────────────────────── */
+.detail {
+  padding: 0 16px 40px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.detail-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 60px;
+  padding: 8px 16px;
+  margin-bottom: 2px;
+  pointer-events: none;
+}
+
+.detail-toolbar > * {
+  pointer-events: auto;
+}
+
+.detail-toolbar .scroll-edge {
+  background: linear-gradient(to bottom, var(--sheet) 35%, transparent);
+}
+
+.detail-toolbar[data-scroll='edge'] .scroll-edge,
+.detail-toolbar[data-scroll='title'] .scroll-edge {
+  opacity: 1;
+}
+
+.detail-toolbar .nav-inline-title {
+  top: 8px;
+}
+
+.detail-toolbar[data-scroll='title'] .nav-inline-title {
+  opacity: 1;
+  transform: none;
+}
+
+.toolbar-spacer {
+  width: 44px;
+}
+
+/* In a wide pane nothing leads the toolbar, so the title can rise to share its row:
+   worth the height on a short laptop window. */
+.detail-toolbar[data-inline='true'] {
+  margin-bottom: -46px;
+}
+
+.detail-toolbar[data-inline='true'] + .detail .d-title {
+  padding-right: 56px;
+}
+
+.d-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 9px;
+}
+
+.hr {
+  height: 0.5px;
+  background: var(--sep);
+}
+
+.d-price {
+  padding: 9px 0;
+  min-height: 3.7rem; /* Scrubbing swaps this readout, and must not move the chart. */
+}
+
+.d-price-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 10px;
+}
+
+.d-hero {
+  font-weight: 700;
+}
+
+.d-fx {
+  padding: 8px 0;
+  font-size: var(--t-foot);
+  line-height: 1.385;
+  letter-spacing: var(--tr-foot);
+  color: var(--label-2);
+}
+
+.ranges {
+  display: flex;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.rng {
+  min-width: 3rem;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 16px;
+  font-size: var(--t-sub);
+  font-weight: 500;
+  letter-spacing: var(--tr-sub);
+}
+
+.rng[aria-pressed='true'] {
+  background: var(--fill-1);
+  font-weight: 600;
+}
+
+@media (hover: hover) {
+  .rng:hover:not([aria-pressed='true']) {
+    background: var(--fill-4);
+  }
+}
+
+/* touch-action: pan-y hands vertical drags to the scroller; horizontal ones scrub. */
+.chart {
+  position: relative;
+  height: 216px;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: crosshair;
+  border-radius: 6px;
+}
+
+.chart svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.chart text {
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  fill: var(--label-2);
+}
+
+.chart .rule-tag text {
+  fill: var(--on-level);
+  font-weight: 700;
+}
+
+.chart .rule-tag.high text {
+  fill: var(--label);
+}
+
+.chart-line,
+.chart-area {
+  transition: stroke 240ms linear, fill 240ms linear, opacity 200ms linear;
+}
+
+.chart[data-loading='true'] .chart-line,
+.chart[data-loading='true'] .chart-area {
+  opacity: 0.35;
+}
+
+.chart-empty {
+  display: grid;
+  place-items: center;
+  height: 216px;
+  color: var(--label-2);
+  font-size: var(--t-sub);
+}
+
+.stats3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 12px 0;
+}
+
+.stats3 > div {
+  min-width: 0;
+  padding: 0 10px;
+  border-left: 0.5px solid var(--sep);
+}
+
+.stats3 > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.stat-v {
+  margin-top: 1px;
+  font-size: var(--t-sub);
+  line-height: 1.333;
+  font-weight: 600;
+  letter-spacing: var(--tr-sub);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The instrument: alert levels with today's price sitting between the rungs. */
+.instrument-head {
+  padding: 8px 0 12px;
+}
+
+.rung {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px 3.3rem minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 6px 16px;
+}
+
+.rung + .rung::before,
+.rung + .rung-now::before,
+.rung-now + .rung::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: 0.5px;
+  background: var(--sep);
+}
+
+.rung-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--label-3);
+}
+
+.rung[data-state='next'] .rung-dot {
+  background: var(--level);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--level) 24%, transparent);
+}
+
+.rung[data-state='passed'] .rung-dot {
+  background: var(--fill-1);
+  box-shadow: none;
+}
+
+.rung[data-state='alerted'] .rung-dot {
+  background: var(--label-2);
+  box-shadow: none;
+}
+
+.rung-now {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 2rem;
+  padding: 4px 16px;
+  color: var(--label-2);
+  font-size: var(--t-foot);
+  letter-spacing: var(--tr-foot);
+  font-variant-numeric: tabular-nums;
+}
+
+.rung-now svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+/* Centre-zero gauge for daily moves (HIG Gauges: label the value and both ends). */
+.gauge {
+  padding: 18px 16px 12px;
+}
+
+.gauge-track {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--fill-1);
+}
+
+.gauge-limit {
+  position: absolute;
+  top: -5px;
+  width: 2px;
+  height: 16px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--level);
+}
+
+.gauge-zero {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 1.5px;
+  height: 10px;
+  margin-left: -0.75px;
+  background: var(--label-3);
+}
+
+.gauge-fill {
+  position: absolute;
+  top: 0;
+  height: 6px;
+  border-radius: 3px;
+}
+
+.gauge-dot {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  border: 2.5px solid var(--sheet-group);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.gauge-labels {
+  position: relative;
+  height: 1.3rem;
+  margin-top: 10px;
+  font-size: var(--t-foot);
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.gauge-labels span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.market-foot {
+  padding: 16px 0 0;
+  text-align: right;
+}
+
+/* ── Alert feed ────────────────────────────────────────────────────────────── */
+.ai {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 3.6rem;
+  padding: 9px 16px;
+}
+
+.ai-glyph {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+}
+
+.ai-glyph svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ai-glyph.level { background: var(--level); color: var(--on-level); }
+.ai-glyph.up { background: var(--up-fill); }
+.ai-glyph.down { background: var(--down-fill); }
+
+.ai-time {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ai.entering {
+  animation: row-in 420ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.group-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 16px 7px;
+}
+
+.summary {
+  padding: 14px 16px;
+}
+
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--sep);
+}
+
+.summary-stats > div + div {
+  padding-left: 12px;
+  border-left: 0.5px solid var(--sep);
+}
+
+.filter {
+  margin: 4px 0 14px;
+}
+
+/* HIG "unavailable content" pattern, for empty and failed states alike. */
+.unavailable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.unavailable-glyph {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 8px;
+  color: var(--label-2);
+}
+
+.unavailable-glyph svg {
+  width: 44px;
+  height: 44px;
+}
+
+.unavailable .btn {
+  margin-top: 12px;
+}
+
+/* Placeholders shaped like the real rows, so layout arrives before the data. */
+.skel {
+  border-radius: 6px;
+  background: var(--fill-3);
+}
+
+.steps li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 10px;
+  padding: 8px 16px;
+}
+
+.step-n {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--fill-2);
+  font-size: var(--t-foot);
+  font-weight: 600;
+}
+
+summary.frow {
+  cursor: pointer;
+  list-style: none;
+}
+
+summary.frow::-webkit-details-marker {
+  display: none;
+}
+
+details[open] > summary .frow-chevron {
+  transform: rotate(90deg);
+}
+
+.frow-chevron {
+  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+/* ── Sheets ────────────────────────────────────────────────────────────────── */
+.sheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.sheet-dim {
+  position: absolute;
+  inset: 0;
+  background: var(--dim);
+  opacity: 0;
+}
+
+/* Page sheet on iPhone: runs off the bottom edge so overshoot never shows a gap. */
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--safe-top) + 12px);
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  background: var(--sheet);
+  box-shadow: 0 -6px 40px rgba(0, 0, 0, 0.28);
+  will-change: transform;
+  outline: none;
+}
+
+.sheet::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 200px;
+  background: inherit;
+}
+
+.sheet-grab {
+  flex: none;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  cursor: grab;
+}
+
+.sheet-grab i {
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--fill-1);
+}
+
+.sheet-scroll {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  scroll-padding: 64px 0 24px;
+  padding-bottom: var(--safe-bottom);
+}
+
+.sheet-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Wider than a phone: HIG prefers a centred form sheet over a dimmed background. */
+@media (min-width: 600px) {
+  .sheet {
+    left: 50%;
+    right: auto;
+    top: 4vh;
+    bottom: 4vh;
+    width: min(620px, 92vw);
+    margin-left: calc(min(620px, 92vw) / -2);
+    border-radius: var(--r-sheet);
+    overflow: hidden;
+  }
+
+  .sheet::after {
+    display: none;
+  }
+
+  .sheet[data-variant='form'] {
+    top: 8vh;
+    bottom: 8vh;
+  }
+}
+
+/* Form sheets: Cancel leads, the tinted Done trails (HIG Sheets). */
+.form-toolbar {
+  flex: none;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 16px 10px;
+  text-align: center;
+}
+
+.form-body {
+  padding: 4px 16px 32px;
+}
+
+.form-body .group + .group {
+  margin-top: 22px;
+}
+
+/* ── Menu: springs from the button that opened it (WWDC25) ─────────────────── */
+.menu-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+
+.menu {
+  position: fixed;
+  z-index: 61;
+  width: 250px;
+  padding: 6px;
+  border-radius: 24px;
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(40px) saturate(190%);
+  backdrop-filter: blur(40px) saturate(190%);
+  box-shadow: inset 0 0 0 0.5px var(--glass-rim), 0 18px 60px rgba(0, 0, 0, 0.35);
+  transform-origin: var(--menu-origin, top right);
+  animation: menu-in 320ms cubic-bezier(0.2, 0.95, 0.25, 1);
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+    filter: blur(6px);
+  }
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 18px;
+  text-align: left;
+}
+
+.menu-item svg {
+  width: 19px;
+  height: 19px;
+  flex: none;
+}
+
+.menu-item:hover,
+.menu-item:focus-visible {
+  background: var(--fill-3);
+  outline: none;
+}
+
+.menu-item:active {
+  background: var(--fill-2);
+}
+
+.menu-item.danger {
+  color: var(--down);
+}
+
+.menu-sep {
+  height: 0.5px;
+  margin: 5px 12px;
+  background: var(--sep);
+}
+
+/* ── Alert ─────────────────────────────────────────────────────────────────── */
+.alert-root {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--dim);
+  animation: fade-in 180ms ease;
+}
+
+.alert {
+  width: min(330px, 100%);
+  padding: 22px;
+  border-radius: 34px;
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(40px) saturate(190%);
+  backdrop-filter: blur(40px) saturate(190%);
+  box-shadow: inset 0 0 0 0.5px var(--glass-rim), 0 24px 70px rgba(0, 0, 0, 0.4);
+  animation: alert-in 340ms cubic-bezier(0.2, 0.95, 0.25, 1);
+}
+
+@keyframes alert-in {
+  from {
+    opacity: 0;
+    transform: scale(1.12);
+    filter: blur(6px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.alert-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.alert-actions .btn {
+  padding: 0 8px;
+}
+
+/* ── Toast ─────────────────────────────────────────────────────────────────── */
+.toast-layer {
+  position: fixed;
+  z-index: 80;
+  top: calc(var(--safe-top) + 10px);
+  left: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 16px;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 8px 18px 8px 12px;
+  border-radius: 22px;
+  background: var(--glass-strong);
+  font-size: var(--t-sub);
+  font-weight: 500;
+  letter-spacing: var(--tr-sub);
+  text-align: left;
+  animation: toast-in 420ms cubic-bezier(0.2, 0.95, 0.25, 1);
+}
+
+.toast svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.toast-ok svg { color: var(--up); }
+.toast-err svg { color: var(--down); }
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-130%) scale(0.92);
+  }
+}
+
+/* ── Accessibility preferences ─────────────────────────────────────────────── */
+
+/* HIG Accessibility: frostier, near-solid surfaces when transparency is reduced. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass: var(--surface);
+    --glass-strong: var(--surface);
+  }
+
+  .glass,
+  .menu,
+  .alert,
+  .scroll-edge,
+  .tab-edge {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Reduced motion swaps slides for a short cross-fade. Spring-driven surfaces read
+   prefersReducedMotion() in JS and jump instead; dragging still tracks the finger,
+   because 1:1 tracking is not vestibular motion. */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  .roll,
+  .ai.entering {
+    animation: none;
+  }
+
+  .menu,
+  .alert,
+  .toast {
+    animation: fade-in 180ms ease;
+  }
+
+  .gbtn,
+  .btn,
+  .seg-thumb,
+  .frow-chevron,
+  .nav-inline-title {
+    transition: none;
   }
 }

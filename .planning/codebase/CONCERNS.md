@@ -23,19 +23,11 @@
 - `test_migrations.py` is part of the deploy gate; schema changes must keep its legacy-upgrade and repeated-run checks green.
 - Deployment files do not prove a VM, domain, TLS certificate, firewall, timer, or Vercel project is live. Verify external state before claiming production readiness.
 
-## Glass Navigation
+## Gestures on Real Devices
 
-- SVG filter behavior can differ in Safari and Firefox. Keep a physical-browser spot check in the visual release gate.
-- The nav rim and filter map must share one position source. Independent clip/counter-translation paths previously drifted under interrupted animations.
-- The filtered duplicate must remain hidden at rest; parked chromatic distortion is a regression.
-- Reduced-motion, resize, cleanup, completion, and same-tab paths must leave refraction at zero.
+- Sheet, scrub, and tab lens are verified in Chromium with emulated touch. Real iPhone Safari is still to be checked for touch feel, San Francisco, Dynamic Type, and safe areas.
+- A page sheet animates `border-radius` on `#stage` per frame. Cheap in testing, but watch for it on low-end Android.
 
-## Surface Refraction (cards + sheet)
-
-- Never switch the card/sheet refraction back to `backdrop-filter: url()` — measured 25fps with 117–250ms hitches vs 60fps baseline. The static-bitmap `filter: url()` design is the load-bearing choice.
-- The shared wallpaper bitmap must stay a raster (PNG); vector feImage sources are re-rasterized by Blink on every filter application (~550ms hitch).
-- Do not add `will-change: filter` to `.glass-refract-window` (10fps early-session regression) and do not add a refraction layer inside `.nav` (indicator backdrop-filter turns it neon and hides the active icon).
-- Safari/Firefox render the plain CSS recipes (Blink-only gate); expanding the gate needs physical-browser checks first.
 
 ## Security
 

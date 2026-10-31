@@ -1,5 +1,7 @@
 # Design references
 
+> **2026-10-31:** the interface was rebuilt to Apple's Human Interface Guidelines, so the Mobbin notes below describe the design it replaced. The new sample ledger is in `docs/designs/apple-redesign-plan.md`. Local captures named `comp-*.png` and `final-*.png` here are this app's own renders, not third-party screens.
+
 Screens captured from [Mobbin](https://mobbin.com) (free tier) on 2026-08-31, as input for the
 UI gap fixes tracked in `CLAUDE.md`. **Reference only — not to be copied wholesale.** Each entry
 below names exactly what we take and what we deliberately leave.

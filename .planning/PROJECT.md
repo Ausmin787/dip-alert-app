@@ -4,7 +4,7 @@
 
 ## What This Is
 
-A single-user, mobile-first market alert dashboard. The backend monitors a small watchlist and sends CallMeBot WhatsApp alerts. The frontend is a four-tab phone-shell interface: **Watch · Alerts · History · Manage**.
+A single-user, mobile-first market alert dashboard. The backend monitors a small watchlist and sends CallMeBot WhatsApp alerts. The frontend is built to Apple's Human Interface Guidelines, with three tabs: **Watchlist · Alerts · Settings**.
 
 Two alert modes are live:
 
@@ -18,10 +18,10 @@ Deliver dependable, de-duplicated WhatsApp alerts while giving the owner a compa
 ## Current Product
 
 - FastAPI + SQLModel + SQLite backend with APScheduler and yfinance.
-- React/Vite frontend with a bright Liquid Glass phone-shell design.
-- Four state-driven tabs in `frontend/src/App.jsx`; there is no router.
-- `GlassNav.jsx` provides the bottom navigation selector. The parked selection remains crisp; SVG displacement/specular/chromatic refraction appears only while the selector travels.
-- Global asset state lives in `AssetContext.jsx`, polls status every 60 seconds, refreshes only the selected asset's 30-day history every five minutes, and persists that selection in `localStorage`.
+- React/Vite frontend on an Apple HIG design: system colours, San Francisco with an Inter fallback, follows the device between light and dark.
+- Three state-driven tabs in `frontend/src/App.jsx`; there is no router. Tab bar on phones, sidebar and split view from 1000px.
+- `spring.js` drives the draggable sheet (`Sheet.jsx`), scrubbable chart (`PriceChart.jsx`), and tab bar lens (`TabBar.jsx`).
+- Global asset state lives in `AssetContext.jsx`, polls status and alerts every 60 seconds, caches price history per ticker and period, and persists that selection in `localStorage`.
 - Optional `APP_TOKEN` protects writes through the `X-App-Token` header.
 - Production target: Oracle Cloud Always Free VM for the backend and Vercel for the frontend. The Oracle deployment automation exists in `deploy/`; live infrastructure still requires independent verification.
 
@@ -29,9 +29,9 @@ Deliver dependable, de-duplicated WhatsApp alerts while giving the owner a compa
 
 - [x] Dip and momentum alert modes with mode-aware de-duplication.
 - [x] Five default assets: Nifty 50, Gold, Silver, S&P 500, and Nasdaq 100.
-- [x] Watch, Alerts, History, and Manage tab workflows.
+- [x] Watchlist, Alerts, and Settings tab workflows.
 - [x] Watchlist CRUD, settings, redacted credentials, and test-alert action.
-- [x] Mobile-first Liquid Glass cards and responsive 375px phone shell.
+- [x] Mobile-first Apple HIG interface, adapting to wide screens, in light and dark.
 - [x] Velocity-driven refractive bottom-nav selector with reduced-motion handling.
 - [x] Backend logic/security scripts and frontend helper/lint/build gates.
 - [x] Pull-based Oracle VM deployment assets with backup, health gate, rollback, and rejected-commit quarantine.
@@ -55,7 +55,7 @@ Deliver dependable, de-duplicated WhatsApp alerts while giving the owner a compa
 
 | Decision | Rationale | Status |
 |---|---|---|
-| Four-tab phone shell | Fits the mobile-first owner workflow better than the former desktop split pane | Current |
+| Three-tab Apple HIG interface | Owner scrapped the phone shell on 2026-10-31; a real responsive app replaces it, with a tab bar on phones and a sidebar on wide screens | Current |
 | Liquid Glass visual system | Provides depth and selection feedback without a WebGL dependency | Current |
 | One GSAP position source for the nav lens | Prevents rim/filter drift during interrupted movement | Current |
 | Refraction only while travelling | Keeps the selected icon and label readable at rest | Current |

@@ -13,13 +13,13 @@
 
 ## Frontend Experience
 
-- [x] **UI-01:** Render a mobile-first phone shell with Watch, Alerts, History, and Manage tabs.
+- [x] **UI-01:** Render a mobile-first interface with Watchlist, Alerts, and Settings tabs, adapting to a sidebar and split view on wide screens.
 - [x] **UI-02:** Keep all tab panels mounted and switch them with local React state rather than URL routes.
-- [x] **UI-03:** Show live asset status, mode-aware metrics, alert levels, and 30-day history.
-- [x] **UI-04:** Support watchlist CRUD, app-token entry, CallMeBot settings, and test alerts in Manage.
-- [x] **UI-05:** Use the current bright wallpaper and transparent Liquid Glass card system.
-- [x] **UI-06:** Use a semantic bottom nav with a sliding glass selector that is crisp at rest and refractive only in motion.
-- [x] **UI-07:** Respect reduced-motion preferences and keep nav geometry synchronized on resize.
+- [x] **UI-03:** Show live asset status, mode-aware metrics, alert levels, and scrubbable price history over 1M, 3M, 6M, and 1Y.
+- [x] **UI-04:** Support watchlist add, edit, pause, and remove from the Watchlist tab, and app-token entry, CallMeBot settings, and test alerts in Settings.
+- [x] **UI-05:** Use Apple's system colours and type scale, following the device between light and dark, with glass only on the floating functional layer.
+- [x] **UI-06:** Use a floating tab bar with a draggable spring lens, and a detail sheet that can be grabbed, flicked, and interrupted.
+- [x] **UI-07:** Respect reduced motion, reduced transparency, and increased contrast.
 
 ## State, API, and Security
 

@@ -30,22 +30,17 @@ Indian dip assets use the NSE weekday/time gate. Momentum assets run on every sc
 
 ## Frontend
 
-- `App.jsx` owns the phone shell and local four-tab state. There is no router.
-- `tabs/WatchTab.jsx`, `AlertsTab.jsx`, `HistoryTab.jsx`, and `ManageTab.jsx` remain mounted and expose the product workflows.
+- `App.jsx` owns the shell, local tab state, and size class. There is no router.
+- `tabs/WatchlistTab.jsx`, `AlertsTab.jsx`, and `SettingsTab.jsx` remain mounted and expose the product workflows.
 - `AssetContext.jsx` polls status every 60 seconds, fetches 30-day history only for the selected ticker every five minutes, persists that selection, and exposes refresh after mutations.
 - `api.js` owns Axios calls, the production `VITE_API_URL`, the dev-relative `/api` path, and the optional `X-App-Token` interceptor.
-- `GlassNav.jsx` owns semantic bottom-nav buttons, measured equal-column geometry, SVG filter definitions, and GSAP selector movement.
-- `gsap.js` registers shared GSAP integration/easing and provides the reduced-motion helper.
-- `index.css` owns the wallpaper, phone shell, glass recipes, tab states, and nav presentation.
-- `Wallpaper.jsx` owns the decorative wallpaper layers; `wallpaperImage.js` snapshots them (plus their CSS rules) into a shared pre-blurred bitmap; `liquidGlass.js` + `useLiquidGlass.jsx` + `GlassSurface.jsx` bend that bitmap under every `.g` card and the Manage sheet via per-surface `filter: url()` chains (Chromium-gated, plain-CSS fallback elsewhere).
+- `TabBar.jsx` owns the floating tab bar and its wide-screen `Sidebar`. `Sheet.jsx` owns the draggable sheet. `PriceChart.jsx` owns the scrubbable chart.
+- `spring.js` provides the shared spring physics and the reduced-motion helper.
+- `index.css` owns the design tokens from Apple's published values, plus all component styles.
 
-### Glass Nav Invariant
+### Motion Invariant
 
-One GSAP proxy is the position source for the rim and filter/map coordinates. The stationary highlighted icon/label is always crisp. A filtered duplicate is shown only while the selector physically travels; velocity and tween progress drive displacement/specular/chromatic strength. Completion, resize, cleanup, same-tab selection, and reduced motion restore zero refraction.
-
-### Surface Refraction Invariant
-
-Card/sheet refraction filters a static pre-baked wallpaper bitmap (`filter: url()` on an empty window layer), never the live backdrop — `backdrop-filter: url()` collapsed the app to ~25fps. The bitmap is a PNG (vector feImage sources re-rasterize per filter run), the host's scrim repaints above the bent layer via `background: inherit`, and the nav container is deliberately excluded (its indicator's backdrop-filter double-processes anything painted beneath it). Kill switches: `REFRACTION_ENABLED`, `data-refract="off"`, `?refract=off`.
+Everything that moves is one spring per value, started from the live on-screen value, so any animation can be grabbed and reversed. Scrubbing and dragging write to the DOM directly and stay 1:1 with the finger. Glass stays on the floating layer; the content layer never blurs.
 
 ## Persistence and Security
 

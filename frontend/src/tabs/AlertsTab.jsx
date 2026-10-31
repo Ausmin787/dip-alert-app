@@ -1,164 +1,122 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { getAlerts, getSettings } from '../api.js'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAssets } from '../useAssets.js'
-import { gsap, useGSAP, prefersReducedMotion } from '../gsap.js'
-import { fmtLakh, fmtLevel, fmtPrice, fmtTimeIST, isMarketOpenIST, priceParts } from '../lib.js'
-import ErrorCard from '../ErrorCard.jsx'
+import { Screen, Segmented } from '../ui.jsx'
+import AlertRow from '../AlertRow.jsx'
+import ErrorCard, { Unavailable } from '../ErrorCard.jsx'
+import { ListSkeleton } from '../Skeleton.jsx'
+import { fmtRupees, groupAlerts, isTodayIST, monthLabelIST } from '../lib.js'
 
-function ConfigRow({ label, sub, value, toggle, onManage }) {
+const FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'dip', label: 'Dips' },
+  { id: 'move', label: 'Moves' },
+]
+
+const EMPTY = {
+  all: ['No Alerts Yet', 'Alerts appear here once a level is crossed and the WhatsApp message goes out.'],
+  dip: ['No Dip Alerts', 'They appear here as the price crosses each level below its high.'],
+  move: ['No Daily Moves', 'They appear here when a day’s move passes its alert size.'],
+}
+
+/* What was deployed this month, from the same list the feed below it shows. One
+   dataset, so one tab (the old Alerts and History tabs showed it twice). */
+function MonthSummary({ dipAlerts }) {
+  const thisMonth = monthLabelIST(new Date().toISOString())
+  const monthAlerts = dipAlerts.filter((a) => monthLabelIST(a.alerted_at) === thisMonth)
+  const deployed = monthAlerts.reduce((sum, a) => sum + (a.invest_amount ?? 0), 0)
+  const deepest = dipAlerts
+    .filter((a) => isTodayIST(a.alerted_at))
+    .reduce((max, a) => Math.max(max, a.drop_pct), 0)
   return (
-    <button className="cfg-row" onClick={onManage}>
-      <div>
-        <div className="cfg-lbl">{label}</div>
-        <div className="cfg-sub">{sub}</div>
+    <div className="group summary" style={{ marginBottom: 4 }}>
+      <div className="t-sub c-2">Deployed in {thisMonth.split(' ')[0]}</div>
+      <div className="t-title1 num">{fmtRupees(deployed)}</div>
+      <div className="summary-stats">
+        <div>
+          <div className="t-foot c-2">Dip Alerts</div>
+          <div className="stat-v">{monthAlerts.length} this month</div>
+        </div>
+        <div>
+          <div className="t-foot c-2">Deepest Today</div>
+          <div className="stat-v">{deepest > 0 ? `−${deepest.toFixed(2)}%` : 'None'}</div>
+        </div>
       </div>
-      {toggle !== undefined ? (
-        <div className={`toggle ${toggle ? '' : 'off'}`}><div className="toggle-k" /></div>
-      ) : (
-        <div className="cfg-val">{value}</div>
-      )}
-    </button>
+    </div>
   )
 }
 
-export default function AlertsTab({ active, onManage }) {
-  const { selectedItem } = useAssets()
-  const [settings, setSettings] = useState(null)
-  const [alerts, setAlerts] = useState([])
-  const [error, setError] = useState(null)
-  const open = isMarketOpenIST()
+export default function AlertsTab({ active }) {
+  const { items, alerts, alertsError, markAlertsSeen, refresh } = useAssets()
+  const [filter, setFilter] = useState('all')
 
-  // Both fetches used to fail silently into console.error, leaving the tab
-  // showing stale config and "No alerts logged yet" with no hint of a problem.
-  const load = useCallback(() => {
-    const settingsReq = getSettings().then(setSettings)
-    const alertsReq = getAlerts(1, 100).then((d) => setAlerts(d.alerts))
-    return Promise.all([settingsReq, alertsReq])
-      .then(() => setError(null))
-      .catch((err) => {
-        console.error('Failed to load alerts tab', err)
-        setError('Alert settings and history are unavailable — the API server may be down.')
-      })
-  }, [])
-
+  // Reading the tab clears its badge, and keeps clearing it while it stays open.
   useEffect(() => {
-    if (!active) return undefined
-    load()
-    const interval = setInterval(load, 60_000)
-    return () => clearInterval(interval)
-  }, [active, load])
+    if (active && alerts) markAlertsSeen()
+  }, [active, alerts, markAlertsSeen])
 
-  const configured = Boolean(settings?.apikey_set && settings?.whatsapp_phone_masked)
-  const isMomentum = selectedItem?.alert_mode === 'momentum'
-  // Plain div on purpose: GlassSurface can't forward the ref the slide-in needs.
-  const listRef = useRef(null)
-  const topId = alerts[0]?.id
+  const names = useMemo(() => Object.fromEntries(items.map((i) => [i.ticker, i.display_name])), [items])
+  const dipAlerts = useMemo(() => (alerts ?? []).filter((a) => a.alert_direction == null), [alerts])
+  const shown = useMemo(() => {
+    if (filter === 'dip') return dipAlerts
+    if (filter === 'move') return (alerts ?? []).filter((a) => a.alert_direction != null)
+    return alerts ?? []
+  }, [alerts, dipAlerts, filter])
+  const groups = useMemo(() => groupAlerts(shown), [shown])
+
+  /* A new arrival while the tab is open settles in from above. Only then: this must
+     not run on load or on the 60-second poll when nothing changed. */
+  const topId = alerts?.[0]?.id
   const prevTopId = useRef(topId)
-
-  useGSAP(() => {
-    if (topId != null && topId !== prevTopId.current && !prefersReducedMotion()) {
-      const first = listRef.current?.querySelector('.ai')
-      if (first) gsap.fromTo(first, { autoAlpha: 0, x: -12 }, { autoAlpha: 1, x: 0, duration: 0.4, ease: 'power2.out' })
-    }
+  const [enteringId, setEnteringId] = useState(null)
+  useEffect(() => {
+    if (prevTopId.current != null && topId != null && topId !== prevTopId.current) setEnteringId(topId)
     prevTopId.current = topId
   }, [topId])
 
-  return (
-    <div className={`panel ${active ? 'active animating' : ''}`}>
-      <div className="tab-title">Alerts</div>
-
-      {error && <ErrorCard message={error} onRetry={load} />}
-
-      <div className="g">
-        <ConfigRow
-          label="WhatsApp Alerts"
-          sub={settings?.whatsapp_phone_masked || 'Not configured — tap to set up'}
-          toggle={configured}
-          onManage={onManage}
-        />
-        <ConfigRow
-          label={isMomentum ? 'Momentum Threshold' : 'Dip Interval'}
-          sub={isMomentum ? 'Alert on ± daily move' : 'Alert every N% from ATH'}
-          value={selectedItem ? `${fmtLevel(selectedItem.threshold_pct)}%` : '—'}
-          onManage={onManage}
-        />
-        <ConfigRow
-          label={isMomentum ? 'Alert Direction' : 'Deploy Amount'}
-          sub={isMomentum ? 'Up and down tracked separately' : 'Per alert trigger'}
-          value={isMomentum ? '±' : selectedItem ? fmtLakh(selectedItem.invest_amount) : '—'}
-          onManage={onManage}
-        />
-        <ConfigRow
-          label="Check Interval"
-          sub={isMomentum ? 'Continuous polling cadence' : 'Polling cadence in market hours'}
-          value={settings ? `${settings.check_interval_min} min` : '—'}
-          onManage={onManage}
-        />
-      </div>
-
-      <div className="sec alist" ref={listRef}>
-        <div className="sec-hd">
-          <span className="sec-lbl">Recent Alerts</span>
+  let content
+  if (alertsError && alerts === null) {
+    content = <ErrorCard title="Can’t Load Alerts" message={alertsError} onRetry={refresh} />
+  } else if (alerts === null) {
+    content = <ListSkeleton rows={5} label="Loading alerts" />
+  } else if (alerts.length === 0) {
+    content = <Unavailable icon="bell" title={EMPTY.all[0]} message={EMPTY.all[1]} />
+  } else {
+    content = (
+      <>
+        <div className="filter">
+          <Segmented label="Filter alerts" options={FILTERS} value={filter} onChange={setFilter} />
         </div>
-        {alerts.length === 0 ? (
-          <div className="empty">No alerts logged yet — they appear after a configured condition is delivered.</div>
+        {filter !== 'move' && <MonthSummary dipAlerts={dipAlerts} />}
+        {groups.length === 0 ? (
+          <Unavailable icon="bell" title={EMPTY[filter][0]} message={EMPTY[filter][1]} />
         ) : (
-          alerts.slice(0, 8).map((a, idx) => {
-            const momentum = a.alert_direction != null
-            const sign = momentum ? (a.alert_direction === 'up' ? '+' : '−') : '−'
-            const badgeClass = momentum ? (a.alert_direction === 'up' ? 'badge-up' : 'badge-dn') : (idx === 0 ? '' : 'old')
-            // Historical price — no FX conversion, see the note in WatchTab's
-            // TodaysAlerts. The unit suffix is what index alerts were missing.
-            const p = priceParts(a.ticker, a.current_price, null)
-            return (
-              <div className="ai" key={a.id}>
-                <div className={`badge ${badgeClass}`}>{sign}{fmtLevel(a.level_pct ?? a.alert_level)}%</div>
-                <div className="ai-body">
-                  <div className="ai-price">
-                    {p.prefix}{fmtPrice(p.value)}
-                    {p.unit && <span className="wp-unit">{p.unit}</span>}
-                  </div>
-                  <div className="ai-sub">{a.ticker} · {momentum ? `${a.alert_direction} daily move` : `drop ${a.drop_pct.toFixed(2)}%`}</div>
-                </div>
-                <div className="ai-time">
-                  {fmtTimeIST(a.alerted_at)}
-                  <br />
-                  <span className={a.whatsapp_sent ? 'ai-sent' : ''} style={a.whatsapp_sent ? {} : { color: 'var(--dim)' }}>
-                    {a.whatsapp_sent ? 'Sent ✓' : 'not sent'}
-                  </span>
-                </div>
+          groups.map((group) => (
+            <section key={group.title} aria-label={group.title}>
+              <div className="group-title-row">
+                <h2 className="t-title3">{group.title}</h2>
+                {group.deployed > 0 && <span className="t-foot c-2 num">{fmtRupees(group.deployed)} deployed</span>}
               </div>
-            )
-          })
+              <div className="group">
+                {group.rows.map((a) => (
+                  <AlertRow
+                    key={a.id}
+                    alert={a}
+                    name={names[a.ticker]}
+                    entering={a.id === enteringId}
+                    withDate={group.title !== 'Today' && group.title !== 'Yesterday'}
+                  />
+                ))}
+              </div>
+            </section>
+          ))
         )}
-      </div>
+      </>
+    )
+  }
 
-      <div className="g" style={{ padding: '16px 18px' }}>
-        {isMomentum ? (
-          <>
-            <div className="sec-lbl" style={{ marginBottom: 12 }}>Momentum Monitoring</div>
-            <div className="mh-row"><span className="mh-lbl">Schedule</span><span className="mh-val live">Every day</span></div>
-            <div className="mh-row"><span className="mh-lbl">Reference</span><span className="mh-val">Previous close</span></div>
-            <div className="mh-row"><span className="mh-lbl">De-duplication</span><span className="mh-val dim">Once per UTC day/direction</span></div>
-          </>
-        ) : (
-          <>
-        <div className="sec-lbl" style={{ marginBottom: 12 }}>Market Hours · IST</div>
-        <div className="mh-row">
-          <span className="mh-lbl">Pre-open session</span>
-          <span className="mh-val">9:00 – 9:15 AM</span>
-        </div>
-        <div className="mh-row">
-          <span className="mh-lbl">Market open</span>
-          <span className={`mh-val ${open ? 'live' : ''}`}>9:15 AM – 3:30 PM</span>
-        </div>
-        <div className="mh-row">
-          <span className="mh-lbl">Monitoring paused</span>
-          <span className="mh-val dim">After 3:30 PM</span>
-        </div>
-          </>
-        )}
-      </div>
-    </div>
+  return (
+    <Screen title="Alerts">
+      {content}
+    </Screen>
   )
 }

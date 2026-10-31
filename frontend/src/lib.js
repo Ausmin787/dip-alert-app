@@ -49,14 +49,6 @@ export const isMarketOpenIST = (now = new Date()) => {
 // converts to local/IST instead of treating them as local.
 const asUTC = (iso) => new Date(iso + (iso.endsWith('Z') ? '' : 'Z'))
 
-// Split a price into integer + 2-decimal fraction for the hero display
-// e.g. 23890.15 → { whole: '23,890', frac: '.15' }
-export const splitPrice = (n) => {
-  if (n == null) return { whole: '—', frac: '' }
-  const [int, dec] = n.toFixed(2).split('.')
-  return { whole: Number(int).toLocaleString('en-IN'), frac: `.${dec}` }
-}
-
 // Exchange + instrument type label from a Yahoo Finance ticker
 export const tickerMeta = (ticker = '') => {
   if (ticker.endsWith('=F')) return { exchange: 'COMEX', type: 'Futures', currency: '$' }
@@ -118,13 +110,9 @@ export const priceParts = (ticker, price, usdInr) => {
   return { prefix: currency, value: price, unit: null }
 }
 
-// Compact rupee deployment: ₹1L, ₹1.5L, ₹2L (≥1 lakh), else full ₹ amount
-export const fmtLakh = (n) => {
-  if (n == null) return '—'
-  if (n < 100000) return `₹${n.toLocaleString('en-IN')}`
-  const l = n / 100000
-  return `₹${l % 1 === 0 ? l : l.toFixed(1)}L`
-}
+// The priceParts unit in words, for wherever it sits beside a label.
+const UNIT_WORDS = { '/10g': 'per 10 g', '/kg': 'per kg', pts: 'points' }
+export const unitWords = (unit) => UNIT_WORDS[unit]
 
 const istParts = (iso) =>
   asUTC(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) // YYYY-MM-DD
@@ -174,3 +162,97 @@ export const monthLabelIST = (iso) =>
     month: 'long',
     year: 'numeric',
   })
+
+// Row titles drop the instrument suffix the seed data carries ("Gold (COMEX)",
+// "Nifty 50 Index"): the exchange is printed beside the name wherever it matters.
+export const shortName = (name = '') =>
+  name.replace(/\s*\([^)]*\)\s*$/, '').replace(/\s+Index$/i, '') || name
+
+// A true minus sign, and no sign at all on zero.
+export const fmtSigned = (pct, digits = 2) => {
+  if (pct == null) return '—'
+  const sign = pct > 0 ? '+' : pct < 0 ? '−' : ''
+  return `${sign}${Math.abs(pct).toFixed(digits)}%`
+}
+
+export const fmtRupees = (n) => (n == null ? '—' : `₹${Math.round(n).toLocaleString('en-IN')}`)
+
+// "2 Jan" from a plain YYYY-MM-DD market date. HIG Charts: never "1/2", which is
+// ambiguous. Parsed as UTC so the day cannot shift with the viewer's timezone.
+export const fmtMarketDate = (ymd, { year = false } = {}) =>
+  ymd
+    ? new Date(`${ymd}T00:00:00Z`).toLocaleDateString('en-IN', {
+        timeZone: 'UTC',
+        day: 'numeric',
+        month: 'short',
+        ...(year ? { year: 'numeric' } : {}),
+      })
+    : '—'
+
+/* Chart periods in trading days. yfinance reads the backend's `days` as market
+   sessions, so "1M" has to ask for ~22 of them, not 30, or the label is wrong. */
+export const RANGES = [
+  { id: '1M', days: 22 },
+  { id: '3M', days: 66 },
+  { id: '6M', days: 132 },
+  { id: '1Y', days: 252 },
+]
+export const SPARK_DAYS = RANGES[0].days
+
+export const nextAlertPrice = (item) =>
+  item?.ath_price != null && item?.next_alert_level != null
+    ? item.ath_price * (1 - item.next_alert_level / 100)
+    : null
+
+/* The alert ladder: two rungs still ahead, the rungs already behind the price.
+   `state` is 'next' | 'ahead' | 'alerted' | 'passed'. "passed" is a level the
+   price has crossed without an alert being recorded (first run, or WhatsApp not
+   yet connected), which must not read as an alert having gone out. */
+export const dipLadder = (item, behind = 2) => {
+  const step = item?.threshold_pct
+  const next = item?.next_alert_level
+  if (!step || next == null || item.ath_price == null) return { ahead: [], behind: [] }
+  const nextIdx = Math.round(next / step)
+  const fired = item.last_alerted_level || 0
+  const rung = (i) => ({
+    index: i,
+    pct: i * step,
+    price: item.ath_price * (1 - (i * step) / 100),
+    state: i === nextIdx ? 'next' : i > nextIdx ? 'ahead' : i <= fired ? 'alerted' : 'passed',
+  })
+  const below = []
+  for (let i = nextIdx - 1; i >= 1 && below.length < behind; i -= 1) below.push(rung(i))
+  return { ahead: [rung(nextIdx + 1), rung(nextIdx)], behind: below }
+}
+
+/* Axis ticks on a familiar sequence (HIG Charts: 0, 5, 10, not 1, 6, 11). */
+export const niceTicks = (min, max, count = 4) => {
+  if (!(max > min)) return [min]
+  const rough = (max - min) / count
+  const power = 10 ** Math.floor(Math.log10(rough))
+  const unit = [1, 2, 2.5, 5, 10].find((m) => m * power >= rough) * power
+  const ticks = []
+  for (let v = Math.ceil(min / unit) * unit; v <= max + unit * 1e-6; v += unit) ticks.push(Number(v.toFixed(6)))
+  return ticks
+}
+
+/* Section an alert list for display: Today, Yesterday, then IST months. Rows keep
+   the API's newest-first order; `deployed` totals dip deployments in the section. */
+export const groupAlerts = (alerts, now = new Date()) => {
+  const dayKey = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+  const today = dayKey(now)
+  const yesterday = dayKey(new Date(now.getTime() - 86_400_000))
+  const groups = []
+  for (const alert of alerts) {
+    const day = dayKey(asUTC(alert.alerted_at))
+    const title = day === today ? 'Today' : day === yesterday ? 'Yesterday' : monthLabelIST(alert.alerted_at)
+    let group = groups[groups.length - 1]
+    if (group?.title !== title) {
+      group = { title, rows: [], deployed: 0 }
+      groups.push(group)
+    }
+    group.rows.push(alert)
+    if (alert.alert_direction == null) group.deployed += alert.invest_amount ?? 0
+  }
+  return groups
+}

@@ -29,7 +29,7 @@ npm.cmd --prefix frontend run lint
 npm.cmd --prefix frontend run build
 ```
 
-The frontend has no Jest suite. Glass-nav behavior also needs live visual checks: crisp parked state, strong but aligned travel refraction, interruption, same-tab click, resize, keyboard navigation, and reduced motion. Physical Safari/Firefox checks remain necessary because SVG filters vary by browser engine.
+The frontend has no Jest suite. Gestures also need live checks with real touch input: sheet drag, flick and interruption, chart scrub, tab lens drag, keyboard, and both colour schemes. Motion is verified with a per-step probe of the animated value, never from still frames.
 
 ## Deployment
 

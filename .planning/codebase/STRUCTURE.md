@@ -18,11 +18,11 @@ dip-alert-app/
 │   ├── src/
 │   │   ├── App.jsx, main.jsx
 │   │   ├── AssetContext.jsx, useAssets.js
-│   │   ├── GlassNav.jsx, gsap.js
-│   │   ├── Wallpaper.jsx, wallpaperImage.js
-│   │   ├── liquidGlass.js, useLiquidGlass.jsx, GlassSurface.jsx
+│   │   ├── TabBar.jsx, Sheet.jsx, PriceChart.jsx, spring.js
+│   │   ├── AssetDetail.jsx, AssetForm.jsx, AlertInstrument.jsx, AlertRow.jsx
+│   │   ├── Menu.jsx, Icon.jsx, ui.jsx, hooks.js
 │   │   ├── api.js, lib.js, lib.test.js, index.css
-│   │   └── tabs/{WatchTab,AlertsTab,HistoryTab,ManageTab}.jsx
+│   │   └── tabs/{WatchlistTab,AlertsTab,SettingsTab}.jsx
 │   ├── package.json, package-lock.json
 │   ├── vite.config.js, eslint.config.js, vercel.json
 │   └── README.md
@@ -40,9 +40,9 @@ dip-alert-app/
 
 ## Key Responsibilities
 
-- `App.jsx`: phone shell, wallpaper/header, four-tab state.
-- `GlassNav.jsx`: semantic bottom nav, geometry, SVG filter, selector motion.
-- `liquidGlass.js` / `useLiquidGlass.jsx` / `GlassSurface.jsx` / `wallpaperImage.js`: static-bitmap refraction for cards + sheet.
+- `App.jsx`: shell, tab state, size class.
+- `TabBar.jsx`: floating tab bar with draggable lens, and the wide-screen sidebar.
+- `Sheet.jsx`: draggable sheet with velocity handoff. `PriceChart.jsx`: scrubbable chart. `spring.js`: the physics under all of it.
 - `AssetContext.jsx`: status/history polling, selected ticker, refresh.
 - `tabs/`: user-facing Watch, Alerts, History, and Manage workflows.
 - `ath_logic.py`: dip/momentum alert decisions.

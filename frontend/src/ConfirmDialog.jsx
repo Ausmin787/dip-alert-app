@@ -1,23 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import GlassSurface from './GlassSurface.jsx'
 
 const ConfirmContext = createContext(null)
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useConfirm = () => useContext(ConfirmContext)
 
-/* Replaces window.confirm, which rendered Chrome's own OS-level modal in the
-   middle of the glass phone shell.
-
-   Form follows docs/design-refs/confirm-destructive-sheet-wise.png: bottom
-   sheet, question as title, one-line consequence, filled destructive button,
-   outlined escape beneath it. A bottom sheet rather than a centred alert
-   because AssetSheet already established that language here.
-
-   The copy carries reassurance where the action is recoverable — the principle
-   from confirm-destructive-wise.png, where Wise picks its pattern by
-   reversibility rather than by house style. */
+/* A real alert, per HIG Alerts: reserved for consequences worth interrupting for,
+   a title that states the situation, the cancel always titled "Cancel" on the
+   leading side and never the default. The confirm button is not painted red: the
+   person already chose the destructive action deliberately, so "the button performs
+   the person's original intent" and red would only slow them down. */
 export function ConfirmProvider({ children }) {
   const [request, setRequest] = useState(null) // { opts, resolve } | null
   const resolveRef = useRef(null)
@@ -48,63 +41,45 @@ export function ConfirmProvider({ children }) {
   )
 }
 
-/* Rendered inside AppShell, not beside the provider: #phone-shell does not
-   exist on the provider's first render. z-index 60 puts it above an open
-   AssetSheet (50) and the toast layer (40). */
 export function ConfirmViewport() {
   const { request, settle } = useConfirm()
-  const host = document.getElementById('phone-shell')
 
   useEffect(() => {
     if (!request) return undefined
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') settle(false)
+      if (event.key === 'Escape') {
+        event.stopPropagation()
+        settle(false)
+      }
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [request, settle])
 
-  if (!host || !request) return null
+  if (!request) return null
 
-  const {
-    title,
-    body,
-    confirmLabel = 'Confirm',
-    cancelLabel = 'Go back',
-    destructive = true,
-  } = request.opts ?? {}
+  const { title, body, confirmLabel = 'Confirm' } = request.opts ?? {}
 
   return createPortal(
-    <div className="sheet-overlay sheet-overlay-confirm" onClick={() => settle(false)} role="presentation">
-      {/* GlassSurface variant="sheet" so the confirm carries the same
-          refraction as AssetSheet — the tiering rule puts refraction on cards
-          and sheets, and a flat confirm beside a refracted one reads as a bug. */}
-      <GlassSurface
-        variant="sheet"
-        className="sheet sheet-confirm"
+    <div className="alert-root" onClick={() => settle(false)} role="presentation">
+      <div
+        className="alert"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
         aria-describedby={body ? 'confirm-body' : undefined}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sheet-title" id="confirm-title">{title}</div>
-        {body && <div className="confirm-body" id="confirm-body">{body}</div>}
-        <div className="confirm-actions">
-          <button
-            type="button"
-            className={`btn ${destructive ? 'btn-danger-solid' : 'btn-primary'}`}
-            onClick={() => settle(true)}
-            autoFocus
-          >
+        <h2 className="t-head" id="confirm-title">{title}</h2>
+        {body && <p className="t-sub c-2" id="confirm-body" style={{ marginTop: 4 }}>{body}</p>}
+        <div className="alert-actions">
+          <button type="button" className="btn btn-fill" onClick={() => settle(false)}>Cancel</button>
+          <button type="button" className="btn btn-tinted" onClick={() => settle(true)} autoFocus>
             {confirmLabel}
           </button>
-          <button type="button" className="btn btn-outline" onClick={() => settle(false)}>
-            {cancelLabel}
-          </button>
         </div>
-      </GlassSurface>
+      </div>
     </div>,
-    host,
+    document.body,
   )
 }

@@ -1,17 +1,15 @@
 {
-  "name": "Dip Alert — Market Watch & WhatsApp Alerts",
+  "name": "Dip Alert: Market Watch & WhatsApp Alerts",
   "short_name": "Dip Alert",
   "description": "WhatsApp alerts for Nifty dips from its all-time high, plus daily momentum moves on Gold, Silver, S&P 500, and Nasdaq",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#03176f",
-  "theme_color": "#03176f",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "icons": [
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

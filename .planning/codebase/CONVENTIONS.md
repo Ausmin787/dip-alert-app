@@ -6,8 +6,8 @@
 
 - Python modules/functions/variables use `snake_case`; constants use `UPPER_SNAKE_CASE`.
 - React component files/components use `PascalCase.jsx`.
-- Shared JavaScript modules/hooks use descriptive camel-case names such as `api.js`, `gsap.js`, `lib.js`, and `useAssets.js`.
-- The four primary views live under `frontend/src/tabs/` and end in `Tab.jsx`.
+- Shared JavaScript modules/hooks use descriptive camel-case names such as `api.js`, `spring.js`, `lib.js`, and `useAssets.js`.
+- The three primary views live under `frontend/src/tabs/` and end in `Tab.jsx`.
 
 ## Backend
 
@@ -23,13 +23,12 @@
 - `App.jsx` owns tab state; do not introduce route assumptions without an explicit architecture change.
 - API access goes through `api.js`; write-token injection stays centralized in the Axios interceptor.
 - Shared asset state is consumed through `useAssets.js` and provided by `AssetContext.jsx`.
-- All GSAP components import `gsap`, `useGSAP`, reduced-motion helpers, and shared easing from `gsap.js`, not directly from GSAP packages.
-- Scope GSAP work to component refs/contexts and clean it up on unmount.
+- Motion goes through `createSpring` in `spring.js`, stopped on unmount. CSS transitions are fine for things no gesture can touch.
 - Prefer transform/opacity animation; avoid width/layout animation in the bottom nav.
 
-## Liquid Glass System
+## Apple HIG System
 
-- Current visual tokens are CSS custom properties under `:root` in `index.css`; the old dark Tailwind `@theme` token map is obsolete.
+- Visual tokens are CSS custom properties under `:root` in `index.css`, with values taken from Apple's HIG tables.
 - Preserve semantic HTML beneath effects. The nav is a labelled `<nav>` with real buttons.
 - The stationary nav target is the normal icon/label. The filtered duplicate is an in-motion effect layer only.
 - Rim movement and SVG filter/map coordinates must be painted from the same measured position source.

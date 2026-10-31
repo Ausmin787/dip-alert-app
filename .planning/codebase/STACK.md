@@ -16,8 +16,8 @@
 - Node.js 20.19+ and npm (`package-lock.json` tracked)
 - React/React DOM 19.2.7 resolved (`^19.2.6` declared)
 - Vite 8.0.16 and `@vitejs/plugin-react` 6.0.2 resolved (`^8.0.12` / `^6.0.1` declared)
-- Tailwind CSS 4.3.0 through `@tailwindcss/vite`
-- GSAP 3.15.0 and `@gsap/react` 2.1.2
+- Plain CSS; `@fontsource-variable/inter` as the non-Apple font fallback
+- No animation library: `src/spring.js`
 - Axios 1.18.0
 - ESLint 10.4.1 resolved (`^10.3.0` declared)
 
