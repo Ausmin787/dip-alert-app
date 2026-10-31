@@ -1,6 +1,8 @@
-<p align="center">
-  <img src="docs/banner-original.png" alt="dip-alert-app banner" width="100%"/>
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/banner-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/banner-light.png">
+  <img src="docs/banner-light.png" alt="Dip Alert: WhatsApp alerts when the market falls. A price falls from its all-time high through alert levels, behind a liquid glass alert reading Nifty 50 crossed −3%." width="100%">
+</picture>
 
 # Dip Alert — Market Alert Dashboard
 

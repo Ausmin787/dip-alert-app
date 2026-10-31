@@ -1,224 +1,353 @@
 <!doctype html>
+<!--
+  Source of the README banner: docs/banner-dark.png and docs/banner-light.png.
+
+  GitHub strips CSS and scripts from READMEs, so live glass can't run there. This page
+  computes the refraction itself, per pixel, and the result is exported as an image.
+
+  To re-export: open with ?theme=dark or ?theme=light in Chrome over http (from the repo
+  root, after npm install in frontend/, so Inter resolves), viewport 1280x440, device
+  scale 2, transparent page background, full-page PNG.
+
+  The chart is illustrative: its shape is a drawn dip, not market data.
+-->
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>dip-alert-app — README Banner</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      width: 1280px; height: 380px;
-      overflow: hidden;
-      background: #020a26;
-      font-family: 'Inter', system-ui, sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
-    .banner {
-      position: relative;
-      width: 1280px; height: 380px;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      padding: 0 80px;
-      /* Painterly layered background */
-      /* Mirrors the app wallpaper's own gradient family (index.css .wallpaper):
-         cool sky at top-left, a pale sage bloom, the deep #03176f base — with a
-         warm --accent glow where the hero sits. Navy + gold, not brown. */
-      background:
-        /* warm --accent bloom behind the wordmark, the app's hero moment */
-        radial-gradient(ellipse 30% 46% at 40% 46%, rgba(255, 207, 115, 0.30) 0%, transparent 55%),
-        /* cool sky wash top-left, as in index.css .wallpaper */
-        radial-gradient(ellipse 46% 78% at 14% 22%, rgba(94, 177, 232, 0.42) 0%, transparent 60%),
-        radial-gradient(ellipse 34% 62% at 68% 6%,  rgba(59, 152, 214, 0.22) 0%, transparent 58%),
-        /* deep corners so the centre reads lit rather than flat */
-        radial-gradient(ellipse 50% 74% at 100% 62%, rgba(1, 6, 34, 0.94) 0%, transparent 58%),
-        radial-gradient(ellipse 44% 62% at 0% 96%,  rgba(1, 6, 34, 0.90) 0%, transparent 58%),
-        linear-gradient(160deg, #06246f 0%, #03176f 46%, #020c38 100%);
-    }
-    .bg-grid {
-      position: absolute; inset: 0;
-      background-image:
-        linear-gradient(rgba(255,255,255,0.030) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.030) 1px, transparent 1px);
-      background-size: 52px 52px;
-      pointer-events: none;
-    }
-    /* Thin top accent line */
-    .top-line {
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,207,115,0.70) 30%, rgba(94,177,232,0.45) 65%, transparent);
-    }
+<meta charset="utf-8">
+<title>Dip Alert README Banner</title>
+<style>
+  @font-face {
+    font-family: 'Inter Banner';
+    src: url(../../frontend/node_modules/@fontsource-variable/inter/files/inter-latin-opsz-normal.woff2) format('woff2-variations');
+    font-weight: 100 900;
+    unicode-range: U+0000-00FF, U+2000-206F, U+2190-2193, U+2212;
+  }
+  @font-face {
+    font-family: 'Inter Banner';
+    src: url(../../frontend/node_modules/@fontsource-variable/inter/files/inter-latin-ext-opsz-normal.woff2) format('woff2-variations');
+    font-weight: 100 900;
+    unicode-range: U+20A0-20C0;
+  }
+  :root {
+    --ink: #f5f5f7; --ink-2: rgba(245,245,247,.72); --ink-3: rgba(245,245,247,.62);
+    --tint: #a6d2ff; --level: #ffb340;
+  }
+  [data-theme="light"] {
+    --ink: #1d1d1f; --ink-2: rgba(29,29,31,.72); --ink-3: rgba(29,29,31,.62);
+    --tint: rgb(30,110,244); --level: #b25000;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 440px; background: transparent; overflow: hidden; }
+  body {
+    font-family: 'Inter Banner', -apple-system, sans-serif;
+    font-optical-sizing: auto;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  #banner { position: relative; width: 1280px; height: 440px; border-radius: 34px; overflow: hidden; }
+  canvas { position: absolute; inset: 0; width: 1280px; height: 440px; }
+  #banner > div, #banner > span { position: absolute; }
 
-    /* Light frosted glass icon mark */
-    .icon-mark {
-      position: relative; z-index: 2;
-      flex-shrink: 0;
-      width: 84px; height: 84px;
-      background: rgba(255, 255, 255, 0.12);
-      border-top: 1.5px solid rgba(255,255,255,0.52);
-      border-right: 1px solid rgba(255,255,255,0.22);
-      border-bottom: 1px solid rgba(255,255,255,0.10);
-      border-left: 1px solid rgba(255,255,255,0.22);
-      border-radius: 22px;
-      display: flex; align-items: center; justify-content: center;
-      margin-right: 40px;
-      backdrop-filter: blur(28px) saturate(160%);
-      -webkit-backdrop-filter: blur(28px) saturate(160%);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.42);
-      overflow: visible;
-    }
-    .icon-chart {
-      display: block;
-      width: 84px;
-      height: 84px;
-    }
-    .icon-bell {
-      position: absolute;
-      top: 2px;
-      right: 2px;
-      transform: translate(42%, -42%);
-      width: 44px;
-      height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 3;
-      pointer-events: none;
-      background: rgba(2, 10, 40, 0.90);
-      border-radius: 50%;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.40);
-    }
+  .lockup { left: 64px; top: 66px; display: flex; align-items: center; gap: 22px; }
+  .lockup svg { width: 92px; height: 92px; display: block; border-radius: 22.3%; box-shadow: 0 0 0 1px rgba(255,255,255,.16), 0 6px 18px rgba(0,0,0,.28); }
+  .title { font-size: 92px; font-weight: 700; letter-spacing: -.028em; line-height: 1; }
+  .sub { left: 66px; top: 180px; font-size: 29px; font-weight: 500; letter-spacing: -.015em; line-height: 1.24; color: var(--ink-2); }
 
-    /* Text block */
-    .text-block {
-      position: relative; z-index: 2;
-      flex: 1;
-    }
-    .eyebrow-row {
-      font-size: 11px; font-weight: 600;
-      color: rgba(255,255,255,0.60);
-      letter-spacing: 0.1em; text-transform: uppercase;
-      margin-bottom: 12px;
-    }
-    h1 {
-      font-size: 54px; font-weight: 800;
-      letter-spacing: -0.026em; line-height: 1.04;
-      color: #fff;
-      margin-bottom: 14px;
-      text-shadow: 0 2px 30px rgba(0,0,0,0.55);
-    }
-    h1 em { font-style: normal; color: #ffcf73; }
-    .sub {
-      font-size: 16px; font-weight: 400;
-      color: rgba(255,255,255,0.50);
-      line-height: 1.5;
-      max-width: 460px;
-    }
+  .tabs { left: 64px; top: 322px; width: 336px; height: 66px; display: grid; grid-template-columns: repeat(3, 1fr); padding: 5px; }
+  .tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 13px; font-weight: 600; border-radius: 28px; }
+  .tab svg { width: 26px; height: 26px; fill: currentColor; }
+  .tab.on { color: var(--tint); background: rgba(255,255,255,.13); }
+  [data-theme="light"] .tab.on { background: rgba(255,255,255,.62); }
+  [data-theme="light"] .lockup svg { box-shadow: 0 6px 18px rgba(0,0,0,.2); }
 
-    /* Right pill grid — light frosted glass */
-    .pill-grid {
-      position: relative; z-index: 2;
-      flex-shrink: 0;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      width: 326px;
-      margin-left: 56px;
-    }
-    .pill {
-      display: flex; align-items: center; gap: 8px;
-      background: rgba(255, 255, 255, 0.12);
-      border-top: 1px solid rgba(255,255,255,0.50);
-      border-right: 1px solid rgba(255,255,255,0.20);
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      border-left: 1px solid rgba(255,255,255,0.20);
-      border-radius: 14px;
-      padding: 11px 14px;
-      backdrop-filter: blur(22px) saturate(160%);
-      -webkit-backdrop-filter: blur(22px) saturate(160%);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.42);
-    }
-    .pill span {
-      font-size: 12px; font-weight: 500;
-      color: rgba(255,255,255,0.95);
-      white-space: nowrap;
-    }
-  </style>
+  .alert { left: 776px; top: 148px; width: 396px; height: 98px; display: flex; align-items: center; gap: 16px; padding: 0 24px 0 20px; }
+  .alert svg { width: 54px; height: 54px; flex: none; }
+  .alert b { display: block; font-size: 23px; font-weight: 650; letter-spacing: -.02em; line-height: 1.2; white-space: nowrap; }
+  .alert i { display: block; font-style: normal; font-size: 18px; font-weight: 500; letter-spacing: -.01em; line-height: 1.3; color: var(--ink); opacity: .86; white-space: nowrap; }
+  .alert u { position: absolute; right: 22px; top: 20px; text-decoration: none; font-size: 15px; font-weight: 500; color: var(--ink-3); }
+
+  .rung { font-size: 15px; font-weight: 650; color: var(--level); letter-spacing: -.01em; text-align: right; width: 56px; }
+  .high { font-size: 15px; font-weight: 600; color: var(--ink-2); letter-spacing: -.01em; white-space: nowrap; }
+</style>
 </head>
 <body>
-<div class="banner">
-  <div class="bg-grid"></div>
-  <div class="top-line"></div>
+<div id="banner">
+  <canvas id="c" width="2560" height="880"></canvas>
 
-  <!-- Icon mark with centered chart + corner bell -->
-  <div class="icon-mark">
-    <svg class="icon-chart" viewBox="0 0 84 84" fill="none" aria-hidden="true">
-      <g transform="translate(1, 7)">
-        <line x1="31" y1="23" x2="31" y2="30" stroke="#22c55e" stroke-width="1.35" stroke-linecap="round" opacity="0.88"/>
-        <rect x="27.5" y="30" width="7" height="17" rx="1.2" fill="#22c55e" opacity="0.90"/>
-        <line x1="31" y1="47" x2="31" y2="50" stroke="#22c55e" stroke-width="1.35" stroke-linecap="round" opacity="0.88"/>
+  <div class="lockup">
+    <svg viewBox="0 0 1024 1024" aria-hidden="true"><use href="#app-icon"/></svg>
+    <span class="title">Dip Alert</span>
+  </div>
+  <div class="sub">WhatsApp alerts when the market falls.</div>
 
-        <line x1="42" y1="16" x2="42" y2="23" stroke="#22c55e" stroke-width="1.35" stroke-linecap="round"/>
-        <rect x="38.5" y="23" width="7" height="22" rx="1.2" fill="#22c55e"/>
-        <line x1="42" y1="45" x2="42" y2="48" stroke="#22c55e" stroke-width="1.35" stroke-linecap="round"/>
-
-        <line x1="53" y1="26" x2="53" y2="30" stroke="#ff5e6c" stroke-width="1.35" stroke-linecap="round"/>
-        <rect x="49.5" y="30" width="7" height="20" rx="1.2" fill="#ff5e6c"/>
-        <line x1="53" y1="50" x2="53" y2="53" stroke="#ff5e6c" stroke-width="1.35" stroke-linecap="round"/>
-
-        <polyline points="25,47 33,39 41,41 49,30 57,37" fill="none" stroke="#ffcf73" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" opacity="0.72"/>
-      </g>
-    </svg>
-    <div class="icon-bell" aria-hidden="true">
-      <svg width="22" height="22" viewBox="25 5 14 16" fill="none">
-        <path d="M35 13.5A4 4 0 0 0 27 13.5C27 17.5 25.5 18.5 25.5 18.5h11S35 17.5 35 13.5z" stroke="rgba(255,255,255,0.85)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <path d="M29 18.5a1.5 1.5 0 0 0 2.9.2" stroke="rgba(255,255,255,0.85)" stroke-width="1.3" stroke-linecap="round"/>
-        <circle cx="35.5" cy="9.5" r="2.5" fill="#ff5e6c"/>
-      </svg>
-    </div>
+  <div class="tabs">
+    <span class="tab on"><svg viewBox="0 0 24 24"><path d="M15.22 9.375a1 1 0 0 1 1.393-.165l.094.083l4 4a1 1 0 0 1 .284.576l.009.131v5a1 1 0 0 1-.883.993l-.117.007h-16.022l-.11-.009l-.11-.02l-.107-.034l-.105-.046l-.1-.059l-.094-.07l-.06-.055l-.072-.082l-.064-.089l-.054-.096l-.016-.035l-.04-.103l-.027-.106l-.015-.108l-.004-.11l.009-.11l.019-.105c.01-.04.022-.077.035-.112l.046-.105l.059-.1l4-6a1 1 0 0 1 1.165-.39l.114.05l3.277 1.638l3.495-4.369z"/><path d="M15.232 3.36a1 1 0 0 1 1.382-.15l.093.083l4 4a1 1 0 0 1-1.32 1.497l-.094-.083l-3.226-3.225l-4.299 5.158a1 1 0 0 1-1.1.303l-.115-.049l-3.254-1.626l-2.499 3.332a1 1 0 0 1-1.295.269l-.105-.069a1 1 0 0 1-.269-1.295l.069-.105l3-4a1 1 0 0 1 1.137-.341l.11.047l3.291 1.645l4.494-5.391z"/></svg>Watchlist</span>
+    <span class="tab"><svg viewBox="0 0 24 24"><path d="M14.235 19c.865 0 1.322 1.024.745 1.668a3.992 3.992 0 0 1-2.98 1.332a3.992 3.992 0 0 1-2.98-1.332c-.552-.616-.158-1.579.634-1.661l.11-.006h4.471z"/><path d="M12 2c1.358 0 2.506.903 2.875 2.141l.046.171l.008.043a8.013 8.013 0 0 1 4.024 6.069l.028.287l.019.289v2.931l.021.136a3 3 0 0 0 1.143 1.847l.167.117l.162.099c.86.487.56 1.766-.377 1.864l-.116.006h-16c-1.028 0-1.387-1.364-.493-1.87a3 3 0 0 0 1.472-2.063l.021-.143l.001-2.97a8 8 0 0 1 3.821-6.454l.248-.146l.01-.043a3.003 3.003 0 0 1 2.562-2.29l.182-.017l.176-.004z"/></svg>Alerts</span>
+    <span class="tab"><svg viewBox="0 0 24 24"><path d="M14.647 4.081a.724.724 0 0 0 1.08.448c2.439-1.485 5.23 1.305 3.745 3.744a.724.724 0 0 0 .447 1.08c2.775.673 2.775 4.62 0 5.294a.724.724 0 0 0-.448 1.08c1.485 2.439-1.305 5.23-3.744 3.745a.724.724 0 0 0-1.08.447c-.673 2.775-4.62 2.775-5.294 0a.724.724 0 0 0-1.08-.448c-2.439 1.485-5.23-1.305-3.745-3.744a.724.724 0 0 0-.447-1.08c-2.775-.673-2.775-4.62 0-5.294a.724.724 0 0 0 .448-1.08c-1.485-2.439 1.305-5.23 3.744-3.745a.722.722 0 0 0 1.08-.447c.673-2.775 4.62-2.775 5.294 0zm-2.647 4.919a3 3 0 1 0 0 6a3 3 0 0 0 0-6z"/></svg>Settings</span>
   </div>
 
-  <!-- Text block -->
-  <div class="text-block">
-    <div class="eyebrow-row">Ausmin787 / dip-alert-app</div>
-    <h1>Track Dips &amp; <em>Momentum</em></h1>
-    <p class="sub">WhatsApp alerts for Nifty ATH dips and global daily momentum. FastAPI backend.</p>
+  <div class="alert">
+    <svg viewBox="0 0 1024 1024" aria-hidden="true"><use href="#app-icon"/></svg>
+    <div><b>Nifty 50 crossed −3%</b><i>Invest ₹1,00,000</i></div>
+    <u>now</u>
   </div>
 
-  <!-- Pill grid -->
-  <div class="pill-grid">
-    <div class="pill">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-        <path d="M6.5 2v9M3 7.5l3.5 4L10 7.5" stroke="#ff5e6c" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <span>Dip Alerts</span>
-    </div>
-    <div class="pill">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-        <polyline points="1,10 4,6.5 7,8.5 10,4.5 12,6.5" stroke="#22c55e" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-      </svg>
-      <span>Global Momentum</span>
-    </div>
-    <div class="pill">
-      <svg width="18" height="18" viewBox="2 1 20 22" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;flex-shrink:0;">
-        <path fill="#3DC557" fill-rule="evenodd" clip-rule="evenodd"
-          d="M12 3C7.03 3 3 7.03 3 12c0 1.68.46 3.25 1.27 4.59L3 21l4.54-1.19A8.96 8.96 0 0 0 12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 1.6a7.4 7.4 0 1 1 0 14.8 7.37 7.37 0 0 1-3.74-1.01l-.26-.16-2.72.71.73-2.64-.17-.27A7.36 7.36 0 0 1 4.6 12 7.4 7.4 0 0 1 12 4.6z"/>
-        <path fill="#3DC557"
-          d="M9.1 8.2c-.14-.32-.3-.33-.44-.34H8.3c-.14 0-.38.05-.58.27-.2.22-.76.74-.76 1.8s.78 2.1.89 2.24c.11.14 1.51 2.4 3.72 3.27 1.84.73 2.21.58 2.61.55.4-.04 1.28-.52 1.46-1.03.18-.5.18-.93.13-1.02-.05-.09-.2-.14-.42-.25-.21-.11-1.28-.63-1.48-.7-.2-.07-.34-.11-.48.1-.14.22-.55.7-.68.85-.12.14-.25.16-.47.05-.21-.1-.9-.33-1.72-1.06-.63-.57-1.06-1.27-1.19-1.49-.12-.21-.01-.33.09-.44.1-.1.21-.25.32-.37.1-.13.14-.22.21-.36.07-.14.04-.27-.02-.38-.05-.1-.47-1.17-.66-1.6z"/>
-      </svg>
-      <span>WhatsApp</span>
-    </div>
-    <div class="pill">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-        <path d="M3 2L1 6.5 3 11M10 2l2 4.5L10 11M8 1l-3 11" stroke="#93c5fd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <span>FastAPI + React</span>
-    </div>
-  </div>
+  <span class="high" id="high"></span>
+  <span class="rung" id="r1">−1%</span>
+  <span class="rung" id="r2">−2%</span>
+  <span class="rung" id="r3">−3%</span>
 </div>
+
+<!-- frontend/public/favicon.svg, inline so <use> resolves on file:// and over http alike. -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="ibg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c2c30"/><stop offset="1" stop-color="#050506"/></linearGradient>
+    <linearGradient id="idot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb04a"/><stop offset="1" stop-color="#ff8a1f"/></linearGradient>
+    <symbol id="app-icon" viewBox="0 0 1024 1024">
+      <rect width="1024" height="1024" rx="228" fill="url(#ibg)"/>
+      <path d="M170 300 L414 560 L554 430 L774 690" fill="none" stroke="#fff" stroke-width="100" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="774" cy="690" r="108" fill="url(#idot)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<script>
+const theme = new URLSearchParams(location.search).get('theme') === 'light' ? 'light' : 'dark'
+document.documentElement.dataset.theme = theme
+const W = 1280, H = 440, S = 2
+const c = document.getElementById('c')
+const ctx = c.getContext('2d', { willReadFrequently: true })
+ctx.scale(S, S)
+
+const PALETTE = {
+  dark: {
+    sky: ['#000000', '#08070a'],
+    ridges: [
+      { off: 0, stops: ['#ffb340', '#ff6a2b', '#d81f3c', '#3f0a1e'] },
+      { off: 74, seed: 7, stops: ['#ff453a', '#b5162f', '#4c0a20'] },
+      { off: 138, seed: 23, stops: ['#5e0e24', '#21060f', '#0a0306'] },
+    ],
+    line: '#ffffff', rule: 'rgba(255,179,64,.55)', high: 'rgba(255,255,255,.34)',
+    tint: [14, 8, 12], tintA: .4, rim: .8, frost: 3.5, sat: 1.35,
+    shadow: 'rgba(0,0,0,.5)',
+  },
+  light: {
+    sky: ['#f5f5f7', '#fbfbfd'],
+    ridges: [
+      { off: 0, stops: ['#ffb340', '#ff8a4c', '#ff5f57', '#ffd3c9'] },
+      { off: 74, seed: 7, stops: ['#ff9d7a', '#ffb7a3', '#ffe6df'] },
+      { off: 138, seed: 23, stops: ['#ffe2d8', '#fff1ec', '#fbfbfd'] },
+    ],
+    line: '#1d1d1f', rule: 'rgba(178,80,0,.5)', high: 'rgba(29,29,31,.3)',
+    tint: [255, 255, 255], tintA: .56, rim: 1, frost: 3.5, sat: 1.3,
+    shadow: 'rgba(120,40,20,.28)',
+  },
+}[theme]
+
+/* The shape of the banner: a climb to the all-time high, then the dip. */
+const HIGH = { x: 690, y: 58 }
+const RUNGS = [128, 198, 268]
+const KEY = [[0, 374], [150, 354], [300, 350], [470, 322], [570, 244], [640, 112], [690, 58],
+  [760, 92], [850, 108], [930, 150], [1010, 188], [1100, 226], [1198, 268]]
+const END = KEY[KEY.length - 1]
+
+function rng(seed) {
+  let s = seed >>> 0
+  return () => (s = Math.imul(s ^ (s >>> 15), 2246822519) ^ Math.imul(s ^ (s >>> 13), 3266489917), ((s ^= s >>> 16) >>> 0) / 4294967296)
+}
+function baseY(x) {
+  if (x <= KEY[0][0]) return KEY[0][1]
+  for (let i = 1; i < KEY.length; i++) {
+    if (x <= KEY[i][0]) {
+      const [x0, y0] = KEY[i - 1], [x1, y1] = KEY[i]
+      const t = (x - x0) / (x1 - x0)
+      return y0 + (y1 - y0) * (t * t * (3 - 2 * t))
+    }
+  }
+  return KEY[KEY.length - 1][1] + (x - END[0]) * .42
+}
+/* Price-like detail: a bounded walk, pinned to zero at the high and at the line's end
+   so those two points land exactly where the composition needs them. */
+function series(seed, amp, step = 4) {
+  const r = rng(seed), pts = []
+  let n = 0
+  for (let x = 0; x <= W + step; x += step) {
+    n = n * .9 + (r() - .5) * amp
+    const pin = Math.min(1, Math.abs(x - HIGH.x) / 50, Math.abs(x - END[0]) / 40 + (x > END[0] ? 1 : 0))
+    pts.push([x, baseY(x) + n * pin])
+  }
+  return pts
+}
+function area(pts, off, stops) {
+  const g = ctx.createLinearGradient(0, HIGH.y + off, 0, H)
+  stops.forEach((s, i) => g.addColorStop(i / (stops.length - 1), s))
+  ctx.beginPath()
+  ctx.moveTo(0, H)
+  pts.forEach(([x, y]) => ctx.lineTo(x, y + off))
+  ctx.lineTo(W, H)
+  ctx.closePath()
+  ctx.fillStyle = g
+  ctx.fill()
+}
+
+function paintScene() {
+  const sky = ctx.createLinearGradient(0, 0, 0, H)
+  sky.addColorStop(0, PALETTE.sky[0])
+  sky.addColorStop(1, PALETTE.sky[1])
+  ctx.fillStyle = sky
+  ctx.fillRect(0, 0, W, H)
+
+  const price = series(11, 7)
+  PALETTE.ridges.forEach((rd) => area(rd.seed ? series(rd.seed, 13, 6) : price, rd.off, rd.stops))
+
+  ctx.save()
+  ctx.lineWidth = 1.5
+  ctx.setLineDash([2, 7])
+  ctx.lineCap = 'round'
+  ctx.strokeStyle = PALETTE.high
+  ctx.beginPath(); ctx.moveTo(HIGH.x, HIGH.y); ctx.lineTo(W, HIGH.y); ctx.stroke()
+  ctx.strokeStyle = PALETTE.rule
+  RUNGS.forEach((y) => { ctx.beginPath(); ctx.moveTo(HIGH.x, y); ctx.lineTo(1204, y); ctx.stroke() })
+  ctx.restore()
+
+  ctx.beginPath()
+  price.filter(([x]) => x <= END[0]).forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)))
+  ctx.lineWidth = 3.5
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+  ctx.strokeStyle = PALETTE.line
+  ctx.stroke()
+
+  const dot = ctx.createLinearGradient(0, END[1] - 11, 0, END[1] + 11)
+  dot.addColorStop(0, '#ffb04a'); dot.addColorStop(1, '#ff8a1f')
+  ctx.save()
+  ctx.shadowColor = 'rgba(255,138,31,.75)'
+  ctx.shadowBlur = 22
+  ctx.fillStyle = dot
+  ctx.beginPath(); ctx.arc(END[0], END[1], 11, 0, Math.PI * 2); ctx.fill()
+  ctx.restore()
+}
+
+/* --- Glass -------------------------------------------------------------------------
+   A real lens model, not a blur. Each shape is a slab whose rim curves like a squircle.
+   For every pixel: take the surface slope, bend the view ray with Snell's law, and read
+   the scene from where that ray lands. Red and blue bend slightly differently, which is
+   the coloured fringe at the rim. */
+const IOR = 1.5
+const surface = (x) => Math.pow(1 - Math.pow(1 - x, 4), .25)
+function sdf(px, py, g) {
+  const cx = g.x + g.w / 2, cy = g.y + g.h / 2
+  const qx = Math.abs(px - cx) - g.w / 2 + g.r, qy = Math.abs(py - cy) - g.h / 2 + g.r
+  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - g.r
+}
+function renderGlass(shapes) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  const cw = c.width, ch = c.height
+  const blurred = document.createElement('canvas')
+  blurred.width = cw; blurred.height = ch
+  const bctx = blurred.getContext('2d', { willReadFrequently: true })
+  bctx.filter = `blur(${PALETTE.frost * S}px)`
+  bctx.drawImage(c, 0, 0)
+  const src = bctx.getImageData(0, 0, cw, ch).data
+
+  ctx.save()
+  for (const g of shapes) {
+    ctx.shadowColor = PALETTE.shadow
+    ctx.shadowBlur = 40 * S
+    ctx.shadowOffsetY = 14 * S
+    ctx.fillStyle = 'rgba(0,0,0,.35)'
+    ctx.beginPath()
+    ctx.roundRect(g.x * S, g.y * S, g.w * S, g.h * S, g.r * S)
+    ctx.fill()
+  }
+  ctx.restore()
+
+  const img = ctx.getImageData(0, 0, cw, ch)
+  const dst = img.data
+  const read = (x, y, ch_) => {
+    const ix = Math.max(0, Math.min(cw - 2, x | 0)), iy = Math.max(0, Math.min(ch - 2, y | 0))
+    const fx = x - ix, fy = y - iy, i = (iy * cw + ix) * 4 + ch_
+    return src[i] * (1 - fx) * (1 - fy) + src[i + 4] * fx * (1 - fy) + src[i + cw * 4] * (1 - fx) * fy + src[i + cw * 4 + 4] * fx * fy
+  }
+  const norm = (v) => { const l = Math.hypot(...v); return v.map((n) => n / l) }
+  const H1 = norm([-.42, -.72, 1.45]), H2 = norm([.46, .68, 1.45])
+  const edgeL = norm([-.5, -.85])
+
+  for (const g of shapes) {
+    const bezel = g.bezel * S, thick = g.thick * S
+    const sg = { x: g.x * S, y: g.y * S, w: g.w * S, h: g.h * S, r: g.r * S }
+    for (let y = sg.y - 1; y < sg.y + sg.h + 1; y++) {
+      for (let x = sg.x - 1; x < sg.x + sg.w + 1; x++) {
+        const px = x + .5, py = y + .5
+        const sd = sdf(px, py, sg)
+        const cover = Math.min(1, Math.max(0, .5 - sd))
+        if (cover <= 0) continue
+        const d = -sd
+        const gx = sdf(px + 1, py, sg) - sdf(px - 1, py, sg), gy = sdf(px, py + 1, sg) - sdf(px, py - 1, sg)
+        const gl = Math.hypot(gx, gy) || 1
+        const nx = gx / gl, ny = gy / gl
+        const t = Math.max(.015, Math.min(1, d / bezel))
+        const slope = t >= 1 ? 0 : (surface(Math.min(1, t + .01)) - surface(t)) / .01 * (thick / bezel)
+        const theta = Math.atan(slope)
+        const shift = (ior) => (surface(t) * thick) * Math.tan(theta - Math.asin(Math.sin(theta) / ior))
+        // The rim shows what lies further inside: sample inward along the surface.
+        const sr = shift(IOR - .018), sg_ = shift(IOR), sb = shift(IOR + .022)
+        let r = read(px - nx * sr, py - ny * sr, 0)
+        let gr = read(px - nx * sg_, py - ny * sg_, 1)
+        let b = read(px - nx * sb, py - ny * sb, 2)
+
+        // Material: lift saturation, then the tint that keeps text readable.
+        const lum = .2126 * r + .7152 * gr + .0722 * b
+        r = lum + (r - lum) * PALETTE.sat; gr = lum + (gr - lum) * PALETTE.sat; b = lum + (b - lum) * PALETTE.sat
+        const [tr, tg, tb] = PALETTE.tint, ta = PALETTE.tintA
+        r = r * (1 - ta) + tr * ta; gr = gr * (1 - ta) + tg * ta; b = b * (1 - ta) + tb * ta
+
+        // Light: two soft highlights on the curve, and a bright rim that catches the key light.
+        const nz = 1 / Math.hypot(1, slope), n3 = [nx * slope * nz, ny * slope * nz, nz]
+        const dot = (a) => Math.max(0, n3[0] * a[0] + n3[1] * a[1] + n3[2] * a[2])
+        let light = Math.pow(dot(H1), 34) * (t < 1 ? .55 : 0) + Math.pow(dot(H2), 34) * (t < 1 ? .3 : 0)
+        const rimW = 1.5 * S
+        const facing = Math.abs(nx * edgeL[0] + ny * edgeL[1])
+        const rim = Math.max(0, 1 - d / rimW) * (.22 + .62 * facing) * PALETTE.rim
+        const veil = Math.pow(1 - t, 3) * .1
+        light = Math.min(1, light + rim + veil)
+        r += (255 - r) * light; gr += (255 - gr) * light; b += (255 - b) * light
+
+        const i = (y * cw + x) * 4
+        dst[i] = dst[i] * (1 - cover) + r * cover
+        dst[i + 1] = dst[i + 1] * (1 - cover) + gr * cover
+        dst[i + 2] = dst[i + 2] * (1 - cover) + b * cover
+        dst[i + 3] = 255
+      }
+    }
+  }
+  // A whisper of dither, so the long ridge gradients don't band.
+  const noise = rng(5)
+  for (let i = 0; i < dst.length; i += 4) {
+    const n = (noise() - .5) * 1.6
+    dst[i] += n; dst[i + 1] += n; dst[i + 2] += n
+  }
+  ctx.putImageData(img, 0, 0)
+}
+
+const place = (id, x, y, text) => {
+  const el = document.getElementById(id)
+  el.style.left = x + 'px'; el.style.top = y + 'px'
+  if (text) el.textContent = text
+}
+place('high', HIGH.x + 16, HIGH.y - 25, 'All-time high')
+place('r1', 1212, RUNGS[0] - 9)
+place('r2', 1212, RUNGS[1] - 9)
+place('r3', 1212, RUNGS[2] - 9)
+
+document.fonts.load("700 92px 'Inter Banner'", 'Dip Alert ₹−').then(() => {
+  paintScene()
+  renderGlass([
+    { x: 64, y: 322, w: 336, h: 66, r: 33, bezel: 15, thick: 34 },
+    { x: 776, y: 148, w: 396, h: 98, r: 36, bezel: 18, thick: 40 },
+  ])
+  document.body.dataset.ready = '1'
+})
+</script>
 </body>
 </html>

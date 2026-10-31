@@ -31,7 +31,7 @@ dip-alert-app/
 │   ├── *.service, *.timer, sudoers drop-in
 │   └── environment examples and README.md
 ├── docs/
-│   ├── screenshots/, designs/, banner.png, banner.svg
+│   ├── screenshots/, designs/, banner-dark.png, banner-light.png
 │   └── SECURITY_AUDIT_PLAN.md
 ├── .planning/
 ├── README.md
