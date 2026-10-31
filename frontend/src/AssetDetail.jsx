@@ -21,6 +21,7 @@ import {
   isMetal,
   nextAlertPrice,
   priceParts,
+  safeBrokerUrl,
   shortName,
   tickerMeta,
   unitWords,
@@ -237,10 +238,11 @@ export default function AssetDetail({ item, usdInr, onClose = null, onEdit, inli
     }
   }
 
+  const brokerHref = safeBrokerUrl(item.broker_url)
   const menu = [
     { label: 'Edit Alert', icon: 'pencil', onSelect: onEdit },
     { label: item.active ? 'Pause Monitoring' : 'Resume Monitoring', icon: item.active ? 'pause' : 'play', onSelect: togglePause },
-    ...(item.broker_url ? [{ label: `Open ${brokerName(item.broker_url)}`, icon: 'link', href: item.broker_url }] : []),
+    ...(brokerHref ? [{ label: `Open ${brokerName(brokerHref)}`, icon: 'link', href: brokerHref }] : []),
     { separator: true },
     { label: 'Stop Tracking', icon: 'trash', danger: true, onSelect: remove },
   ]

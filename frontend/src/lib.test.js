@@ -10,6 +10,7 @@ import {
   nextAlertPrice,
   niceTicks,
   priceParts,
+  safeBrokerUrl,
   severity,
   shortName,
   timeAgo,
@@ -77,6 +78,12 @@ assert.equal(fmtSigned(0), '0.00%')
 assert.equal(fmtSigned(null), '—')
 // A market date must not shift with the viewer's timezone.
 assert.match(fmtMarketDate('2026-01-02'), /^2 Jan/)
+
+// --- Broker links: https only, whatever the database holds ----------------
+assert.equal(safeBrokerUrl('https://groww.in/etfs/sbietf-nifty'), 'https://groww.in/etfs/sbietf-nifty')
+for (const bad of ['javascript:alert(1)', 'data:text/html,x', 'http://groww.in', 'https://u:p@groww.in', '', null, undefined, 'not a url']) {
+  assert.equal(safeBrokerUrl(bad), null, `${bad} must not render as a link`)
+}
 
 // --- The alert ladder -----------------------------------------------------
 const nifty = {

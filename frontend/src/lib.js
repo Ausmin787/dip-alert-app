@@ -163,6 +163,18 @@ export const monthLabelIST = (iso) =>
     year: 'numeric',
   })
 
+/* The backend only accepts https:// broker URLs, and this repeats that check where the
+   link renders, so a legacy or hand-edited row can't put a javascript: or data: URL
+   into an href. Returns the normalised URL, or null. */
+export const safeBrokerUrl = (value) => {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && !url.username && !url.password ? url.href : null
+  } catch {
+    return null
+  }
+}
+
 // Row titles drop the instrument suffix the seed data carries ("Gold (COMEX)",
 // "Nifty 50 Index"): the exchange is printed beside the name wherever it matters.
 export const shortName = (name = '') =>
